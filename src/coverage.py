@@ -26,10 +26,24 @@ CLOSE_CELLS = 18
 # 그 중간에서 끊긴다.
 HALF_SPACING_MIN_KM = 1.5
 HALF_SPACING_MAX_KM = 6.0
-# 다만 종점은 다르다. 그 바깥으로는 다음 역이 없으니 자를 이유가 없고,
+# 다만 노선의 끝은 다르다. 그 바깥으로는 다음 역이 없으니 자를 이유가 없고,
 # 자르면 미사키구치 너머 미우라 시가지나 다테야마 남쪽처럼 "들어갈 수 있는
-# 지도가 없는" 곳이 생긴다. 종점만 이만큼 넉넉히 끌어안는다.
+# 지도가 없는" 곳이 생긴다. 이런 끝만 이만큼 넉넉히 끌어안는다.
 TERMINUS_KM = 10.0
+# 넉넉히 잡아도 되는 것은 그 너머에 육지가 없는 곳뿐이다. 육지가 이어지면
+# 우리가 안 가진 노선이 그리로 계속 간다. 조에쓰선은 미나카미에서,
+# 우쓰노미야선은 구로이소에서, 조반선은 다카하기에서 데이터가 끝나지만
+# 실제로는 도아이·다카쿠·오쓰코가 이어진다. 거기를 10 km 넓히면 다룰 수
+# 없는 역이 선 안에 들어온다.
+#
+# "바다가 가까운가" 로는 갈리지 않는다. 다카하기는 해안 도시라 반경 안
+# 43%가 바다지만 해안선은 북으로 계속 이어진다. 역이 놓인 방향의 바깥쪽을
+# 봐야 한다. 미사키구치·우라가·외카와는 바깥이 3% 이하이고, 다카하기·조시·
+# 아와카모가와는 43% 이상이다.
+LAND_BEYOND_MAX = 0.25
+# 바깥을 살필 때 쓰는 부채꼴 (도) 과 방향 수
+OUTWARD_FAN_DEG = 30.0
+OUTWARD_RAYS = 7
 # 권역 바깥에 남은 육지 조각 중, 권역에 붙어 있고 이만큼보다 작으면 채운다.
 # 바다에 막혀 끝나는 반도나 해안 마을을 선으로 가로질러 자를 이유가 없다.
 # 다른 지방으로 이어지는 내륙(1만 km² 이상)은 그대로 둔다. 섬은 권역에
@@ -61,7 +75,7 @@ class Coverage:
     """보행망이 깔린 범위를 성긴 격자 마스크로."""
 
     def __init__(self, walk, land_npz=None, catchment_sec: float | None = CATCHMENT_SEC,
-                 stations=None):
+                 stations=None, line_ends=None):
         self.lon0, self.lat0 = walk.lon0, walk.lat0
         self.m_lon, self.m_lat = walk.m_per_deg_lon, walk.m_per_deg_lat
         self.cell = CELL_M
@@ -69,12 +83,13 @@ class Coverage:
         # 역들의 도보권(저장 격자 100 m)을 성긴 격자에 찍는다.
         # 보행망 노드 전체가 아니라 이것이 실제 지원 범위다.
         if stations is not None:
-            # 보행망에 붙지 못한 역은 애초에 쓸 수 없으니 범위에서 뺀다.
-            # 넣으면 후지큐(야마나시)처럼 계산이 안 되는 노선이 범위를 끌고 간다.
-            ok = np.isfinite(stations[:, 0]) & (walk.station_node >= 0)
-            cx = np.floor((stations[ok, 0] - self.lon0) * self.m_lon / CELL_M).astype(np.int64)
-            cy = np.floor((stations[ok, 1] - self.lat0) * self.m_lat / CELL_M).astype(np.int64)
-            self._radius_cells = self._half_spacing_cells(stations[ok])
+            # 부르는 쪽이 이미 걸러 온다. 보행망에 못 붙는 역(야마나시·이즈)은
+            # 애초에 쓸 수 없고, 같은 역의 노선별 중복 행도 합쳐져 있어야 한다.
+            # 중복이 섞이면 이웃 거리가 0 이 되어 반경 계산이 무너진다.
+            pts = stations
+            cx = np.floor((pts[:, 0] - self.lon0) * self.m_lon / CELL_M).astype(np.int64)
+            cy = np.floor((pts[:, 1] - self.lat0) * self.m_lat / CELL_M).astype(np.int64)
+            self._pending_radius = (pts, line_ends)
         else:
             cells = (walk.shed_cell if catchment_sec is None
                      else walk.shed_cell[walk.shed_sec <= catchment_sec])
@@ -82,6 +97,21 @@ class Coverage:
             step = CELL_M / walk.shed_cell_m
             cx = (gx / step).astype(np.int64)
             cy = (gy / step).astype(np.int64)
+
+        # 육지 / 바다 마스크 (build_walk.py 가 OSM 해안선으로 구워 둔 것).
+        # 반경을 정할 때 "바다에 막힌 끝인가" 를 물어야 하므로 먼저 올린다.
+        from pathlib import Path
+
+        self.land = None
+        self.land_grid = None
+        if land_npz is not None and Path(land_npz).exists():
+            z = np.load(land_npz)
+            self.land = z["land"]
+            self.land_grid = z["grid"]
+
+        if getattr(self, "_pending_radius", None) is not None:
+            pts, line_ends = self._pending_radius
+            self._radius_cells = self._half_spacing_cells(pts, line_ends)
 
         self.x0, self.y0 = int(cx.min()), int(cy.min())
         w = int(cx.max()) - self.x0 + 1
@@ -117,16 +147,6 @@ class Coverage:
         # 해안선에 맞춰 깎는다. 이 하나가 "앱이 동작하는 범위" 다.
         region = ndimage.binary_closing(grown, structure=disk(CLOSE_CELLS))
         region = ndimage.binary_fill_holes(region)
-
-        # 육지 / 바다 마스크 (build_walk.py 가 OSM 해안선으로 구워 둔 것)
-        from pathlib import Path
-
-        self.land = None
-        self.land_grid = None
-        if land_npz is not None and Path(land_npz).exists():
-            z = np.load(land_npz)
-            self.land = z["land"]
-            self.land_grid = z["grid"]
 
         # 넓히다 보면 도쿄만이나 앞바다로 넘친다. 해안선에 맞춰 깎되,
         # 역이 실제로 있는 칸(매립지 등)은 되살린다. 판정용은 이 격자로 두고,
@@ -186,31 +206,74 @@ class Coverage:
             return None
         return not bool(self.land[i, j])
 
-    def _half_spacing_cells(self, pts: np.ndarray) -> np.ndarray:
+    def _half_spacing_cells(self, pts: np.ndarray, line_ends=None) -> np.ndarray:
         """역마다 반경을 정한다.
 
-        기본은 "가장 가까운 옆 역까지의 절반". 다만 종점은 바깥으로 다음 역이
-        없으니 거기서 자를 이유가 없어 넉넉히 잡는다. 종점인지는 "이웃 역들이
-        전부 한쪽에 몰려 있는가" 로 본다.
+        기본은 "가장 가까운 옆 역까지의 절반". 역이 촘촘한 도심은 작게,
+        드문 외곽은 크게 잡히고, 다음 역이 있는 방향으로는 그 중간에서 끊긴다.
+
+        노선의 끝은 바깥으로 다음 역이 없으니 자를 이유가 없다. 다만 넉넉히
+        잡아도 되는 것은 바다에 막혀 끝나는 곳뿐이다. 내륙에서 끊긴 끝은
+        우리가 안 가진 노선이 그 너머로 이어지고 있어서, 넓히면 다룰 수 없는
+        역을 선 안에 넣게 된다.
+
+        끝인지 아닌지는 부르는 쪽이 노선 정보를 보고 정해 온다. 예전에는
+        "이웃 역이 한쪽에만 몰려 있는가" 로 짐작했는데, 그건 노선의 끝이
+        아니라 역 분포의 가장자리를 재는 것이라 망이 성겨지는 외곽에서는
+        하스다·가모노미야 같은 중간역도 끝으로 잡혔다.
         """
         from scipy.spatial import cKDTree
 
         xy = np.stack([pts[:, 0] * self.m_lon, pts[:, 1] * self.m_lat], axis=1)
-        tree = cKDTree(xy)
-        k = min(6, len(xy))
-        d, idx = tree.query(xy, k=k)
+        d, _ = cKDTree(xy).query(xy, k=min(2, len(xy)))
+        near = d[:, 1] if d.ndim == 2 and d.shape[1] > 1 else np.full(len(xy), np.inf)
+        half_km = np.clip(near / 2000.0, HALF_SPACING_MIN_KM, HALF_SPACING_MAX_KM)
 
-        half_km = np.clip(d[:, 1] / 2000.0, HALF_SPACING_MIN_KM, HALF_SPACING_MAX_KM)
+        radius_km = half_km
+        if line_ends is not None:
+            # 바깥 방향 = 가장 가까운 옆 역의 반대쪽
+            _, nn = cKDTree(xy).query(xy, k=min(2, len(xy)))
+            away = xy - xy[nn[:, 1]] if nn.ndim == 2 and nn.shape[1] > 1 else np.zeros_like(xy)
+            norm = np.linalg.norm(away, axis=1, keepdims=True)
+            outward = np.divide(away, norm, out=np.zeros_like(away), where=norm > 0)
 
-        # 가까운 이웃들이 향하는 방향을 모두 더해, 한쪽으로만 쏠려 있으면 종점
-        vec = xy[idx[:, 1:]] - xy[:, None, :]
-        norm = np.linalg.norm(vec, axis=2, keepdims=True)
-        unit = np.divide(vec, norm, out=np.zeros_like(vec), where=norm > 0)
-        spread = np.linalg.norm(unit.sum(axis=1), axis=1) / max(k - 1, 1)
-        terminus = spread > 0.80
-
-        radius_km = np.where(terminus, np.maximum(half_km, TERMINUS_KM), half_km)
+            generous = (np.asarray(line_ends, dtype=bool)
+                        & self._land_ends_outward(pts, outward))
+            radius_km = np.where(generous, np.maximum(half_km, TERMINUS_KM), half_km)
         return np.maximum(1, np.rint(radius_km * 1000 / CELL_M)).astype(np.int64)
+
+    def _land_ends_outward(self, pts: np.ndarray, outward: np.ndarray) -> np.ndarray:
+        """역이 놓인 방향의 바깥쪽에서 육지가 끝나는가.
+
+        노선의 끝에서 바깥으로 부채꼴을 훑어, 넉넉한 반경의 바깥쪽 절반에
+        육지가 얼마나 남았는지 센다. 반도 끝이면 거의 바다이고, 해안선이
+        계속 이어지는 곳이면 여전히 육지다.
+        """
+        if self.land is None:
+            return np.ones(len(pts), dtype=bool)
+
+        lon0, lat0, cell, _, _, m_lon, m_lat = self.land_grid
+        angles = np.radians(np.linspace(-OUTWARD_FAN_DEG, OUTWARD_FAN_DEG, OUTWARD_RAYS))
+        steps = np.arange(TERMINUS_KM * 500.0, TERMINUS_KM * 1000.0 + 1.0, 500.0)
+
+        out = np.zeros(len(pts), dtype=bool)
+        for k in range(len(pts)):
+            dx, dy = outward[k]
+            if dx == 0.0 and dy == 0.0:
+                continue
+            # 부채꼴로 돌린 방향들 x 거리들
+            rx = dx * np.cos(angles) - dy * np.sin(angles)
+            ry = dx * np.sin(angles) + dy * np.cos(angles)
+            ox = pts[k, 0] + np.outer(rx, steps) / m_lon
+            oy = pts[k, 1] + np.outer(ry, steps) / m_lat
+            j = np.floor((ox - lon0) * m_lon / cell).astype(np.int64)
+            i = np.floor((oy - lat0) * m_lat / cell).astype(np.int64)
+            ok = ((i >= 0) & (i < self.land.shape[0])
+                  & (j >= 0) & (j < self.land.shape[1]))
+            hits = np.zeros(ok.shape, dtype=bool)
+            hits[ok] = self.land[i[ok], j[ok]]
+            out[k] = hits.mean() <= LAND_BEYOND_MAX
+        return out
 
     def _land_mask_on(self, shape) -> np.ndarray:
         """범위 격자와 같은 모양으로 육지 여부를 옮겨 담는다."""
