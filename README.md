@@ -5,7 +5,7 @@
 
 경로 API를 호출해 격자를 샘플링하는 방식이 아니라, 시각표 전체를 로컬에
 올려두고 다대다 도달시간을 직접 계산한다. 호출 제한이 없고 한 번 계산에
-2,610개 역 전부의 도착 시각이 한꺼번에 나온다.
+역 전부의 도착 시각이 한꺼번에 나온다.
 
 ## 빠른 시작
 
@@ -34,17 +34,31 @@ python -m pytest tests/ -q      # 3초
 ### 보행 네트워크 (선택)
 
 `build_walk.py` 를 돌리지 않아도 앱은 동작한다. 그때 도보는 직선거리에 1.3배
-우회 보정을 한 근사다. 실제 보행로를 따르게 하려면 OSM 간토 추출본을 받아서
+우회 보정을 한 근사다. 실제 보행로를 따르게 하려면 OSM 추출본을 받아서
 한 번 빌드하면 된다.
 
+추출본이 둘인 이유가 있다. 야마나시와 이즈 반도는 Geofabrik 이 주부로
+분류해서 간토 추출본에 없다. 그런데 주오선(고후까지), 후지큐, 이즈큐,
+이즈하코네, 고텐바선은 시각표가 이미 있어 열차로는 닿는다. 보행망만 빠지면
+그 역들이 "지원 역" 에서 빠지고 경계 밖으로 나간다.
+
 ```
-curl -L -o data/osm/kanto-latest.osm.pbf   https://download.geofabrik.de/asia/japan/kanto-latest.osm.pbf   # 507 MB
+curl -L -o data/osm/kanto-latest.osm.pbf  https://download.geofabrik.de/asia/japan/kanto-latest.osm.pbf  # 483 MB
+curl -L -o data/osm/chubu-latest.osm.pbf  https://download.geofabrik.de/asia/japan/chubu-latest.osm.pbf  # 486 MB
 python -m pip install osmium
-python src/build_walk.py                                          # 5-10분
+python src/build_walk.py                                          # 10분 안팎
+python src/build_admin.py                                         # 역마다 도도부현 붙이기, 1분
 ```
 
-`data/walk/` 가 생기면 서버가 자동으로 그쪽을 쓴다. 지우면 다시 직선거리
-근사로 돌아간다.
+읽을 추출본은 `data/regions/<권역>/region.json` 의 `osm_files` 에 적는다.
+격자 밖의 점은 읽으면서 버리므로 주부 추출본의 나고야는 들어오지 않는다.
+
+**서버를 멈춘 뒤에 돌려야 한다.** 서버는 원본 기하 파일을 mmap 으로 열어 두는데
+윈도우에서는 그게 파일 잠금이라 덮어쓰기가 막힌다. 빌드 시작 시점에 검사해서
+막혀 있으면 바로 멈추고 알려준다.
+
+`data/regions/<권역>/walk/` 가 생기면 서버가 자동으로 그쪽을 쓴다. 지우면
+다시 직선거리 근사로 돌아간다.
 
 ### 지도 바꾸기 (선택)
 
@@ -75,7 +89,8 @@ $7이다. 이 앱은 화면을 한 번 띄울 때 1회를 쓰므로 혼자 쓰�
 | 시각표 출처 | [mini-tokyo-3d](https://github.com/nagix/mini-tokyo-3d) (코드 MIT) / 원 데이터 [ODPT](https://www.odpt.org/) |
 | 보행망·해안선 | [OpenStreetMap](https://www.openstreetmap.org/copyright) 기여자 ([ODbL](https://opendatacommons.org/licenses/odbl/)) |
 | 범위 | 수도권 철도 179개 노선 (JR동일본 56, 도쿄메트로 10, 도에이 6, 사철 전부) |
-| 역 | 2,610개 (그 중 27개는 간토권 밖 종착역이라 좌표 없음) |
+| 역 | 노선별 2,610행. 같은 역을 묶으면 1,939개 (신주쿠 하나가 11행이다) |
+| 지원 역 | 그중 도보권이 있어 실제로 쓸 수 있는 역. 지도에 점으로 찍는 수다 |
 | 운행 | 평일 48,709편 / 토·휴일 42,840편 |
 | 다이어 | 평일, 토·휴일 2종 |
 
@@ -103,7 +118,7 @@ RAPTOR를 numpy로 벡터화했다. 한 라운드마다 63만 개 정차 이벤�
 `np.maximum.accumulate`로 흘려보낸 뒤 운행 시작 인덱스와 비교해 구한다.
 루프 없이 전체 이벤트를 한 번에 처리한다.
 
-2,610개 역 전체 계산에 **0.07초**.
+역 2,610행 전체 계산에 **0.07초**.
 
 ### 3. 보행 네트워크 (`build_walk.py`, `walknet.py`)
 
@@ -192,6 +207,15 @@ matplotlib으로 등고선을 뽑고, 고리들의 포함 관계를 검사해 �
 - **전철 없이 도보만** 을 켜면 대중교통을 빼고 걷기만 계산한다.
 - 도보 시간은 두 겹이다. "하차 후 도보" 는 역에서 얼마나 걸을지, 접이식으로
   숨겨둔 "전체 도보" 는 여정 전체에서 걷는 시간의 상한이다.
+- **현위치에서 출발**을 누르면 브라우저 위치로 출발지를 잡는다. 권역 밖이면
+  이유를 알려준다. `127.0.0.1` 은 안전한 출처로 쳐서 그냥 되지만, 다른 기기에서
+  `192.168.x.x` 로 접속하면 HTTPS 가 아니라 브라우저가 막는다.
+- **가까운 역으로**는 찍어둔 핀을 가장 가까운 역에 맞춘다. 단축키는 출발지
+  <kbd>D</kbd>, 도착지 <kbd>F</kbd> 다. 입력칸에 글을 쓰는 중에는 눌러도 듣지 않는다.
+- **지원 역 표시**와 **지원 노선 표시**를 켜면 다룰 수 있는 역과 노선이 지도에
+  겹쳐 보인다. 각각 옆의 삼각형을 누르면 도도부현별로 골라 볼 수 있다. 역 1,938개를
+  하나씩 마커로 두면 버벅이므로 캔버스 한 장에 그린다.
+- **경계선** 버튼(지도 오른쪽 아래)으로 보라색 권역선을 끄고 켠다.
 - 출발지를 바꿔도 지도 축척은 그대로 둔다. 권역 전체를 다시 보려면 지도
   좌하단의 **권역에 맞추기**를 누른다.
 
@@ -261,13 +285,18 @@ matplotlib으로 등고선을 뽑고, 고리들의 포함 관계를 검사해 �
 src/fetch_data.py    시각표 원본 수집
 src/build_graph.py   직통 병합, 정차 이벤트 평탄화, 환승 간선 생성
 src/router.py        RAPTOR 벡터화 구현 (도달시간 계산)
-src/build_walk.py    OSM 보행망 추출 + 역별 도보권 사전 계산
+src/build_walk.py    OSM 보행망 추출 + 역별 도보권 + 원본 기하 + 육지 마스크
+src/build_admin.py   OSM 행정경계에서 역마다 도도부현 붙이기
 src/walknet.py       실행 중 보행망 조회 (역 도보권, 임의 지점 다익스트라)
+src/finegeom.py      그린 도보선을 원본 도로 위로 다시 얹기
+src/geometry.py      역 사이를 실제 선로 모양으로 (경로 표시, 노선 표시)
+src/coverage.py      권역 범위 마스크와 경계선
+src/region.py        권역 하나가 쓰는 것들을 한데 묶기
 src/operators.py     철도 운영사 이름표 (검색 목록에서 동명 역 구분)
 src/isochrone.py     격자 래스터화 + 등고선 → GeoJSON
-src/server.py        Flask API (/api/isochrone, /api/point, /api/stations, /api/config)
+src/server.py        Flask API
 web/index.html       UI (구글 지도 / OpenStreetMap 양쪽 지원)
-tests/               기준선 회귀 테스트
+tests/               기준선 회귀 테스트 + 경계 회귀 테스트
 ```
 
 ## 도보 속도를 바꾸려면
