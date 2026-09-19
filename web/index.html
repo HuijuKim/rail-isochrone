@@ -31,11 +31,15 @@
   --band-2: #EC6C3F;
   --band-3: #B23A63;
 
+  --step-2: .7rem;
   --step-1: .78rem;
   --step0:  .92rem;
   --step1:  1.05rem;
   --step2:  1.4rem;
+  --step3:  1.7rem;
 
+  /* 본문은 sans, mono 는 숫자·시각·코드에만. 대문자 라벨까지 mono 로 쓰면
+     서체가 섞인 만큼 화면이 시끄러워진다. */
   --sans: "Zen Kaku Gothic New", "Yu Gothic", "Malgun Gothic", system-ui, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
 
@@ -125,7 +129,7 @@ body {
 /* ---------- 머리말 ---------- */
 .masthead { padding: 22px var(--pad) 16px; border-bottom: 1px solid var(--line-soft); }
 .eyebrow {
-  font-family: var(--mono); font-size: var(--step-1);
+  font-size: var(--step-1);
   letter-spacing: .14em; text-transform: uppercase;
   color: var(--muted); margin: 0 0 6px;
 }
@@ -142,7 +146,7 @@ h1 {
 .field > label,
 .field-head > label,
 .legend-title {
-  font-family: var(--mono); font-size: var(--step-1);
+  font-size: var(--step-1);
   letter-spacing: .08em; text-transform: uppercase;
   color: var(--muted); font-weight: 500; margin: 0;
 }
@@ -168,22 +172,36 @@ input[type="time"] { font-family: var(--mono); }
   background: none; border: 0; padding: 0;
   color: var(--accent); cursor: pointer; text-decoration: underline;
 }
-
-.swap-row { display: flex; justify-content: flex-end; margin-block: -8px -4px; }
-.swap-row button {
-  font: inherit; font-size: var(--step-1);
-  display: flex; align-items: center; gap: 5px;
-  padding: 4px 10px; cursor: pointer;
-  color: var(--ink-2); background: var(--surface-2);
-  border: 1px solid var(--line); border-radius: 999px;
+kbd {
+  font-family: var(--mono); font-size: var(--step-2); line-height: 1;
+  color: var(--muted); background: var(--surface-2);
+  border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px;
+  padding: 1px 4px; text-decoration: none; vertical-align: .5px;
 }
-.swap-row button:hover { background: var(--surface); color: var(--ink); }
-.swap-row button[disabled] { opacity: .45; cursor: default; }
+
+/* 입력칸과 그 옆 버튼을 한 줄에 둔다. 버튼은 입력칸 높이에 맞춰 늘어나고
+   aspect-ratio 로 그만큼 너비를 가져가 정사각형이 된다. 출발지는 맞바꾸기,
+   도착지는 지우기가 같은 자리에 온다. */
+.input-row { display: flex; align-items: stretch; gap: 8px; }
+.input-row input[type="text"] { flex: 1 1 auto; min-width: 0; }
+.square-btn {
+  flex: none; align-self: stretch; aspect-ratio: 1;
+  display: grid; place-items: center; padding: 0;
+  font: inherit; line-height: 1; cursor: pointer;
+  color: var(--ink-2); background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: var(--radius);
+}
+.square-btn:hover { background: var(--surface); color: var(--ink); }
+.square-btn[disabled] { opacity: .45; cursor: default; }
+#dest-clear:hover { color: var(--dest); border-color: var(--dest); }
+/* 도착지가 없을 때도 자리는 지킨다. 버튼이 빠지면 도착지 입력칸만 넓어져서
+   출발지 칸과 너비가 어긋난다. */
+#dest-clear[hidden] { display: grid !important; visibility: hidden; }
 
 /* 지금 지도 클릭이 어느 칸을 찍는지 */
 .field-head { position: relative; }
 .target-tag {
-  font-family: var(--mono); font-size: .68rem;
+  font-size: var(--step-2);
   letter-spacing: .08em; text-transform: uppercase;
   color: var(--accent-ink); background: var(--accent);
   border-radius: 999px; padding: 1px 8px;
@@ -198,7 +216,7 @@ input[type="time"] { font-family: var(--mono); }
 /* 접었다 펴는 고급 설정 */
 details#walk-advanced { margin-top: 4px; }
 details#walk-advanced > summary {
-  font-family: var(--mono); font-size: var(--step-1);
+  font-size: var(--step-1);
   letter-spacing: .06em; text-transform: uppercase;
   color: var(--accent); cursor: pointer; list-style: none;
   padding: 4px 0;
@@ -231,13 +249,16 @@ details#walk-advanced[open] > summary::before { content: "▾ "; }
 .results .ja { font-weight: 700; }
 .results .ko { color: var(--muted); font-size: var(--step-1); }
 .results .ops {
-  font-size: .7rem; color: var(--muted);
+  font-size: var(--step-2); color: var(--muted);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
 /* 슬라이더 */
 .slider-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-.slider-value { font-family: var(--mono); font-weight: 600; color: var(--ink); font-size: var(--step1); }
+.slider-value {
+  font-family: var(--mono); font-size: var(--step1); font-weight: 600;
+  font-variant-numeric: tabular-nums; color: var(--ink);
+}
 input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 .hint { font-size: var(--step-1); color: var(--muted); margin: 0; }
 
@@ -249,7 +270,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 }
 .verdict.over { border-left-color: var(--warn); }
 .verdict .total {
-  font-family: var(--mono); font-size: 1.7rem; font-weight: 600;
+  font-family: var(--mono); font-size: var(--step3); font-weight: 600;
   font-variant-numeric: tabular-nums; line-height: 1.1;
 }
 .verdict .tag {
@@ -282,7 +303,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 }
 .leg .stations { font-size: var(--step-1); color: var(--ink-2); }
 .leg .clock {
-  font-family: var(--mono); font-size: .72rem;
+  font-family: var(--mono); font-size: var(--step-2);
   font-variant-numeric: tabular-nums; color: var(--muted);
 }
 .leg.walk .body, .leg.transfer .body { color: var(--muted); font-size: var(--step-1); }
@@ -292,7 +313,10 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 .legend { display: flex; flex-direction: column; gap: 8px; }
 .legend-row { display: flex; align-items: center; gap: 10px; font-size: var(--step-1); }
 .swatch { width: 26px; height: 12px; border-radius: 3px; flex: none; }
-.legend-row .min { font-family: var(--mono); font-weight: 600; color: var(--ink); }
+.legend-row .min {
+  font-family: var(--mono); font-weight: 600;
+  font-variant-numeric: tabular-nums; color: var(--ink);
+}
 .legend-row .note { color: var(--muted); }
 
 .stat-strip { display: flex; gap: 10px; border-block: 1px solid var(--line-soft); padding-block: 14px; }
@@ -323,14 +347,14 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 .far-list .km { color: var(--ink); font-weight: 600; }
 .far-list .m { color: var(--muted); }
 .far-list .go-hint {
-  font-size: .68rem; color: var(--dest); opacity: 0;
+  font-size: var(--step-2); color: var(--dest); opacity: 0;
   flex: none; align-self: center;
 }
 
 .source { padding: 22px var(--pad) 0; font-size: var(--step-1); color: var(--muted); }
 .source a { color: var(--accent); }
 .source code {
-  font-family: var(--mono); font-size: .72rem;
+  font-family: var(--mono); font-size: var(--step-2);
   background: var(--surface-2); padding: 1px 4px; border-radius: 4px;
 }
 
@@ -345,12 +369,18 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   max-width: min(60%, 340px);
 }
 .map-badge b { font-weight: 700; }
-.map-badge .sub { color: var(--muted); display: block; font-size: .72rem; font-family: var(--mono); }
+.map-badge .sub { color: var(--muted); display: block; font-size: var(--step-2); }
 
 .map-actions {
   position: absolute; z-index: 500;
   left: 12px; bottom: calc(22px + env(safe-area-inset-bottom, 0px));
   display: flex; gap: 8px;
+}
+/* 오른쪽 아래는 지도 엔진이 쓰는 자리다. 구글은 기울이기 화살표와 저작권
+   표기를, Leaflet 은 출처 표기를 거기 둔다. 그 위로 올려 비켜준다. */
+.map-actions.right {
+  left: auto; right: 12px;
+  bottom: calc(68px + env(safe-area-inset-bottom, 0px));
 }
 .map-actions button {
   font: inherit; font-size: var(--step-1);
@@ -363,6 +393,40 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 .map-actions button[aria-pressed="true"] {
   background: var(--accent); color: var(--accent-ink); border-color: var(--accent);
 }
+
+/* 표시 버튼과 현별 고르기를 한 덩어리로 붙여 둔다. 역과 노선이 각각 갖는다. */
+.pref-wrap { position: relative; display: flex; }
+.pref-wrap > button:first-child { border-start-end-radius: 0; border-end-end-radius: 0; }
+.pref-wrap > button.caret {
+  border-start-start-radius: 0; border-end-start-radius: 0; border-inline-start: 0;
+  padding: 7px 9px; font-size: .6rem; line-height: 1;
+}
+.pref-wrap > button.caret[aria-expanded="true"] { background: var(--surface-2); }
+/* 버튼이 화면 아래쪽에 있으므로 메뉴는 위로 펼친다 */
+.pref-menu {
+  position: absolute; z-index: 570;
+  inset-inline-start: 0; bottom: calc(100% + 6px);
+  min-width: 190px; max-height: 320px; overflow-y: auto;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); box-shadow: 0 10px 28px rgb(0 0 0 / .18);
+  padding: 4px;
+}
+.pref-menu button {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+  width: 100%; text-align: start; font: inherit; font-size: var(--step-1);
+  background: none; border: 0; border-radius: 6px; box-shadow: none;
+  padding: 6px 8px; cursor: pointer; color: var(--ink);
+}
+.pref-menu button:hover { background: var(--surface-2); }
+.pref-menu button[aria-pressed="true"] {
+  background: var(--surface-2); color: var(--ink); border-color: transparent;
+}
+.pref-menu .count {
+  font-family: var(--mono); font-size: var(--step-2);
+  font-variant-numeric: tabular-nums; color: var(--muted);
+}
+.pref-menu .on { color: var(--accent); }
+.pref-menu hr { border: 0; border-top: 1px solid var(--line-soft); margin: 4px 2px; }
 
 .notice {
   position: absolute; z-index: 560;
@@ -382,7 +446,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   top: calc(12px + env(safe-area-inset-top, 0px)); right: 62px;
   background: var(--surface); border: 1px solid var(--line);
   border-radius: var(--radius); padding: 7px 12px;
-  font-family: var(--mono); font-size: var(--step-1);
+  font-size: var(--step-1);
   letter-spacing: .06em; color: var(--ink-2);
   box-shadow: 0 2px 10px rgb(0 0 0 / .12);
 }
@@ -416,30 +480,33 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
         <div class="field-head">
           <label for="q" class="with-dot"><span class="pin-dot origin"></span>출발지</label>
           <span class="target-tag">지도 클릭</span>
-          <button type="button" class="linkish" id="snap-origin">가까운 역으로</button>
+          <button type="button" class="linkish" id="snap-origin" title="출발지를 가까운 역으로 (단축키 D)">가까운 역으로 <kbd>D</kbd></button>
         </div>
-        <input type="text" id="q" autocomplete="off" placeholder="역 이름 (新宿 / Shinjuku / 신주쿠)">
+        <div class="input-row">
+          <input type="text" id="q" autocomplete="off" placeholder="역 이름 (新宿 / Shinjuku / 신주쿠)">
+          <button type="button" class="square-btn" id="swap"
+                  title="출발지와 도착지를 맞바꿉니다"
+                  aria-label="출발지와 도착지 맞바꾸기">&#8645;</button>
+        </div>
         <div class="results" id="results" hidden></div>
-      </div>
-
-      <div class="swap-row">
-        <button type="button" id="swap" title="출발지와 도착지를 맞바꿉니다">
-          &#8645; 출발지 ↔ 도착지
-        </button>
       </div>
 
       <div class="field search" id="field-dest">
         <div class="field-head">
           <label for="dq" class="with-dot"><span class="pin-dot dest"></span>도착지</label>
           <span class="target-tag">지도 클릭</span>
-          <button type="button" class="linkish" id="snap-dest">가까운 역으로</button>
-          <button type="button" class="linkish" id="dest-clear" hidden>지우기</button>
+          <button type="button" class="linkish" id="snap-dest" title="도착지를 가까운 역으로 (단축키 F)">가까운 역으로 <kbd>F</kbd></button>
         </div>
-        <input type="text" id="dq" autocomplete="off" placeholder="선택 사항 — 역 검색하거나 지도에서 고르기">
+        <div class="input-row">
+          <input type="text" id="dq" autocomplete="off" placeholder="선택 사항 — 역 검색하거나 지도에서 고르기">
+          <button type="button" class="square-btn" id="dest-clear" hidden
+                  title="도착지를 지웁니다" aria-label="도착지 지우기">&#215;</button>
+        </div>
         <div class="results" id="dest-results" hidden></div>
       </div>
       <p class="hint">지도 좌클릭은 출발지, 우클릭은 도착지입니다.
-      위 입력칸을 누르면 좌클릭 대상이 그쪽으로 바뀝니다.</p>
+      위 입력칸을 누르면 좌클릭 대상이 그쪽으로 바뀝니다.
+      <kbd>D</kbd> <kbd>F</kbd> 로 각각 가까운 역에 맞춥니다.</p>
 
       <div class="row">
         <div class="field">
@@ -537,7 +604,22 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     <div class="notice" id="notice" role="status" hidden></div>
     <div class="map-actions">
       <button type="button" id="fit">권역에 맞추기</button>
-      <button type="button" id="toggle-stations" aria-pressed="false">지원 역 표시</button>
+      <button type="button" id="here" title="현위치를 출발지로 씁니다">현위치에서 출발</button>
+      <div class="pref-wrap">
+        <button type="button" id="toggle-lines" aria-pressed="false">지원 노선 표시</button>
+        <button type="button" class="caret" id="line-toggle" aria-expanded="false"
+                title="노선을 현별로 골라 봅니다" aria-label="노선 현별 고르기">&#9650;</button>
+        <div class="pref-menu" id="line-menu" hidden></div>
+      </div>
+      <div class="pref-wrap">
+        <button type="button" id="toggle-stations" aria-pressed="false">지원 역 표시</button>
+        <button type="button" class="caret" id="pref-toggle" aria-expanded="false"
+                title="역을 현별로 골라 봅니다" aria-label="역 현별 고르기">&#9650;</button>
+        <div class="pref-menu" id="pref-menu" hidden></div>
+      </div>
+    </div>
+    <div class="map-actions right">
+      <button type="button" id="toggle-coverage" aria-pressed="true">경계선</button>
     </div>
   </div>
 </div>
@@ -548,6 +630,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   "use strict";
 
   var BANDS = ["--band-1", "--band-2", "--band-3"];
+  // 화면 언어. 현 이름 같은 이름표를 어느 말로 보여줄지 정한다.
+  var LANG = (document.documentElement.lang || "ko").slice(0, 2);
   var START = { lat: 35.68962, lon: 139.70025, zoom: 11 };
 
   var el = function (id) { return document.getElementById(id); };
@@ -564,6 +648,66 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
      지도 어댑터 — 구글 지도와 OpenStreetMap 을 같은 인터페이스로 다룬다.
      ======================================================================= */
 
+  /* 지원 역 점찍기.
+
+     역이 1,939개다. 구글 지도의 Data 레이어에 넘기면 점마다 마커를 만들어
+     몇 초씩 멈추고, Leaflet 도 circleMarker 객체를 그만큼 만든다. 점은
+     누를 일도 없고 그저 보이기만 하면 되므로 캔버스 한 장에 직접 그린다.
+
+     역 위치는 움직이지 않으니 웹 메르카토르 월드 좌표(한 변 256)를 한 번만
+     구해 두고, 그릴 때는 배율과 오프셋만 곱한다. 두 지도 엔진이 같은
+     투영을 쓰므로 이 값을 그대로 나눠 쓸 수 있다. */
+  var DOT_RADIUS = 2.5;
+
+  function worldXY(lon, lat) {
+    var s = Math.sin(lat * Math.PI / 180);
+    s = Math.max(-0.9999, Math.min(0.9999, s));
+    return [
+      (lon + 180) / 360 * 256,
+      (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * 256
+    ];
+  }
+
+  function toWorld(points) {
+    var xs = new Float64Array(points.length);
+    var ys = new Float64Array(points.length);
+    for (var i = 0; i < points.length; i++) {
+      var w = worldXY(points[i][0], points[i][1]);
+      xs[i] = w[0]; ys[i] = w[1];
+    }
+    return { x: xs, y: ys, n: points.length };
+  }
+
+  /* 캔버스를 화면 크기에 맞추고 점을 찍는다. scale 은 2^zoom, (ox, oy) 는
+     월드 좌표를 캔버스 좌표로 옮기는 오프셋이다. */
+  function paintDots(canvas, world, scale, ox, oy, w, h) {
+    var dpr = window.devicePixelRatio || 1;
+    canvas.style.width = w + "px";
+    canvas.style.height = h + "px";
+    if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+    }
+    var ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    if (!world) return;
+
+    ctx.fillStyle = css("--station");
+    ctx.globalAlpha = 0.8;
+    var r = DOT_RADIUS, tau = Math.PI * 2;
+    ctx.beginPath();
+    for (var i = 0; i < world.n; i++) {
+      var x = world.x[i] * scale + ox;
+      var y = world.y[i] * scale + oy;
+      // 화면 밖은 건너뛴다. 넓게 봤을 때 대부분이 여기서 걸러진다.
+      if (x < -r || y < -r || x > w + r || y > h + r) continue;
+      ctx.moveTo(x + r, y);
+      ctx.arc(x, y, r, 0, tau);
+    }
+    ctx.fill();   // 한 번의 경로로 모아 칠한다
+  }
+
   function LeafletMap(container) {
     var map = L.map(container, { zoomControl: false }).setView([START.lat, START.lon], START.zoom);
     L.control.zoom({ position: "topright" }).addTo(map);
@@ -574,9 +718,30 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 
     var iso = L.layerGroup().addTo(map);
     var coverage = L.layerGroup().addTo(map);
-    var stations = L.layerGroup().addTo(map);
+    var lines = L.layerGroup().addTo(map);
     var route = L.layerGroup().addTo(map);
     var pins = {};
+
+    // 지원 역 점. 레이어 객체를 1,939개 만드는 대신 캔버스 한 장에 그린다.
+    var dotCanvas = null, dotWorld = null;
+
+    // 화면보다 넉넉히 그려 두면 끌어서 옮기는 동안 가장자리가 비지 않는다
+    var DOT_PAD = 0.25;
+
+    function paintLeafletDots() {
+      if (!dotCanvas) return;
+      var size = map.getSize();
+      var padX = Math.round(size.x * DOT_PAD), padY = Math.round(size.y * DOT_PAD);
+      var topLeft = map.containerPointToLayerPoint([-padX, -padY]);
+      L.DomUtil.setPosition(dotCanvas, topLeft);
+      // Leaflet 의 레이어 좌표 = 월드 * 2^zoom - pixelOrigin. 캔버스를
+      // 화면 왼쪽 위(여백 포함)에 맞춰 두었으므로 거기서 한 번 더 뺀다.
+      var scale = Math.pow(2, map.getZoom());
+      var o = map.getPixelOrigin();
+      paintDots(dotCanvas, dotWorld, scale,
+                -o.x - topLeft.x, -o.y - topLeft.y,
+                size.x + padX * 2, size.y + padY * 2);
+    }
 
     return {
       engine: "osm",
@@ -596,24 +761,40 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       },
       clearRoute: function () { route.clearLayers(); },
       drawStations: function (points) {
-        stations.clearLayers();
-        // 2천 개 가까이 되므로 캔버스로 그린다
-        var canvas = L.canvas({ padding: 0.3 });
-        points.forEach(function (p) {
-          L.circleMarker([p[1], p[0]], {
-            renderer: canvas, radius: 2.5, weight: 0,
-            fillColor: css("--station"), fillOpacity: 0.75, interactive: false
-          }).addTo(stations);
+        dotWorld = toWorld(points);
+        if (!dotCanvas) {
+          // leaflet-zoom-hide 를 달면 줌 애니메이션 동안 Leaflet 이 이
+          // 캔버스를 숨겼다가 끝나면 되돌린다. 직접 transform 을 걸면
+          // Leaflet 이 거는 것과 겹쳐 잔상이 남는다.
+          dotCanvas = L.DomUtil.create("canvas", "leaflet-zoom-hide");
+          dotCanvas.style.position = "absolute";
+          dotCanvas.style.pointerEvents = "none";
+          map.getPanes().overlayPane.appendChild(dotCanvas);
+          map.on("moveend zoomend resize", paintLeafletDots);
+        }
+        paintLeafletDots();
+      },
+      clearStations: function () {
+        dotWorld = null;
+        if (dotCanvas) paintLeafletDots();
+      },
+      drawLines: function (shapes) {
+        lines.clearLayers();
+        shapes.forEach(function (r) {
+          L.polyline(r.path.map(function (c) { return [c[1], c[0]]; }), {
+            color: r.color, weight: 3.5, opacity: 0.7, interactive: false
+          }).addTo(lines);
         });
       },
-      clearStations: function () { stations.clearLayers(); },
+      clearLines: function () { lines.clearLayers(); },
       drawCoverage: function (geojson) {
         coverage.clearLayers();
         L.geoJSON(geojson, {
-          style: { color: css("--coverage"), weight: 2, opacity: 0.7,
-                   dashArray: "6 5", fill: false, interactive: false }
+          style: { color: css("--coverage"), weight: 1.2, opacity: 0.75,
+                   dashArray: "5 4", fill: false, interactive: false }
         }).addTo(coverage);
       },
+      clearCoverage: function () { coverage.clearLayers(); },
       onClick: function (fn) {
         map.on("click", function (e) { fn(e.latlng.lat, e.latlng.lng); });
       },
@@ -682,6 +863,56 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     var route = [];
     var stationLayer = null;
     var coverageLayer = null;
+    var lineLayer = [];
+
+    /* 지원 역 점. Data 레이어에 MultiPoint 로 넘기면 내부에서 점마다 마커를
+       만들어 2천 개에서 몇 초씩 멈춘다. 캔버스 한 장에 직접 그린다. */
+    function DotOverlay() { this._world = null; this._canvas = null; }
+    DotOverlay.prototype = new google.maps.OverlayView();
+    DotOverlay.prototype.onAdd = function () {
+      var c = document.createElement("canvas");
+      c.style.position = "absolute";
+      c.style.pointerEvents = "none";
+      this._canvas = c;
+      this.getPanes().overlayLayer.appendChild(c);
+    };
+    DotOverlay.prototype.onRemove = function () {
+      if (this._canvas && this._canvas.parentNode) {
+        this._canvas.parentNode.removeChild(this._canvas);
+      }
+      this._canvas = null;
+    };
+    DotOverlay.prototype.setPoints = function (points) {
+      this._world = points ? toWorld(points) : null;
+      this.draw();
+    };
+    DotOverlay.prototype.draw = function () {
+      var c = this._canvas, proj = this.getProjection();
+      if (!c || !proj) return;
+      var b = map.getBounds();
+      if (!b) return;
+
+      // 배율은 반드시 투영에서 직접 잰다. 줌 애니메이션 중에는 getZoom() 이
+      // 목표 줌으로 먼저 튀는데 투영은 천천히 따라오므로, 2^getZoom() 을
+      // 쓰면 애니메이션 내내 점이 어긋나 화면 밖에서 날아오는 것처럼 보인다.
+      // 적도에서 경도 90도는 월드 좌표로 정확히 64다.
+      var ref = proj.fromLatLngToDivPixel(new google.maps.LatLng(0, 0));
+      var far = proj.fromLatLngToDivPixel(new google.maps.LatLng(0, 90));
+      var scale = (far.x - ref.x) / 64;
+      if (!isFinite(scale) || scale <= 0) return;
+
+      // 캔버스는 화면 왼쪽 위 모서리에 맞춰 둔다
+      var nw = proj.fromLatLngToDivPixel(
+        new google.maps.LatLng(b.getNorthEast().lat(), b.getSouthWest().lng())
+      );
+      c.style.left = nw.x + "px";
+      c.style.top = nw.y + "px";
+
+      var div = map.getDiv();
+      paintDots(c, this._world, scale,
+                ref.x - 128 * scale - nw.x, ref.y - 128 * scale - nw.y,
+                div.offsetWidth, div.offsetHeight);
+    };
 
     return {
       engine: "google",
@@ -720,23 +951,31 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
         route = [];
       },
       drawStations: function (points) {
-        if (stationLayer) stationLayer.setMap(null);
-        // 점 하나하나를 마커로 두면 느리다. MultiPoint 한 덩어리로 넘긴다.
-        stationLayer = new google.maps.Data({ map: map });
-        stationLayer.addGeoJson({
-          type: "Feature", properties: {},
-          geometry: { type: "MultiPoint", coordinates: points }
-        });
-        stationLayer.setStyle({
-          clickable: false,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 2.5, fillColor: css("--station"), fillOpacity: 0.8, strokeOpacity: 0
-          }
-        });
+        if (!stationLayer) {
+          stationLayer = new DotOverlay();
+          stationLayer.setMap(map);
+        }
+        stationLayer.setPoints(points);
       },
       clearStations: function () {
-        if (stationLayer) { stationLayer.setMap(null); stationLayer = null; }
+        if (stationLayer) stationLayer.setPoints(null);
+      },
+      drawLines: function (shapes) {
+        lineLayer.forEach(function (p) { p.setMap(null); });
+        lineLayer = shapes.map(function (r) {
+          return new google.maps.Polyline({
+            map: map, clickable: false,
+            path: r.path.map(function (c) { return { lat: c[1], lng: c[0] }; }),
+            strokeColor: r.color, strokeWeight: 3.5, strokeOpacity: 0.7
+          });
+        });
+      },
+      clearLines: function () {
+        lineLayer.forEach(function (p) { p.setMap(null); });
+        lineLayer = [];
+      },
+      clearCoverage: function () {
+        if (coverageLayer) { coverageLayer.setMap(null); coverageLayer = null; }
       },
       drawCoverage: function (geojson) {
         if (coverageLayer) coverageLayer.setMap(null);
@@ -744,7 +983,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
         coverageLayer.addGeoJson(geojson);
         coverageLayer.setStyle({
           clickable: false, zIndex: 1,
-          strokeColor: css("--coverage"), strokeWeight: 2, strokeOpacity: 0.7
+          strokeColor: css("--coverage"), strokeWeight: 1.2, strokeOpacity: 0.75
         });
       },
       onClick: function (fn) {
@@ -824,6 +1063,136 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   var destination = null; // { lon, lat, label }
   var clickMode = "origin";
   var stations = [];
+  var railwayShapes = null;
+  /* 현별 선택. 역과 노선이 따로 고른다. null 이면 안 가리고, Set 이면
+     그 현들만 보여준다. 두 목록은 세는 대상도 다르다 — 역은 역 수를,
+     노선은 그 현을 지나는 노선 수를 센다. */
+  var prefPick = { stations: null, lines: null };
+  // 현 이름의 언어별 표기. 서버가 OSM 행정경계에서 받아 둔 것.
+  var prefNames = {};
+
+  function prefLabel(name) {
+    var row = prefNames[name];
+    return (row && (row[LANG] || row.ja)) || name;
+  }
+
+  /* 지도에 찍을 역. 도보권이 없는 역(야마나시·이즈처럼 OSM 추출본 밖)은
+     빼야 한다. 점이 찍혀 있는데 경계 밖이고 클릭도 안 되면 거짓말이 된다. */
+  function visibleStations() {
+    var on = prefPick.stations;
+    return stations.filter(function (s) {
+      if (!s.supported) return false;
+      return !on || (s.pref && on.has(s.pref));
+    });
+  }
+
+  function refreshStations() {
+    if (el("toggle-stations").getAttribute("aria-pressed") !== "true") {
+      mapView.clearStations();
+      return;
+    }
+    mapView.drawStations(visibleStations().map(function (s) {
+      return [s.lon, s.lat];
+    }));
+  }
+
+  /* 노선은 여러 현에 걸친다. 고른 현을 하나라도 지나면 보여준다. */
+  function refreshLines() {
+    if (el("toggle-lines").getAttribute("aria-pressed") !== "true" || !railwayShapes) {
+      mapView.clearLines();
+      return;
+    }
+    var on = prefPick.lines;
+    mapView.drawLines(railwayShapes.filter(function (r) {
+      if (!on) return true;
+      return (r.prefs || []).some(function (p) { return on.has(p); });
+    }));
+  }
+
+  /* 현별 메뉴. 역과 노선이 같은 모양을 쓰되 세는 대상과 고른 상태가 다르다. */
+  var MENU = {
+    stations: { menu: "pref-menu", caret: "pref-toggle", show: "toggle-stations" },
+    lines:    { menu: "line-menu", caret: "line-toggle", show: "toggle-lines" }
+  };
+
+  function prefCounts(kind) {
+    var counts = {};
+    if (kind === "stations") {
+      stations.forEach(function (s) {
+        if (s.supported && s.pref) counts[s.pref] = (counts[s.pref] || 0) + 1;
+      });
+    } else {
+      (railwayShapes || []).forEach(function (r) {
+        (r.prefs || []).forEach(function (p) { counts[p] = (counts[p] || 0) + 1; });
+      });
+    }
+    return counts;
+  }
+
+  function closePrefMenus() {
+    Object.keys(MENU).forEach(function (k) {
+      el(MENU[k].menu).hidden = true;
+      el(MENU[k].caret).setAttribute("aria-expanded", "false");
+    });
+  }
+
+  function buildPrefMenu(kind) {
+    var menu = el(MENU[kind].menu);
+    menu.textContent = "";
+
+    var counts = prefCounts(kind);
+    var names = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; });
+    if (!names.length) {
+      var empty = document.createElement("p");
+      empty.className = "hint";
+      empty.textContent = kind === "lines"
+        ? "노선을 먼저 표시하면 현별로 고를 수 있습니다."
+        : "역 목록을 아직 받지 못했습니다.";
+      empty.style.padding = "6px 8px";
+      menu.appendChild(empty);
+      return;
+    }
+
+    function addRow(label, count, on, fn) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.setAttribute("aria-pressed", String(on));
+      var name = document.createElement("span");
+      name.textContent = label;
+      if (on) name.className = "on";
+      var num = document.createElement("span");
+      num.className = "count";
+      num.textContent = count;
+      b.appendChild(name);
+      b.appendChild(num);
+      b.addEventListener("click", function (e) {
+        // 메뉴를 다시 그리면 눌린 버튼이 DOM 에서 떨어져 나간다. 그러면
+        // 바깥 클릭 판정이 "바깥" 으로 읽혀 메뉴가 닫힌다. 여기서 막는다.
+        e.stopPropagation();
+        fn();
+        // 현을 고르면 해당 표시가 꺼져 있어도 켠다. 안 그러면 아무 일도
+        // 일어나지 않은 것처럼 보인다.
+        el(MENU[kind].show).setAttribute("aria-pressed", "true");
+        buildPrefMenu(kind);
+        if (kind === "stations") refreshStations(); else refreshLines();
+      });
+      menu.appendChild(b);
+    }
+
+    var total = names.reduce(function (a, k) { return a + counts[k]; }, 0);
+    addRow("전체", total, !prefPick[kind], function () { prefPick[kind] = null; });
+    menu.appendChild(document.createElement("hr"));
+    names.forEach(function (k) {
+      var on = prefPick[kind];
+      addRow(prefLabel(k), counts[k], !!(on && on.has(k)), function () {
+        if (!prefPick[kind]) prefPick[kind] = new Set();
+        var set = prefPick[kind];
+        if (set.has(k)) set.delete(k); else set.add(k);
+        if (!set.size) prefPick[kind] = null;
+      });
+    });
+  }
+
   var pending = 0;
   var fitNext = true;     // 첫 계산에서만 화면을 권역에 맞춘다
 
@@ -930,20 +1299,26 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   var budget = el("budget"), egress = el("egress");
   var walkTotal = el("walk-total"), walkUnlimited = el("walk-unlimited");
 
-  function syncLabels() {
-    el("budget-value").textContent = budget.value + "분";
-    el("egress-value").textContent = egress.value + "분";
+  /* 세 값은 포개진 제약이다. 바깥부터 소요 시간 상한, 하차 후 도보, 전체
+     도보 순이고 안쪽이 바깥을 넘을 수 없다. 내려서 40분을 걷는데 여정
+     전체가 15분일 수는 없고, 전체 도보가 하차 후 도보보다 짧을 수도 없다.
+     바깥 값이 줄면 안쪽을 끌어내린다. */
+  var egressCap = parseInt(egress.max, 10);   // 도보권 데이터가 감당하는 상한
 
-    // 전체 도보 상한은 소요 시간 상한을 넘을 수 없고, 하차 후 도보보다
-    // 짧을 수도 없다. 내려서 20분을 걷기로 해놓고 전체가 10분일 수는 없다.
-    walkTotal.min = egress.value;
-    walkTotal.max = budget.value;
-    if (parseInt(walkTotal.value, 10) > parseInt(budget.value, 10)) {
-      walkTotal.value = budget.value;
-    }
-    if (parseInt(walkTotal.value, 10) < parseInt(egress.value, 10)) {
-      walkTotal.value = egress.value;
-    }
+  function syncLabels() {
+    var b = parseInt(budget.value, 10);
+
+    egress.max = Math.min(egressCap, b);
+    if (parseInt(egress.value, 10) > egress.max) egress.value = egress.max;
+    var e = parseInt(egress.value, 10);
+
+    walkTotal.min = e;
+    walkTotal.max = b;
+    if (parseInt(walkTotal.value, 10) > b) walkTotal.value = b;
+    if (parseInt(walkTotal.value, 10) < e) walkTotal.value = e;
+
+    el("budget-value").textContent = b + "분";
+    el("egress-value").textContent = e + "분";
     walkTotal.disabled = walkUnlimited.checked;
     el("walk-total-value").textContent =
       walkUnlimited.checked ? "제한 없음" : walkTotal.value + "분";
@@ -1350,6 +1725,13 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     unknown: "이 지점은 쓸 수 없습니다."
   };
 
+  // navigator.geolocation 의 오류 코드
+  var GEO_ERRORS = {
+    1: "위치 권한이 거부됐습니다. 주소창 왼쪽 자물쇠에서 허용해 주세요.",
+    2: "위치를 확인할 수 없습니다. 실내라면 창가에서 다시 시도해 보세요.",
+    3: "위치를 가져오는 데 너무 오래 걸립니다."
+  };
+
   /* 찍기 전에 쓸 수 있는 지점인지 먼저 확인한다. 바다나 권역 밖을 찍어두고
      빈 결과를 보는 것보다, 찍히지 않는 편이 낫다. */
   function handleMapClick(lat, lon, forced) {
@@ -1417,14 +1799,18 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
             return;
           }
           var label = res.ja + (res.ko ? " · " + res.ko : "");
+          // 이미 그 역에 서 있으면 다시 계산할 것이 없다. 단축키를 연타하면
+          // 매번 권역을 새로 그리게 되는 자리다. 이름표는 그대로 채운다.
+          // 지도를 눌러 역 위에 찍은 경우 입력칸이 비어 있을 수 있다.
+          var moved = Math.abs(res.lon - pin.lon) > 1e-6 || Math.abs(res.lat - pin.lat) > 1e-6;
           if (which === "dest") {
             setDestination(res.lon, res.lat, label);
             el("dq").value = res.ja;
-            runPoint();
+            if (moved) runPoint();
           } else {
             setOrigin(res.lon, res.lat, label);
             el("q").value = res.ja;
-            run();
+            if (moved) run();
           }
         })
         .catch(function (err) { notice("가까운 역을 찾지 못했습니다", err.message); })
@@ -1449,6 +1835,27 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 
     el("snap-origin").addEventListener("click", function () { snapTo("origin"); });
     el("snap-dest").addEventListener("click", function () { snapTo("dest"); });
+
+    /* 맨 글자 단축키. 이 화면은 검색창에 포커스가 자주 가므로(입력칸을 누르는
+       것이 곧 지도 클릭 대상을 바꾸는 동작이다) 타이핑 중에는 반드시 비켜야
+       한다. 조합키가 눌린 경우도 브라우저 단축키에 양보한다. */
+    var SNAP_KEYS = { d: "origin", f: "dest" };
+
+    function typingNow() {
+      var a = document.activeElement;
+      if (!a) return false;
+      if (a.isContentEditable) return true;
+      return /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName);
+    }
+
+    document.addEventListener("keydown", function (e) {
+      if (e.ctrlKey || e.altKey || e.metaKey || e.repeat) return;
+      if (typingNow()) return;
+      var which = SNAP_KEYS[e.key.toLowerCase()];
+      if (!which) return;
+      e.preventDefault();
+      snapTo(which);
+    });
 
     el("q").addEventListener("focus", function () { setClickMode("origin"); });
     el("dq").addEventListener("focus", function () { setClickMode("dest"); });
@@ -1498,14 +1905,82 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 
     el("toggle-stations").addEventListener("click", function () {
       var on = this.getAttribute("aria-pressed") !== "true";
-      this.setAttribute("aria-pressed", String(on));
-      if (!on) { mapView.clearStations(); return; }
-      if (!stations.length) {
+      if (on && !stations.length) {
         notice("역 목록을 아직 받지 못했습니다", "잠시 후 다시 눌러주세요.");
-        this.setAttribute("aria-pressed", "false");
         return;
       }
-      mapView.drawStations(stations.map(function (s) { return [s.lon, s.lat]; }));
+      this.setAttribute("aria-pressed", String(on));
+      refreshStations();
+    });
+
+    el("toggle-lines").addEventListener("click", function () {
+      var on = this.getAttribute("aria-pressed") !== "true";
+      this.setAttribute("aria-pressed", String(on));
+      if (!on) { mapView.clearLines(); return; }
+      if (railwayShapes) { refreshLines(); return; }
+      if (railwayShapes) { refreshLines(); return; }
+      busy(true);
+      fetch("/api/railways?region=" + encodeURIComponent(el("region").value || "kanto"))
+        .then(function (r) { return r.json(); })
+        .then(function (list) {
+          railwayShapes = list;
+          refreshLines();
+          if (!el("line-menu").hidden) buildPrefMenu("lines");
+        })
+        .catch(function (err) {
+          notice("노선을 불러오지 못했습니다", err.message);
+          el("toggle-lines").setAttribute("aria-pressed", "false");
+        })
+        .then(function () { busy(false); });
+    });
+
+    /* 현위치를 출발지로. 좌표만 구해서 지도 클릭과 같은 길로 보낸다.
+       권역 밖인지, 바다인지, 걸어 닿는 역이 없는지는 거기서 가려 준다. */
+    el("here").addEventListener("click", function () {
+      if (!navigator.geolocation) {
+        notice("현위치를 쓸 수 없습니다", "이 브라우저가 위치 기능을 지원하지 않습니다.");
+        return;
+      }
+      var button = this;
+      button.disabled = true;
+      busy(true);
+      navigator.geolocation.getCurrentPosition(
+        function (pos) {
+          busy(false);
+          button.disabled = false;
+          setClickMode("origin");
+          handleMapClick(pos.coords.latitude, pos.coords.longitude, "origin");
+        },
+        function (err) {
+          busy(false);
+          button.disabled = false;
+          notice("현위치를 가져오지 못했습니다", GEO_ERRORS[err.code] || err.message);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+      );
+    });
+
+    el("toggle-coverage").addEventListener("click", function () {
+      this.setAttribute("aria-pressed",
+                        String(this.getAttribute("aria-pressed") !== "true"));
+      showCoverage();
+    });
+
+    // 역·노선 각각의 현별 메뉴. 하나를 열면 다른 하나는 닫는다.
+    Object.keys(MENU).forEach(function (kind) {
+      el(MENU[kind].caret).addEventListener("click", function () {
+        var open = this.getAttribute("aria-expanded") !== "true";
+        closePrefMenus();
+        this.setAttribute("aria-expanded", String(open));
+        el(MENU[kind].menu).hidden = !open;
+        if (open) buildPrefMenu(kind);
+      });
+    });
+
+    // 메뉴 밖을 누르면 닫는다
+    document.addEventListener("click", function (e) {
+      if (e.target.closest(".pref-wrap")) return;
+      closePrefMenus();
     });
 
     syncLabels();
@@ -1543,10 +2018,14 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       el("q").value = "新宿";
     }
     if (destination) mapView.setPin("dest", destination.lat, destination.lon);
-    if (coverageGeo) mapView.drawCoverage(coverageGeo);
-    if (el("toggle-stations").getAttribute("aria-pressed") === "true" && stations.length) {
-      mapView.drawStations(stations.map(function (s) { return [s.lon, s.lat]; }));
+    showCoverage();
+    railwayShapes = null;
+    if (el("toggle-lines").getAttribute("aria-pressed") === "true") {
+      mapView.clearLines();
+      el("toggle-lines").setAttribute("aria-pressed", "false");
     }
+    prefPick = { stations: null, lines: null };
+    refreshStations();
 
     fitNext = true;
     run();
@@ -1556,9 +2035,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
      서버 상수를 고쳤을 때 안내 문구만 옛날 값으로 남는다. */
   function applyServerDefaults(cfg) {
     if (!cfg) return;
+    // 도보권 데이터가 감당하는 상한. 실제 슬라이더 상한은 syncLabels 가
+    // 여기에 소요 시간 상한까지 겹쳐서 정한다.
     if (cfg.egress_max_min) {
-      egress.max = cfg.egress_max_min;
-      if (parseInt(egress.value, 10) > cfg.egress_max_min) egress.value = cfg.egress_max_min;
+      egressCap = cfg.egress_max_min;
+      if (parseInt(egress.value, 10) > egressCap) egress.value = egressCap;
     }
     if (cfg.egress_default_min) egress.value = cfg.egress_default_min;
     if (cfg.walk_speed_m_per_min) {
@@ -1616,6 +2097,16 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   var coverageGeo = null;
   var regionList = [];
 
+  /* 경계선은 끄고 켤 수 있다. 지도를 볼 때 선이 방해되는 경우가 있다. */
+  function showCoverage() {
+    if (!mapView) return;
+    if (el("toggle-coverage").getAttribute("aria-pressed") !== "true" || !coverageGeo) {
+      mapView.clearCoverage();
+      return;
+    }
+    mapView.drawCoverage(coverageGeo);
+  }
+
   /* 권역이 바뀌면 그 권역의 역 목록과 범위를 새로 받아 처음부터 다시 그린다 */
   function loadRegion(id) {
     var info = null;
@@ -1625,13 +2116,16 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     busy(true);
     return Promise.all([
       fetch("/api/stations?region=" + encodeURIComponent(id)).then(function (r) { return r.json(); }),
-      fetch("/api/coverage?region=" + encodeURIComponent(id)).then(function (r) { return r.json(); })
+      fetch("/api/coverage?region=" + encodeURIComponent(id)).then(function (r) { return r.json(); }),
+      fetch("/api/prefectures?region=" + encodeURIComponent(id))
+        .then(function (r) { return r.json(); })
+        .catch(function () { return {}; })
     ]).then(function (res) {
       stations = res[0];
       coverageGeo = res[1];
+      prefNames = res[2] || {};
       if (mapView) {
-        if (coverageGeo) mapView.drawCoverage(coverageGeo);
-        else mapView.drawCoverage({ type: "Feature", geometry: { type: "MultiLineString", coordinates: [] } });
+        showCoverage();
         mapView.clearStations();
         el("toggle-stations").setAttribute("aria-pressed", "false");
       }
