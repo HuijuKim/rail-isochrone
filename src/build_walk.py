@@ -25,8 +25,24 @@ ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
 REGION = os.environ.get("REGION", "kanto")
 BASE = DATA / "regions" / REGION
-# 어느 OSM 추출본을 쓸지는 권역 설정에 적는다
-PBF = DATA / "osm" / (os.environ.get("PBF") or "kanto-latest.osm.pbf")
+# 어느 OSM 추출본을 쓸지는 권역 설정에 적는다. 여럿을 겹쳐 읽는다.
+# 야마나시와 이즈는 Geofabrik 이 주부로 분류해서 간토 추출본에 없다.
+# 격자 밖의 점은 어차피 버리므로 나고야까지 읽어도 결과는 같다.
+def _pbf_list() -> list[Path]:
+    names = os.environ.get("PBF")
+    if names:
+        return [DATA / "osm" / n.strip() for n in names.split(",") if n.strip()]
+    meta_path = BASE / "region.json"
+    if meta_path.exists():
+        import json as _json
+        meta = _json.loads(meta_path.read_text(encoding="utf-8"))
+        listed = meta.get("osm_files")
+        if listed:
+            return [DATA / "osm" / n for n in listed]
+    return [DATA / "osm" / "kanto-latest.osm.pbf"]
+
+
+PBFS = _pbf_list()
 OUT = BASE / "walk"
 
 # 보행 가능한 도로 종류. 자동차 전용도로는 뺀다.
@@ -57,14 +73,20 @@ SHED_CELL_M = 100.0
 
 # 격자 원점 (간토 남서쪽 귀퉁이). 모든 도보권이 같은 격자를 공유해야
 # 질의할 때 셀 번호로 바로 겹칠 수 있다.
-GRID_LON0, GRID_LAT0 = 138.60, 34.80
+# 이즈 반도 남단(34.679)과 고후·오마에(138.53) 까지 담아야 한다
+GRID_LON0, GRID_LAT0 = 138.38, 34.53
 GRID_LAT_REF = 35.7
 M_PER_DEG_LAT = 111_132.0
 M_PER_DEG_LON = 111_320.0 * np.cos(np.radians(GRID_LAT_REF))
-GRID_W = int(np.ceil(420_000 / CELL_M))    # 동서 약 420 km
-GRID_H = int(np.ceil(300_000 / CELL_M))    # 남북 약 300 km
-SHED_W = int(np.ceil(420_000 / SHED_CELL_M))
-SHED_H = int(np.ceil(300_000 / SHED_CELL_M))
+GRID_SPAN_X = 440_000.0    # 동서
+GRID_SPAN_Y = 330_000.0    # 남북
+GRID_W = int(np.ceil(GRID_SPAN_X / CELL_M))
+GRID_H = int(np.ceil(GRID_SPAN_Y / CELL_M))
+SHED_W = int(np.ceil(GRID_SPAN_X / SHED_CELL_M))
+SHED_H = int(np.ceil(GRID_SPAN_Y / SHED_CELL_M))
+# 격자가 덮는 위경도 범위. 추출본을 읽을 때 밖은 버린다.
+GRID_LON1 = GRID_LON0 + GRID_SPAN_X / M_PER_DEG_LON
+GRID_LAT1 = GRID_LAT0 + GRID_SPAN_Y / M_PER_DEG_LAT
 
 
 def cell_index(lon: np.ndarray, lat: np.ndarray) -> np.ndarray:
@@ -81,6 +103,22 @@ def shed_cell_index(lon: np.ndarray, lat: np.ndarray) -> np.ndarray:
     gy = np.floor((np.asarray(lat) - GRID_LAT0) * M_PER_DEG_LAT / SHED_CELL_M).astype(np.int64)
     ok = (gx >= 0) & (gx < SHED_W) & (gy >= 0) & (gy < SHED_H)
     return np.where(ok, gy * SHED_W + gx, -1)
+
+
+# 그리기 전용 원본 기하를 담는 타일 한 변. 경로 하나가 걸치는 타일만 읽으면
+# 되므로, 작으면 읽는 타일이 늘고 크면 한 번에 읽는 양이 는다. 2 km 면
+# 1-2 km 짜리 도보 구간이 보통 네 타일 안에 들어온다.
+FINE_TILE_M = 2000.0
+FINE_W = int(np.ceil(GRID_SPAN_X / FINE_TILE_M))
+FINE_H = int(np.ceil(GRID_SPAN_Y / FINE_TILE_M))
+
+
+def fine_tile_index(lon: np.ndarray, lat: np.ndarray) -> np.ndarray:
+    """그리기 전용 타일 번호. 범위를 벗어나면 -1."""
+    gx = np.floor((np.asarray(lon) - GRID_LON0) * M_PER_DEG_LON / FINE_TILE_M).astype(np.int64)
+    gy = np.floor((np.asarray(lat) - GRID_LAT0) * M_PER_DEG_LAT / FINE_TILE_M).astype(np.int64)
+    ok = (gx >= 0) & (gx < FINE_W) & (gy >= 0) & (gy < FINE_H)
+    return np.where(ok, gy * FINE_W + gx, -1)
 
 
 def cell_center(cells: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -122,8 +160,13 @@ def extract_ways() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
             for node in w.nodes:
                 if not node.location.valid():
                     continue
-                self.lon.append(node.location.lon)
-                self.lat.append(node.location.lat)
+                lon, lat = node.location.lon, node.location.lat
+                # 격자 밖은 어차피 버려진다. 여기서 걸러야 주부 추출본의
+                # 나고야까지 메모리에 쌓지 않는다.
+                if not (GRID_LON0 <= lon <= GRID_LON1 and GRID_LAT0 <= lat <= GRID_LAT1):
+                    continue
+                self.lon.append(lon)
+                self.lat.append(lat)
                 n += 1
             if n < 2:
                 del self.lon[len(self.lon) - n:]
@@ -134,7 +177,11 @@ def extract_ways() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
 
     handler = WalkHandler()
     t0 = time.time()
-    handler.apply_file(str(PBF), locations=True, idx="flex_mem")
+    for path in PBFS:
+        before = len(handler.steps)
+        handler.apply_file(str(path), locations=True, idx="flex_mem")
+        print(f"    {path.name}: 보행로 +{len(handler.steps) - before:,}개 "
+              f"({time.time() - t0:.0f}s)", flush=True)
     print(
         f"  way {handler.seen:,}개 훑어 보행로 {len(handler.steps):,}개, "
         f"점 {len(handler.lon):,}개 ({time.time() - t0:.0f}s)",
@@ -378,9 +425,70 @@ def build_sheds(indptr, indices, data, n_nodes: int, node_shed: np.ndarray,
     }
 
 
+def save_fine_geometry(points) -> None:
+    """원본 좌표를 그대로 저장한다. 경로를 그릴 때만 쓴다.
+
+    계산은 40 m 격자 그래프가 그대로 한다. 거기서 나온 선은 칸마다 점이
+    하나뿐이라 도로에서 최대 40 m 벗어나는데, 지도에 겹쳐 놓으면 그게
+    그대로 보인다. 그릴 때만 원본 선형 위로 다시 얹으려고 따로 둔다.
+
+    압축하지 않고 .npy 로 쓴다. npz 는 통째로 풀어야 해서 구간 하나를 그리려
+    190 MB 를 다 올리게 된다. 압축을 안 하면 mmap 으로 걸쳐서 필요한 조각만
+    읽을 수 있다.
+    """
+    lon, lat, bounds = points
+
+    # 1e-7 도 = 약 1 cm. float32 는 이 위도에서 이미 1.5 m 라 도로 폭보다 굵다.
+    pts = np.stack([np.rint(lon * 1e7), np.rint(lat * 1e7)], axis=1).astype(np.int32)
+
+    # 선분은 way 안에서 이웃한 두 점. way 와 way 사이는 잇지 않는다.
+    seg = np.arange(len(lon) - 1, dtype=np.int64)
+    boundary = np.zeros(len(lon) - 1, dtype=bool)
+    boundary[bounds[1:-1] - 1] = True
+    seg = seg[~boundary]
+
+    # 선분을 첫 점이 놓인 타일에 넣고, 타일 순으로 모아 CSR 로 만든다
+    tile = fine_tile_index(lon[seg], lat[seg])
+    keep = tile >= 0
+    seg, tile = seg[keep], tile[keep]
+    order = np.argsort(tile, kind="stable")
+    seg, tile = seg[order].astype(np.int32), tile[order]
+    ptr = np.searchsorted(tile, np.arange(FINE_W * FINE_H + 1, dtype=np.int64))
+
+    np.save(OUT / "fine_pt.npy", pts)
+    np.save(OUT / "fine_seg.npy", seg)
+    np.save(OUT / "fine_ptr.npy", ptr)
+    np.save(OUT / "fine_grid.npy",
+            np.array([GRID_LON0, GRID_LAT0, FINE_TILE_M, FINE_W, FINE_H,
+                      M_PER_DEG_LON, M_PER_DEG_LAT]))
+    total = sum((OUT / f).stat().st_size for f in
+                ("fine_pt.npy", "fine_seg.npy", "fine_ptr.npy", "fine_grid.npy"))
+    print(f"  점 {len(pts):,}개, 선분 {len(seg):,}개, {total / 1e6:.0f} MB", flush=True)
+
+
 def main() -> None:
-    if not PBF.exists():
-        sys.exit(f"OSM 추출본이 없습니다: {PBF}\n  먼저 kanto-latest.osm.pbf 를 받아주세요.")
+    missing = [p for p in PBFS if not p.exists()]
+    if missing:
+        sys.exit("OSM 추출본이 없습니다:\n  " + "\n  ".join(str(p) for p in missing))
+
+    # 서버가 돌고 있으면 원본 기하 파일을 mmap 으로 물고 있어서 윈도우가
+    # 덮어쓰기를 막는다. 마지막 단계에서 5분 쓰고 실패하는 것보다 지금
+    # 걸리는 편이 낫다.
+    locked = []
+    for name in ("fine_pt.npy", "fine_seg.npy", "fine_ptr.npy"):
+        target = OUT / name
+        if not target.exists():
+            continue
+        try:
+            with open(target, "r+b"):
+                pass
+        except OSError:
+            locked.append(name)
+    if locked:
+        sys.exit(
+            "다른 프로세스가 이 파일들을 쓰고 있습니다: " + ", ".join(locked)
+            + "\n  서버(src/server.py)를 멈춘 뒤 다시 돌려주세요."
+        )
 
     OUT.mkdir(parents=True, exist_ok=True)
     import json
@@ -412,6 +520,9 @@ def main() -> None:
                             M_PER_DEG_LON, M_PER_DEG_LAT]),
     )
     print(f"  graph.npz {(OUT / 'graph.npz').stat().st_size / 1e6:.0f} MB", flush=True)
+
+    print("2-1) 그리기 전용 원본 기하", flush=True)
+    save_fine_geometry(points)
 
     print("3) 역별 도보권", flush=True)
     stops = json.loads((BASE / "stops.json").read_text(encoding="utf-8"))
@@ -484,7 +595,8 @@ def build_land_mask() -> dict:
 
     print("  해안선 추출 중...", flush=True)
     h = Coast()
-    h.apply_file(str(PBF), locations=True, idx="flex_mem")
+    for path in PBFS:
+        h.apply_file(str(path), locations=True, idx="flex_mem")
     lon = np.array(h.lon)
     lat = np.array(h.lat)
     print(f"  해안선 점 {len(lon):,}개", flush=True)

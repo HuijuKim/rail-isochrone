@@ -2,13 +2,23 @@
   "id": "kanto",
   "name": "수도권",
   "name_full": "Greater Tokyo",
-  "center": [139.70025, 35.68962],
+  "center": [
+    139.70025,
+    35.68962
+  ],
   "zoom": 11,
   "timetable": {
     "source": "mini-tokyo-3d",
     "license": "MIT",
     "origin": "公共交通オープンデータセンター"
   },
-  "osm_extracts": ["kanto"],
-  "note": "간토 1도 6현. 야마나시는 Geofabrik 이 주부로 분류해 빠져 있다."
+  "osm_extracts": [
+    "kanto",
+    "chubu"
+  ],
+  "note": "간토 1도 6현에 더해 야마나시·이즈·시즈오카 동부. 이 지역 노선(주오선 고후까지, 후지큐, 이즈큐, 이즈하코네, 고텐바선)은 시각표가 이미 있는데 보행망만 없었다. Geofabrik 이 주부로 분류해서다.",
+  "osm_files": [
+    "kanto-latest.osm.pbf",
+    "chubu-latest.osm.pbf"
+  ]
 }
