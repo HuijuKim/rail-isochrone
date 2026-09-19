@@ -1,0 +1,14 @@
+{
+  "id": "kanto",
+  "name": "수도권",
+  "name_full": "Greater Tokyo",
+  "center": [139.70025, 35.68962],
+  "zoom": 11,
+  "timetable": {
+    "source": "mini-tokyo-3d",
+    "license": "MIT",
+    "origin": "公共交通オープンデータセンター"
+  },
+  "osm_extracts": ["kanto"],
+  "note": "간토 1도 6현. 야마나시는 Geofabrik 이 주부로 분류해 빠져 있다."
+}

@@ -1,0 +1,1689 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>수도권 도달권역</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root {
+  --bg:        #E4E9EE;
+  --surface:   #FFFFFF;
+  --surface-2: #F2F5F8;
+  --ink:       #111922;
+  --ink-2:     #3C4A59;
+  --muted:     #6B7B8C;
+  --line:      #CBD5DE;
+  --line-soft: #DDE4EA;
+  --accent:    #1A5C72;
+  --accent-ink:#FFFFFF;
+  --focus:     #2E8FAD;
+  --dest:      #2F7A3E;
+  --warn:      #A8422A;
+  --walk:      #2563EB;
+  --station:   #334155;
+  --coverage:  #7C3AED;
+
+  --band-1: #F5B32D;
+  --band-2: #EC6C3F;
+  --band-3: #B23A63;
+
+  --step-1: .78rem;
+  --step0:  .92rem;
+  --step1:  1.05rem;
+  --step2:  1.4rem;
+
+  --sans: "Zen Kaku Gothic New", "Yu Gothic", "Malgun Gothic", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  --radius: 10px;
+  --pad: 18px;
+  --tile-filter: none;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:        #0B1116;
+    --surface:   #131C24;
+    --surface-2: #1A242E;
+    --ink:       #E3EAF1;
+    --ink-2:     #B3C1CE;
+    --muted:     #7E8F9F;
+    --line:      #26333F;
+    --line-soft: #1E2A34;
+    --accent:    #5FB6CE;
+    --accent-ink:#06131A;
+    --focus:     #7FCFE4;
+    --dest:      #6FCB84;
+    --warn:      #E8916F;
+    --walk:      #60A5FA;
+    --station:   #94A3B8;
+    --coverage:  #A78BFA;
+    --tile-filter: invert(1) hue-rotate(180deg) brightness(.92) contrast(.92) saturate(.8);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg:        #0B1116;
+  --surface:   #131C24;
+  --surface-2: #1A242E;
+  --ink:       #E3EAF1;
+  --ink-2:     #B3C1CE;
+  --muted:     #7E8F9F;
+  --line:      #26333F;
+  --line-soft: #1E2A34;
+  --accent:    #5FB6CE;
+  --accent-ink:#06131A;
+  --focus:     #7FCFE4;
+  --dest:      #6FCB84;
+  --warn:      #E8916F;
+  --walk:      #60A5FA;
+  --station:   #94A3B8;
+  --coverage:  #A78BFA;
+  --tile-filter: invert(1) hue-rotate(180deg) brightness(.92) contrast(.92) saturate(.8);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+/* 클래스에 display 를 준 요소도 hidden 속성이 이기도록 한다 */
+[hidden] { display: none !important; }
+
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: var(--step0);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- 레이아웃 ---------- */
+.app { display: grid; grid-template-columns: 372px 1fr; height: 100%; }
+.panel {
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  overflow-y: auto;
+  display: flex; flex-direction: column;
+  padding-block: 0 24px;
+}
+.map-wrap { position: relative; min-width: 0; }
+#map { position: absolute; inset: 0; background: var(--surface-2); }
+
+@media (max-width: 860px) {
+  .app { grid-template-columns: 1fr; grid-template-rows: 46vh 1fr; }
+  .panel { border-right: 0; border-bottom: 1px solid var(--line); order: 2; }
+  .map-wrap { order: 1; }
+}
+
+/* ---------- 머리말 ---------- */
+.masthead { padding: 22px var(--pad) 16px; border-bottom: 1px solid var(--line-soft); }
+.eyebrow {
+  font-family: var(--mono); font-size: var(--step-1);
+  letter-spacing: .14em; text-transform: uppercase;
+  color: var(--muted); margin: 0 0 6px;
+}
+h1 {
+  font-size: var(--step2); font-weight: 900; line-height: 1.2;
+  margin: 0 0 8px; letter-spacing: -.01em; text-wrap: balance;
+}
+.lede { margin: 0; color: var(--ink-2); font-size: var(--step-1); max-width: 34ch; }
+
+/* ---------- 폼 ---------- */
+.controls { display: flex; flex-direction: column; gap: 20px; padding: 20px var(--pad) 0; }
+.field { display: flex; flex-direction: column; gap: 7px; }
+.field-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.field > label,
+.field-head > label,
+.legend-title {
+  font-family: var(--mono); font-size: var(--step-1);
+  letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted); font-weight: 500; margin: 0;
+}
+input[type="text"], input[type="time"], select {
+  font: inherit; width: 100%; padding: 9px 11px;
+  color: var(--ink); background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: var(--radius);
+}
+input[type="time"] { font-family: var(--mono); }
+:is(input, select, button, [tabindex]):focus-visible {
+  outline: 2px solid var(--focus); outline-offset: 2px;
+}
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* 출발지·도착지를 색으로 구분한다 */
+.pin-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
+.pin-dot.origin { background: var(--accent); }
+.pin-dot.dest { background: var(--dest); }
+.field-head .with-dot { display: flex; align-items: center; gap: 7px; }
+
+.linkish {
+  font: inherit; font-size: var(--step-1);
+  background: none; border: 0; padding: 0;
+  color: var(--accent); cursor: pointer; text-decoration: underline;
+}
+
+.swap-row { display: flex; justify-content: flex-end; margin-block: -8px -4px; }
+.swap-row button {
+  font: inherit; font-size: var(--step-1);
+  display: flex; align-items: center; gap: 5px;
+  padding: 4px 10px; cursor: pointer;
+  color: var(--ink-2); background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: 999px;
+}
+.swap-row button:hover { background: var(--surface); color: var(--ink); }
+.swap-row button[disabled] { opacity: .45; cursor: default; }
+
+/* 지금 지도 클릭이 어느 칸을 찍는지 */
+.field-head { position: relative; }
+.target-tag {
+  font-family: var(--mono); font-size: .68rem;
+  letter-spacing: .08em; text-transform: uppercase;
+  color: var(--accent-ink); background: var(--accent);
+  border-radius: 999px; padding: 1px 8px;
+  margin-inline-start: auto;
+  visibility: hidden;
+}
+.field.is-target .target-tag { visibility: visible; }
+#field-dest.is-target .target-tag { background: var(--dest); }
+.field.is-target input[type="text"] { border-color: var(--accent); }
+#field-dest.is-target input[type="text"] { border-color: var(--dest); }
+
+/* 접었다 펴는 고급 설정 */
+details#walk-advanced { margin-top: 4px; }
+details#walk-advanced > summary {
+  font-family: var(--mono); font-size: var(--step-1);
+  letter-spacing: .06em; text-transform: uppercase;
+  color: var(--accent); cursor: pointer; list-style: none;
+  padding: 4px 0;
+}
+details#walk-advanced > summary::-webkit-details-marker { display: none; }
+details#walk-advanced > summary::before { content: "▸ "; }
+details#walk-advanced[open] > summary::before { content: "▾ "; }
+.check {
+  display: flex; align-items: center; gap: 7px;
+  font-size: var(--step-1); color: var(--ink-2); cursor: pointer;
+}
+.check input { accent-color: var(--accent); margin: 0; }
+
+/* 역 검색 */
+.search { position: relative; }
+.results {
+  position: absolute; z-index: 600; inset-inline: 0; top: calc(100% + 4px);
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); box-shadow: 0 10px 28px rgb(0 0 0 / .16);
+  max-height: 260px; overflow-y: auto; padding: 4px;
+}
+.results button {
+  display: flex; flex-direction: column; align-items: stretch; gap: 1px;
+  width: 100%; text-align: start; font: inherit; color: var(--ink);
+  background: none; border: 0; border-radius: 6px;
+  padding: 7px 9px; cursor: pointer;
+}
+.results button:hover { background: var(--surface-2); }
+.results .name { display: flex; align-items: baseline; gap: 8px; }
+.results .ja { font-weight: 700; }
+.results .ko { color: var(--muted); font-size: var(--step-1); }
+.results .ops {
+  font-size: .7rem; color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* 슬라이더 */
+.slider-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.slider-value { font-family: var(--mono); font-weight: 600; color: var(--ink); font-size: var(--step1); }
+input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
+.hint { font-size: var(--step-1); color: var(--muted); margin: 0; }
+
+/* ---------- 도착지 결과 ---------- */
+.verdict {
+  border: 1px solid var(--line); border-left: 3px solid var(--dest);
+  border-radius: var(--radius); background: var(--surface-2);
+  padding: 13px 15px; display: flex; flex-direction: column; gap: 7px;
+}
+.verdict.over { border-left-color: var(--warn); }
+.verdict .total {
+  font-family: var(--mono); font-size: 1.7rem; font-weight: 600;
+  font-variant-numeric: tabular-nums; line-height: 1.1;
+}
+.verdict .tag {
+  font-size: var(--step-1); font-weight: 700;
+  color: var(--dest);
+}
+.verdict.over .tag { color: var(--warn); }
+.verdict .breakdown { font-size: var(--step-1); color: var(--ink-2); margin: 0; }
+.verdict .breakdown b { font-weight: 700; }
+
+/* ---------- 경로 ---------- */
+.journey { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.leg { display: grid; grid-template-columns: 12px 1fr; gap: 11px; }
+.leg .rail { border-radius: 6px; }
+.leg.ride .rail { background: var(--leg-color, var(--muted)); }
+.leg.walk .rail, .leg.transfer .rail {
+  background: repeating-linear-gradient(
+    to bottom, var(--rail-dash) 0 3px, transparent 3px 7px
+  );
+  justify-self: center; width: 3px;
+}
+.leg.walk { --rail-dash: var(--walk); }
+.leg.transfer { --rail-dash: var(--line); }
+.leg .body { padding-block: 8px; min-width: 0; }
+.leg .headline { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; }
+.leg .line-name { font-weight: 700; font-size: var(--step-1); }
+.leg .dur {
+  font-family: var(--mono); font-size: var(--step-1);
+  font-variant-numeric: tabular-nums; color: var(--muted);
+}
+.leg .stations { font-size: var(--step-1); color: var(--ink-2); }
+.leg .clock {
+  font-family: var(--mono); font-size: .72rem;
+  font-variant-numeric: tabular-nums; color: var(--muted);
+}
+.leg.walk .body, .leg.transfer .body { color: var(--muted); font-size: var(--step-1); }
+
+/* ---------- 범례 / 결과 ---------- */
+.readout { padding: 22px var(--pad) 0; display: flex; flex-direction: column; gap: 18px; }
+.legend { display: flex; flex-direction: column; gap: 8px; }
+.legend-row { display: flex; align-items: center; gap: 10px; font-size: var(--step-1); }
+.swatch { width: 26px; height: 12px; border-radius: 3px; flex: none; }
+.legend-row .min { font-family: var(--mono); font-weight: 600; color: var(--ink); }
+.legend-row .note { color: var(--muted); }
+
+.stat-strip { display: flex; gap: 10px; border-block: 1px solid var(--line-soft); padding-block: 14px; }
+.stat { flex: 1; }
+.stat .n {
+  font-family: var(--mono); font-size: var(--step2); font-weight: 600;
+  font-variant-numeric: tabular-nums; display: block; line-height: 1.15;
+}
+.stat .k { font-size: var(--step-1); color: var(--muted); }
+
+.far-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.far-list li { border-bottom: 1px dashed var(--line-soft); }
+.far-list li:last-child { border-bottom: 0; }
+.far-list button {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+  width: 100%; padding: 7px 6px; margin-inline: -6px;
+  font: inherit; font-size: var(--step-1); color: var(--ink);
+  background: none; border: 0; border-radius: 6px;
+  text-align: start; cursor: pointer;
+}
+.far-list button:hover { background: var(--surface-2); }
+.far-list button:hover .go-hint { opacity: 1; }
+.far-list .ko { color: var(--muted); }
+.far-list .nums {
+  display: flex; gap: 9px; flex: none;
+  font-family: var(--mono); font-variant-numeric: tabular-nums;
+}
+.far-list .km { color: var(--ink); font-weight: 600; }
+.far-list .m { color: var(--muted); }
+.far-list .go-hint {
+  font-size: .68rem; color: var(--dest); opacity: 0;
+  flex: none; align-self: center;
+}
+
+.source { padding: 22px var(--pad) 0; font-size: var(--step-1); color: var(--muted); }
+.source a { color: var(--accent); }
+.source code {
+  font-family: var(--mono); font-size: .72rem;
+  background: var(--surface-2); padding: 1px 4px; border-radius: 4px;
+}
+
+/* ---------- 지도 위 요소 ---------- */
+.map-badge {
+  position: absolute; z-index: 500;
+  top: calc(12px + env(safe-area-inset-top, 0px)); left: 12px;
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 8px 12px; font-size: var(--step-1);
+  box-shadow: 0 4px 16px rgb(0 0 0 / .12);
+  max-width: min(60%, 340px);
+}
+.map-badge b { font-weight: 700; }
+.map-badge .sub { color: var(--muted); display: block; font-size: .72rem; font-family: var(--mono); }
+
+.map-actions {
+  position: absolute; z-index: 500;
+  left: 12px; bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+  display: flex; gap: 8px;
+}
+.map-actions button {
+  font: inherit; font-size: var(--step-1);
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 7px 12px; cursor: pointer;
+  box-shadow: 0 2px 10px rgb(0 0 0 / .12);
+}
+.map-actions button:hover { background: var(--surface-2); }
+.map-actions button[aria-pressed="true"] {
+  background: var(--accent); color: var(--accent-ink); border-color: var(--accent);
+}
+
+.notice {
+  position: absolute; z-index: 560;
+  left: 50%; transform: translateX(-50%);
+  bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+  max-width: min(80%, 420px);
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line); border-left: 3px solid var(--warn);
+  border-radius: var(--radius); padding: 10px 14px;
+  font-size: var(--step-1);
+  box-shadow: 0 6px 24px rgb(0 0 0 / .18);
+}
+.notice b { display: block; font-weight: 700; margin-bottom: 2px; }
+
+.busy {
+  position: absolute; z-index: 550;
+  top: calc(12px + env(safe-area-inset-top, 0px)); right: 62px;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 7px 12px;
+  font-family: var(--mono); font-size: var(--step-1);
+  letter-spacing: .06em; color: var(--ink-2);
+  box-shadow: 0 2px 10px rgb(0 0 0 / .12);
+}
+
+/* OSM 표준 타일에는 다크 판본이 없어 색을 반전해 쓴다 */
+.leaflet-tile-pane { filter: var(--tile-filter, none); }
+.leaflet-container { font-family: var(--sans); background: var(--surface-2); }
+.leaflet-control-attribution { font-size: 10px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="panel">
+    <header class="masthead">
+      <p class="eyebrow">Greater Tokyo · Transit Isochrone</p>
+      <h1>수도권 도달권역</h1>
+      <p class="lede">출발지와 출발 시각을 정하면, 그 시각에 집을 나서서 전철과 도보만으로 갈 수 있는 범위를 그립니다.</p>
+    </header>
+
+    <div class="controls">
+      <div class="field" id="field-region" hidden>
+        <label for="region">권역</label>
+        <select id="region"></select>
+      </div>
+
+      <div class="field search" id="field-origin">
+        <div class="field-head">
+          <label for="q" class="with-dot"><span class="pin-dot origin"></span>출발지</label>
+          <span class="target-tag">지도 클릭</span>
+          <button type="button" class="linkish" id="snap-origin">가까운 역으로</button>
+        </div>
+        <input type="text" id="q" autocomplete="off" placeholder="역 이름 (新宿 / Shinjuku / 신주쿠)">
+        <div class="results" id="results" hidden></div>
+      </div>
+
+      <div class="swap-row">
+        <button type="button" id="swap" title="출발지와 도착지를 맞바꿉니다">
+          &#8645; 출발지 ↔ 도착지
+        </button>
+      </div>
+
+      <div class="field search" id="field-dest">
+        <div class="field-head">
+          <label for="dq" class="with-dot"><span class="pin-dot dest"></span>도착지</label>
+          <span class="target-tag">지도 클릭</span>
+          <button type="button" class="linkish" id="snap-dest">가까운 역으로</button>
+          <button type="button" class="linkish" id="dest-clear" hidden>지우기</button>
+        </div>
+        <input type="text" id="dq" autocomplete="off" placeholder="선택 사항 — 역 검색하거나 지도에서 고르기">
+        <div class="results" id="dest-results" hidden></div>
+      </div>
+      <p class="hint">지도 좌클릭은 출발지, 우클릭은 도착지입니다.
+      위 입력칸을 누르면 좌클릭 대상이 그쪽으로 바뀝니다.</p>
+
+      <div class="row">
+        <div class="field">
+          <div class="field-head">
+            <label for="depart">출발 시각</label>
+            <button type="button" class="linkish" id="now">지금</button>
+          </div>
+          <input type="time" id="depart" value="09:00" step="300">
+        </div>
+        <div class="field">
+          <label for="calendar">운행 다이어</label>
+          <select id="calendar">
+            <option value="Weekday">평일</option>
+            <option value="SaturdayHoliday">토 · 휴일</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="check" id="walk-only-row">
+          <input type="checkbox" id="walk-only">
+          전철 없이 도보만
+        </label>
+      </div>
+
+      <div class="field">
+        <div class="slider-head">
+          <label for="budget">소요 시간 상한</label>
+          <span class="slider-value" id="budget-value">60분</span>
+        </div>
+        <input type="range" id="budget" min="15" max="180" step="5" value="60">
+        <p class="hint">이 시간을 3등분해 세 겹의 권역을 그립니다.</p>
+      </div>
+
+      <div class="field">
+        <div class="slider-head">
+          <label for="egress">하차 후 도보</label>
+          <span class="slider-value" id="egress-value">20분</span>
+        </div>
+        <input type="range" id="egress" min="5" max="40" step="5" value="20">
+        <p class="hint" id="walk-hint">역에서 이 시간 넘게는 걷지 않는다고 봅니다.</p>
+
+        <details id="walk-advanced">
+          <summary>전체 도보 시간</summary>
+          <div class="field" style="padding-top:10px">
+            <div class="slider-head">
+              <label for="walk-total">여정 전체 도보 상한</label>
+              <span class="slider-value" id="walk-total-value">25분</span>
+            </div>
+            <input type="range" id="walk-total" min="5" max="60" step="5" value="25">
+            <label class="check">
+              <input type="checkbox" id="walk-unlimited">
+              제한 없음
+            </label>
+            <p class="hint">출발지에서 역까지 걷는 시간도 여기에 묶입니다.
+            제한을 풀면 소요 시간 상한을 넘겨서도 걷습니다. 가장 가까운 역이
+            몇 시간 거리인 곳에서 쓰세요.</p>
+          </div>
+        </details>
+      </div>
+
+    </div>
+
+    <div class="readout">
+      <div class="verdict" id="verdict" hidden></div>
+      <ol class="journey" id="journey" hidden></ol>
+
+      <div class="legend" id="legend" hidden></div>
+
+      <div class="stat-strip" id="stats" hidden>
+        <div class="stat"><span class="n" id="stat-reached">—</span><span class="k">도달 가능 역</span></div>
+        <div class="stat"><span class="n" id="stat-total">—</span><span class="k">전체 역</span></div>
+      </div>
+
+      <div id="far-wrap" hidden>
+        <p class="legend-title">가장 멀리 닿는 역</p>
+        <p class="hint">직선거리 순. 누르면 도착지로 지정됩니다.</p>
+        <ul class="far-list" id="far"></ul>
+      </div>
+    </div>
+
+    <p class="source">
+      시각표 출처 <a href="https://github.com/nagix/mini-tokyo-3d" target="_blank" rel="noopener">mini-tokyo-3d</a> (MIT),
+      원 데이터 <a href="https://www.odpt.org/" target="_blank" rel="noopener">公共交通オープンデータセンター</a>.
+      환승은 구내 3분 · 개찰 밖 5분, 도보는 직선거리에 1.3배 우회 보정.
+      <span id="map-note"></span>
+    </p>
+  </aside>
+
+  <div class="map-wrap">
+    <div id="map"></div>
+    <div class="map-badge" id="badge" hidden></div>
+    <div class="busy" id="busy" hidden>계산 중</div>
+    <div class="notice" id="notice" role="status" hidden></div>
+    <div class="map-actions">
+      <button type="button" id="fit">권역에 맞추기</button>
+      <button type="button" id="toggle-stations" aria-pressed="false">지원 역 표시</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var BANDS = ["--band-1", "--band-2", "--band-3"];
+  var START = { lat: 35.68962, lon: 139.70025, zoom: 11 };
+
+  var el = function (id) { return document.getElementById(id); };
+  var css = function (name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  };
+  var isDark = function () {
+    var stamp = document.documentElement.getAttribute("data-theme");
+    if (stamp) return stamp === "dark";
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  };
+
+  /* =======================================================================
+     지도 어댑터 — 구글 지도와 OpenStreetMap 을 같은 인터페이스로 다룬다.
+     ======================================================================= */
+
+  function LeafletMap(container) {
+    var map = L.map(container, { zoomControl: false }).setView([START.lat, START.lon], START.zoom);
+    L.control.zoom({ position: "topright" }).addTo(map);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors",
+      maxZoom: 18
+    }).addTo(map);
+
+    var iso = L.layerGroup().addTo(map);
+    var coverage = L.layerGroup().addTo(map);
+    var stations = L.layerGroup().addTo(map);
+    var route = L.layerGroup().addTo(map);
+    var pins = {};
+
+    return {
+      engine: "osm",
+      drawRoute: function (segments) {
+        route.clearLayers();
+        segments.forEach(function (seg) {
+          var pts = seg.coords.map(function (c) { return [c[1], c[0]]; });
+          // 흰 테두리를 깔아야 권역 위에서도 선색이 읽힌다
+          L.polyline(pts, { color: "#FFFFFF", weight: 7, opacity: 0.9 }).addTo(route);
+          L.polyline(pts, {
+            color: seg.color, weight: 4, opacity: 1,
+            dashArray: seg.dashed ? "2 7" : null,
+            lineCap: seg.dashed ? "round" : "butt"
+          }).addTo(route);
+        });
+        Object.keys(pins).forEach(function (k) { pins[k].bringToFront(); });
+      },
+      clearRoute: function () { route.clearLayers(); },
+      drawStations: function (points) {
+        stations.clearLayers();
+        // 2천 개 가까이 되므로 캔버스로 그린다
+        var canvas = L.canvas({ padding: 0.3 });
+        points.forEach(function (p) {
+          L.circleMarker([p[1], p[0]], {
+            renderer: canvas, radius: 2.5, weight: 0,
+            fillColor: css("--station"), fillOpacity: 0.75, interactive: false
+          }).addTo(stations);
+        });
+      },
+      clearStations: function () { stations.clearLayers(); },
+      drawCoverage: function (geojson) {
+        coverage.clearLayers();
+        L.geoJSON(geojson, {
+          style: { color: css("--coverage"), weight: 2, opacity: 0.7,
+                   dashArray: "6 5", fill: false, interactive: false }
+        }).addTo(coverage);
+      },
+      onClick: function (fn) {
+        map.on("click", function (e) { fn(e.latlng.lat, e.latlng.lng); });
+      },
+      onRightClick: function (fn) {
+        map.on("contextmenu", function (e) { fn(e.latlng.lat, e.latlng.lng); });
+      },
+      setPin: function (kind, lat, lon) {
+        if (pins[kind]) map.removeLayer(pins[kind]);
+        pins[kind] = L.circleMarker([lat, lon], {
+          radius: kind === "origin" ? 7 : 8,
+          weight: 3,
+          color: css(kind === "origin" ? "--accent" : "--dest"),
+          fillColor: css("--surface"),
+          fillOpacity: 1
+        }).addTo(map);
+      },
+      clearPin: function (kind) {
+        if (pins[kind]) { map.removeLayer(pins[kind]); delete pins[kind]; }
+      },
+      drawIsochrone: function (features, colorFor) {
+        iso.clearLayers();
+        features.forEach(function (f, i) {
+          var color = colorFor(f);
+          L.geoJSON(f, {
+            style: { color: color, weight: 1.2, opacity: 0.85, fillColor: color, fillOpacity: 0.34 }
+          }).addTo(iso);
+        });
+        Object.keys(pins).forEach(function (k) { pins[k].bringToFront(); });
+      },
+      clearIsochrone: function () { iso.clearLayers(); },
+      fitBounds: function (b) {
+        map.fitBounds([[b.south, b.west], [b.north, b.east]], { padding: [30, 30] });
+      }
+    };
+  }
+
+  var DARK_STYLE = [
+    { elementType: "geometry", stylers: [{ color: "#16202a" }] },
+    { elementType: "labels.text.fill", stylers: [{ color: "#8fa0b0" }] },
+    { elementType: "labels.text.stroke", stylers: [{ color: "#0d151c" }] },
+    { featureType: "poi", stylers: [{ visibility: "off" }] },
+    { featureType: "road", elementType: "geometry", stylers: [{ color: "#243141" }] },
+    { featureType: "road", elementType: "labels", stylers: [{ visibility: "simplified" }] },
+    { featureType: "transit.line", elementType: "geometry", stylers: [{ color: "#33465c" }] },
+    { featureType: "water", elementType: "geometry", stylers: [{ color: "#0b1620" }] }
+  ];
+  var LIGHT_STYLE = [
+    { featureType: "poi", stylers: [{ visibility: "off" }] },
+    { featureType: "road", elementType: "labels", stylers: [{ visibility: "simplified" }] }
+  ];
+
+  function GoogleMap(container) {
+    var map = new google.maps.Map(container, {
+      center: { lat: START.lat, lng: START.lon },
+      zoom: START.zoom,
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: false,
+      zoomControl: true,
+      zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_TOP },
+      styles: isDark() ? DARK_STYLE : LIGHT_STYLE
+    });
+
+    var data = new google.maps.Data({ map: map });
+    var pins = {};
+    var route = [];
+    var stationLayer = null;
+    var coverageLayer = null;
+
+    return {
+      engine: "google",
+      drawRoute: function (segments) {
+        route.forEach(function (p) { p.setMap(null); });
+        route = [];
+        segments.forEach(function (seg) {
+          var pts = seg.coords.map(function (c) { return { lat: c[1], lng: c[0] }; });
+          // 흰 테두리를 깔아야 권역 위에서도 선색이 읽힌다
+          route.push(new google.maps.Polyline({
+            path: pts, map: map, clickable: false,
+            strokeColor: "#FFFFFF", strokeWeight: 7, zIndex: 2000
+          }));
+          if (seg.dashed) {
+            route.push(new google.maps.Polyline({
+              path: pts, map: map, clickable: false, zIndex: 2001,
+              strokeOpacity: 0,   // 점만 찍어 점선을 만든다
+              icons: [{
+                icon: {
+                  path: google.maps.SymbolPath.CIRCLE,
+                  scale: 2.6, fillColor: seg.color, fillOpacity: 1, strokeOpacity: 0
+                },
+                offset: "0", repeat: "11px"
+              }]
+            }));
+          } else {
+            route.push(new google.maps.Polyline({
+              path: pts, map: map, clickable: false, zIndex: 2001,
+              strokeColor: seg.color, strokeWeight: 4
+            }));
+          }
+        });
+      },
+      clearRoute: function () {
+        route.forEach(function (p) { p.setMap(null); });
+        route = [];
+      },
+      drawStations: function (points) {
+        if (stationLayer) stationLayer.setMap(null);
+        // 점 하나하나를 마커로 두면 느리다. MultiPoint 한 덩어리로 넘긴다.
+        stationLayer = new google.maps.Data({ map: map });
+        stationLayer.addGeoJson({
+          type: "Feature", properties: {},
+          geometry: { type: "MultiPoint", coordinates: points }
+        });
+        stationLayer.setStyle({
+          clickable: false,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 2.5, fillColor: css("--station"), fillOpacity: 0.8, strokeOpacity: 0
+          }
+        });
+      },
+      clearStations: function () {
+        if (stationLayer) { stationLayer.setMap(null); stationLayer = null; }
+      },
+      drawCoverage: function (geojson) {
+        if (coverageLayer) coverageLayer.setMap(null);
+        coverageLayer = new google.maps.Data({ map: map });
+        coverageLayer.addGeoJson(geojson);
+        coverageLayer.setStyle({
+          clickable: false, zIndex: 1,
+          strokeColor: css("--coverage"), strokeWeight: 2, strokeOpacity: 0.7
+        });
+      },
+      onClick: function (fn) {
+        map.addListener("click", function (e) { fn(e.latLng.lat(), e.latLng.lng()); });
+      },
+      onRightClick: function (fn) {
+        map.addListener("contextmenu", function (e) { fn(e.latLng.lat(), e.latLng.lng()); });
+      },
+      setPin: function (kind, lat, lon) {
+        if (pins[kind]) pins[kind].setMap(null);
+        pins[kind] = new google.maps.Marker({
+          position: { lat: lat, lng: lon },
+          map: map,
+          zIndex: 1000,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: kind === "origin" ? 7 : 8,
+            strokeWeight: 3,
+            strokeColor: css(kind === "origin" ? "--accent" : "--dest"),
+            fillColor: css("--surface"),
+            fillOpacity: 1
+          }
+        });
+      },
+      clearPin: function (kind) {
+        if (pins[kind]) { pins[kind].setMap(null); delete pins[kind]; }
+      },
+      drawIsochrone: function (features, colorFor) {
+        data.forEach(function (f) { data.remove(f); });
+        features.forEach(function (f) {
+          var color = colorFor(f);
+          data.addGeoJson(f).forEach(function (added) {
+            data.overrideStyle(added, {
+              fillColor: color, fillOpacity: 0.34,
+              strokeColor: color, strokeWeight: 1.2, strokeOpacity: 0.85,
+              // 좁은 권역이 넓은 권역 위로 오게 한다
+              zIndex: 1000 - f.properties.minutes,
+              clickable: false
+            });
+          });
+        });
+      },
+      clearIsochrone: function () { data.forEach(function (f) { data.remove(f); }); },
+      fitBounds: function (b) {
+        map.fitBounds(
+          new google.maps.LatLngBounds(
+            { lat: b.south, lng: b.west },
+            { lat: b.north, lng: b.east }
+          ),
+          40
+        );
+      }
+    };
+  }
+
+  function loadGoogleMaps(key) {
+    return new Promise(function (resolve, reject) {
+      var cb = "__gmapsReady";
+      window[cb] = function () { resolve(); };
+      var s = document.createElement("script");
+      s.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(key) +
+              "&callback=" + cb + "&loading=async&v=weekly";
+      s.async = true;
+      s.onerror = function () { reject(new Error("구글 지도를 불러오지 못했습니다")); };
+      // 키가 거부되면 콜백이 오지 않으므로 시간 제한을 둔다
+      setTimeout(function () { reject(new Error("구글 지도 응답 없음")); }, 8000);
+      document.head.appendChild(s);
+    });
+  }
+
+  /* =======================================================================
+     상태
+     ======================================================================= */
+
+  var mapView = null;
+  var origin = null;      // { lon, lat, label }
+  var destination = null; // { lon, lat, label }
+  var clickMode = "origin";
+  var stations = [];
+  var pending = 0;
+  var fitNext = true;     // 첫 계산에서만 화면을 권역에 맞춘다
+
+  /* ---------- 역 검색 (출발지·도착지가 함께 쓴다) ---------- */
+
+  function norm(s) { return (s || "").toLowerCase(); }
+
+  function stationLabel(s) {
+    return s.ja + (s.ko ? " · " + s.ko : "");
+  }
+
+  function search(term) {
+    var t = norm(term);
+    if (!t) return [];
+    var head = [], tail = [];
+    for (var i = 0; i < stations.length; i++) {
+      var s = stations[i];
+      var pj = norm(s.ja).indexOf(t), pe = norm(s.en).indexOf(t), pk = norm(s.ko).indexOf(t);
+      if (pj === 0 || pe === 0 || pk === 0) head.push(s);
+      else if (pj > 0 || pe > 0 || pk > 0) tail.push(s);
+      if (head.length >= 20) break;
+    }
+    return head.concat(tail).slice(0, 20);
+  }
+
+  function attachSearch(input, box, onPick) {
+    function render(list) {
+      box.textContent = "";
+      if (!list.length) { box.hidden = true; return; }
+      list.forEach(function (s) {
+        var b = document.createElement("button");
+        b.type = "button";
+
+        var name = document.createElement("span");
+        name.className = "name";
+        var ja = document.createElement("span");
+        ja.className = "ja";
+        ja.textContent = s.ja;
+        var ko = document.createElement("span");
+        ko.className = "ko";
+        ko.textContent = s.ko || s.en;
+        name.appendChild(ja);
+        name.appendChild(ko);
+        b.appendChild(name);
+
+        // 어느 회사들이 들어오는 역인지 (신주쿠처럼 겹치는 역명을 구분해 준다)
+        if (s.operators && s.operators.length) {
+          var ops = document.createElement("span");
+          ops.className = "ops";
+          ops.textContent = s.operators.join(" · ");
+          b.appendChild(ops);
+        }
+
+        b.addEventListener("click", function () {
+          input.value = s.ja;
+          box.hidden = true;
+          onPick(s);
+        });
+        box.appendChild(b);
+      });
+      box.hidden = false;
+    }
+    input.addEventListener("input", function () { render(search(input.value)); });
+    input.addEventListener("keydown", function (e) { if (e.key === "Escape") box.hidden = true; });
+    document.addEventListener("click", function (e) {
+      if (!box.contains(e.target) && e.target !== input) box.hidden = true;
+    });
+  }
+
+  /* ---------- 출발지 / 도착지 ---------- */
+
+  function setOrigin(lon, lat, label) {
+    origin = { lon: lon, lat: lat, label: label || null };
+    mapView.setPin("origin", lat, lon);
+  }
+
+  function setDestination(lon, lat, label) {
+    destination = { lon: lon, lat: lat, label: label || null };
+    mapView.setPin("dest", lat, lon);
+    el("dest-clear").hidden = false;
+    el("swap").disabled = false;
+  }
+
+  function clearDestination() {
+    destination = null;
+    mapView.clearPin("dest");
+    el("dq").value = "";
+    el("dest-clear").hidden = true;
+    el("swap").disabled = true;
+    el("verdict").hidden = true;
+    el("journey").hidden = true;
+    mapView.clearRoute();
+  }
+
+  /* 지도 클릭이 어느 칸을 찍을지. 입력칸을 누르면 그쪽으로 넘어간다. */
+  function setClickMode(mode) {
+    clickMode = mode;
+    el("field-origin").classList.toggle("is-target", mode === "origin");
+    el("field-dest").classList.toggle("is-target", mode === "dest");
+  }
+
+  /* ---------- 파라미터 ---------- */
+
+  var budget = el("budget"), egress = el("egress");
+  var walkTotal = el("walk-total"), walkUnlimited = el("walk-unlimited");
+
+  function syncLabels() {
+    el("budget-value").textContent = budget.value + "분";
+    el("egress-value").textContent = egress.value + "분";
+
+    // 전체 도보 상한은 소요 시간 상한을 넘을 수 없고, 하차 후 도보보다
+    // 짧을 수도 없다. 내려서 20분을 걷기로 해놓고 전체가 10분일 수는 없다.
+    walkTotal.min = egress.value;
+    walkTotal.max = budget.value;
+    if (parseInt(walkTotal.value, 10) > parseInt(budget.value, 10)) {
+      walkTotal.value = budget.value;
+    }
+    if (parseInt(walkTotal.value, 10) < parseInt(egress.value, 10)) {
+      walkTotal.value = egress.value;
+    }
+    walkTotal.disabled = walkUnlimited.checked;
+    el("walk-total-value").textContent =
+      walkUnlimited.checked ? "제한 없음" : walkTotal.value + "분";
+  }
+
+  function thresholds() {
+    var b = parseInt(budget.value, 10);
+    var a = Math.max(5, Math.round(b / 15) * 5);
+    var c = Math.max(a + 5, Math.round(2 * b / 15) * 5);
+    if (c >= b) c = Math.max(a + 5, b - 5);
+    return [a, c, b];
+  }
+
+  function baseParams() {
+    var p = {
+      region: el("region").value || "kanto",
+      lon: origin.lon,
+      lat: origin.lat,
+      depart: el("depart").value,
+      calendar: el("calendar").value,
+      thresholds: thresholds().join(","),
+      egress: egress.value
+    };
+    if (walkUnlimited.checked) p.walk_unlimited = "1";
+    else p.walk_total = walkTotal.value;
+    if (el("walk-only").checked) p.mode = "walk";
+    return p;
+  }
+
+  /* ---------- 그리기 ---------- */
+
+  function bandColor(i) { return css(BANDS[Math.min(i, BANDS.length - 1)]); }
+
+  function geojsonBounds(features) {
+    var s = 90, n = -90, w = 180, e = -180, seen = false;
+    features.forEach(function (f) {
+      f.geometry.coordinates.forEach(function (poly) {
+        poly.forEach(function (ring) {
+          ring.forEach(function (pt) {
+            seen = true;
+            if (pt[1] < s) s = pt[1];
+            if (pt[1] > n) n = pt[1];
+            if (pt[0] < w) w = pt[0];
+            if (pt[0] > e) e = pt[0];
+          });
+        });
+      });
+    });
+    return seen ? { south: s, north: n, west: w, east: e } : null;
+  }
+
+  var lastBounds = null;
+
+  function drawIsochrone(geojson) {
+    var feats = geojson.features.slice();
+    var minutes = feats
+      .map(function (f) { return f.properties.minutes; })
+      .sort(function (a, b) { return a - b; });
+
+    mapView.drawIsochrone(feats, function (f) {
+      return bandColor(minutes.indexOf(f.properties.minutes));
+    });
+
+    lastBounds = geojsonBounds(feats);
+    if (fitNext && lastBounds) {
+      mapView.fitBounds(lastBounds);
+      fitNext = false;
+    }
+  }
+
+  function drawLegend(mins) {
+    var legend = el("legend");
+    legend.textContent = "";
+    var title = document.createElement("p");
+    title.className = "legend-title";
+    title.textContent = "범례";
+    legend.appendChild(title);
+
+    mins.forEach(function (m, i) {
+      var row = document.createElement("div");
+      row.className = "legend-row";
+      var sw = document.createElement("span");
+      sw.className = "swatch";
+      sw.style.background = bandColor(i);
+      var min = document.createElement("span");
+      min.className = "min";
+      min.textContent = m + "분 이내";
+      row.appendChild(sw);
+      row.appendChild(min);
+      if (i === mins.length - 1) {
+        var note = document.createElement("span");
+        note.className = "note";
+        note.textContent = "상한";
+        row.appendChild(note);
+      }
+      legend.appendChild(row);
+    });
+    legend.hidden = false;
+  }
+
+  function drawStats(stats, mins) {
+    if (stats.mode === "walk") {
+      el("stats").hidden = true;
+      el("far-wrap").hidden = true;
+      var badge = el("badge");
+      badge.textContent = "";
+      var h = document.createElement("b");
+      h.textContent = (origin && origin.label) || "지도에서 고른 지점";
+      var sub = document.createElement("span");
+      sub.className = "sub";
+      sub.textContent = "전철 없이 도보 " + mins[mins.length - 1] + "분 이내";
+      badge.appendChild(h);
+      badge.appendChild(sub);
+      badge.hidden = false;
+      return;
+    }
+
+    el("stat-reached").textContent = stats.reached.toLocaleString();
+    el("stat-total").textContent = stats.total.toLocaleString();
+    el("stats").hidden = false;
+
+    var far = el("far");
+    far.textContent = "";
+    stats.farthest.forEach(function (s) {
+      var li = document.createElement("li");
+      var b = document.createElement("button");
+      b.type = "button";
+
+      var name = document.createElement("span");
+      var ja = document.createElement("b");
+      ja.textContent = s.ja;
+      var ko = document.createElement("span");
+      ko.className = "ko";
+      ko.textContent = s.ko ? "  " + s.ko : "";
+      name.appendChild(ja);
+      name.appendChild(ko);
+
+      var nums = document.createElement("span");
+      nums.className = "nums";
+      var km = document.createElement("span");
+      km.className = "km";
+      km.textContent = s.km + "km";
+      var m = document.createElement("span");
+      m.className = "m";
+      m.textContent = s.min + "분";
+      nums.appendChild(km);
+      nums.appendChild(m);
+
+      var hint = document.createElement("span");
+      hint.className = "go-hint";
+      hint.textContent = "도착지로";
+      nums.appendChild(hint);
+
+      b.appendChild(name);
+      b.appendChild(nums);
+      b.addEventListener("click", function () {
+        setDestination(s.lon, s.lat, s.ja + (s.ko ? " · " + s.ko : ""));
+        el("dq").value = s.ja;
+        runPoint();
+      });
+      li.appendChild(b);
+      far.appendChild(li);
+    });
+    el("far-wrap").hidden = stats.farthest.length === 0;
+
+    var badge = el("badge");
+    badge.textContent = "";
+    var head = document.createElement("b");
+    head.textContent = origin && origin.label ? origin.label : "지도에서 고른 지점";
+    var sub = document.createElement("span");
+    sub.className = "sub";
+    sub.textContent = el("depart").value + " 출발 · " + mins[mins.length - 1] + "분 이내 · 역 " + stats.reached;
+    badge.appendChild(head);
+    badge.appendChild(sub);
+    badge.hidden = false;
+  }
+
+  function row(cls, color) {
+    var li = document.createElement("li");
+    li.className = "leg " + cls;
+    var rail = document.createElement("span");
+    rail.className = "rail";
+    if (color) li.style.setProperty("--leg-color", color);
+    var body = document.createElement("div");
+    body.className = "body";
+    li.appendChild(rail);
+    li.appendChild(body);
+    return { li: li, body: body };
+  }
+
+  function drawJourney(legs) {
+    var list = el("journey");
+    list.textContent = "";
+
+    if (!legs || !legs.length) {
+      list.hidden = true;
+      mapView.clearRoute();
+      return;
+    }
+
+    legs.forEach(function (leg) {
+      if (leg.type === "ride") {
+        var r = row("ride", leg.railway.color);
+        var head = document.createElement("div");
+        head.className = "headline";
+        var name = document.createElement("span");
+        name.className = "line-name";
+        name.textContent = leg.railway.ko || leg.railway.ja;
+        var dur = document.createElement("span");
+        dur.className = "dur";
+        dur.textContent = leg.min + "분 · " + leg.stops + "개 역";
+        head.appendChild(name);
+        head.appendChild(dur);
+
+        var st = document.createElement("div");
+        st.className = "stations";
+        st.textContent = leg.from.ja + " → " + leg.to.ja;
+
+        var clock = document.createElement("div");
+        clock.className = "clock";
+        clock.textContent = leg.depart + " – " + leg.arrive;
+
+        r.body.appendChild(head);
+        r.body.appendChild(st);
+        r.body.appendChild(clock);
+        list.appendChild(r.li);
+        return;
+      }
+
+      var w = row(leg.type === "transfer" ? "transfer" : "walk");
+      if (leg.type === "transfer") {
+        w.body.textContent = leg.at.ja + " 에서 환승 " + leg.min + "분";
+      } else if (leg.final) {
+        w.body.textContent = "내려서 도착지까지 도보 " + leg.min + "분";
+      } else {
+        w.body.textContent = "출발지에서 " + leg.to.ja + " 까지 도보 " + leg.min + "분";
+      }
+      list.appendChild(w.li);
+    });
+
+    list.hidden = false;
+
+    var walkColor = css("--walk");
+    mapView.drawRoute(
+      legs
+        .filter(function (leg) {
+          return leg.path && leg.path.length > 1 &&
+                 (leg.type === "ride" || leg.type === "walk");
+        })
+        .map(function (leg) {
+          return leg.type === "ride"
+            ? { color: leg.railway.color, coords: leg.path }
+            : { color: walkColor, coords: leg.path, dashed: true };
+        })
+    );
+  }
+
+  function drawVerdict(res) {
+    var v = el("verdict");
+    v.textContent = "";
+    v.classList.remove("over");
+
+    if (!res.reachable) {
+      v.classList.add("over");
+      var t = document.createElement("p");
+      t.className = "breakdown";
+      t.textContent = "전철로는 닿지 않는 지점입니다. 가장 가까운 역에서도 설정한 도보 시간 안에 들어오지 않습니다.";
+      v.appendChild(t);
+      v.hidden = false;
+      return;
+    }
+
+    if (!res.within_budget) v.classList.add("over");
+
+    var tag = document.createElement("span");
+    tag.className = "tag";
+    tag.textContent = res.within_budget
+      ? "상한 " + res.budget_min + "분 안에 도착"
+      : "상한 " + res.budget_min + "분을 넘습니다";
+    v.appendChild(tag);
+
+    var total = document.createElement("span");
+    total.className = "total";
+    total.textContent = res.total_min + "분";
+    v.appendChild(total);
+
+    var p = document.createElement("p");
+    p.className = "breakdown";
+    if (res.walk_only) {
+      p.textContent = "전철을 타지 않고 걷는 편이 빠릅니다 (도보 " + res.direct_walk_min + "분).";
+    } else {
+      var b = document.createElement("b");
+      b.textContent = res.via.ja + (res.via.ko ? " " + res.via.ko : "");
+      p.appendChild(b);
+      p.appendChild(document.createTextNode(
+        "까지 " + res.via.ride_min + "분, 내려서 도보 " + res.via.walk_min + "분"
+      ));
+    }
+    v.appendChild(p);
+    v.hidden = false;
+  }
+
+  /* ---------- 요청 ---------- */
+
+  /* 슬라이더를 끌거나 지점을 연달아 찍으면 요청이 겹겹이 쌓인다. 서버는
+     그걸 다 계산하고, 늦게 끝난 옛 요청이 새 결과를 덮어쓰기까지 한다.
+     마지막 것만 조금 기다렸다 보내고, 앞선 요청의 응답은 버린다. */
+  var runTimer = null;
+  // 순번은 요청 종류마다 따로 센다. 하나로 쓰면 뒤에 보낸 다른 종류의
+  // 요청이 순번을 올려버려서, 멀쩡한 응답까지 "낡은 것" 으로 버려진다.
+  var seqs = { iso: 0, point: 0 };
+  var REQUEST_DELAY_MS = 250;
+
+  function schedule(fn) {
+    clearTimeout(runTimer);
+    runTimer = setTimeout(fn, REQUEST_DELAY_MS);
+  }
+
+  function busy(on) {
+    pending += on ? 1 : -1;
+    if (pending < 0) pending = 0;
+    el("busy").hidden = pending === 0;
+  }
+
+  function fail(message) {
+    var badge = el("badge");
+    badge.textContent = "계산하지 못했습니다 — " + message;
+    badge.hidden = false;
+  }
+
+  function runIsochrone() {
+    if (!origin) return Promise.resolve();
+    var mins = thresholds();
+    var seq = ++seqs.iso;
+    busy(true);
+    return fetch("/api/isochrone?" + new URLSearchParams(baseParams()))
+      .then(function (r) {
+        if (!r.ok) throw new Error("서버가 " + r.status + " 를 돌려줬습니다");
+        return r.json();
+      })
+      .then(function (data) {
+        if (seq !== seqs.iso) return;   // 그 사이 새 요청이 있었다
+        drawIsochrone(data.geojson);
+        drawLegend(mins);
+        drawStats(data.stats, mins);
+      })
+      .catch(function (err) { fail(err.message); })
+      .then(function () { busy(false); });
+  }
+
+  function runPoint() {
+    if (!origin || !destination) return Promise.resolve();
+    var params = baseParams();
+    params.dest_lon = destination.lon;
+    params.dest_lat = destination.lat;
+    var seq = ++seqs.point;
+    busy(true);
+    return fetch("/api/point?" + new URLSearchParams(params))
+      .then(function (r) {
+        if (!r.ok) throw new Error("서버가 " + r.status + " 를 돌려줬습니다");
+        return r.json();
+      })
+      .then(function (res) {
+        if (seq !== seqs.point) return;
+        drawVerdict(res);
+        drawJourney(res.journey);
+      })
+      .catch(function (err) { fail(err.message); })
+      .then(function () { busy(false); });
+  }
+
+  function runNow() {
+    runIsochrone();
+    runPoint();
+  }
+
+  function run() {
+    schedule(runNow);
+  }
+
+  /* =======================================================================
+     시작
+     ======================================================================= */
+
+  var noticeTimer = null;
+
+  function notice(title, detail) {
+    var box = el("notice");
+    box.textContent = "";
+    var b = document.createElement("b");
+    b.textContent = title;
+    box.appendChild(b);
+    box.appendChild(document.createTextNode(detail));
+    box.hidden = false;
+    clearTimeout(noticeTimer);
+    noticeTimer = setTimeout(function () { box.hidden = true; }, 5000);
+  }
+
+  var REASONS = {
+    sea: "바다 위입니다. 뭍에 있는 지점을 골라주세요.",
+    outside_region: "수도권 밖입니다. 지금은 간토 권역만 다룹니다 (보라색 점선 안쪽).",
+    no_road: "도로가 없는 곳입니다. 길이 있는 지점을 골라주세요.",
+    no_station_in_range: "걸어서 닿는 역이 없습니다.",
+    unknown: "이 지점은 쓸 수 없습니다."
+  };
+
+  /* 찍기 전에 쓸 수 있는 지점인지 먼저 확인한다. 바다나 권역 밖을 찍어두고
+     빈 결과를 보는 것보다, 찍히지 않는 편이 낫다. */
+  function handleMapClick(lat, lon, forced) {
+    var target = forced || clickMode;
+    fetch("/api/reachable?" + new URLSearchParams(
+      walkUnlimited.checked
+        ? { region: el("region").value || "kanto", lon: lon, lat: lat, walk_unlimited: "1" }
+        : { region: el("region").value || "kanto", lon: lon, lat: lat, walk_total: walkTotal.value }
+    ))
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        if (!res.ok) {
+          var why = REASONS[res.reason] || REASONS.unknown;
+          if (res.reason === "no_station_in_range" && res.gate_min) {
+            why = "걸어서 " + res.gate_min + "분 안에 닿는 역이 없습니다.";
+          }
+          notice(
+            target === "dest" ? "도착지로 쓸 수 없는 지점입니다" : "출발지로 쓸 수 없는 지점입니다",
+            why
+          );
+          return;
+        }
+        el("notice").hidden = true;
+        if (target === "dest") {
+          setDestination(lon, lat, null);
+          el("dq").value = "";
+          runPoint();
+        } else {
+          setOrigin(lon, lat, null);
+          el("q").value = "";
+          run();
+        }
+      })
+      .catch(function () {
+        // 확인에 실패하면 막지 않고 그대로 진행한다
+        if (target === "dest") { setDestination(lon, lat, null); runPoint(); }
+        else { setOrigin(lon, lat, null); run(); }
+      });
+  }
+
+  function wirePanel() {
+    attachSearch(el("q"), el("results"), function (s) {
+      setOrigin(s.lon, s.lat, stationLabel(s));
+      run();
+    });
+    attachSearch(el("dq"), el("dest-results"), function (s) {
+      setDestination(s.lon, s.lat, stationLabel(s));
+      runPoint();
+    });
+
+    /* 찍어둔 핀을 가장 가까운 역으로 옮긴다. 역 앞을 대충 찍었을 때
+       정확한 역 위치로 맞추는 용도다. */
+    function snapTo(which) {
+      var pin = which === "dest" ? destination : origin;
+      if (!pin) {
+        notice("먼저 지점을 찍어주세요", which === "dest" ? "도착지가 아직 없습니다." : "출발지가 아직 없습니다.");
+        return;
+      }
+      busy(true);
+      fetch("/api/nearest?" + new URLSearchParams({ region: el("region").value || "kanto", lon: pin.lon, lat: pin.lat }))
+        .then(function (r) { return r.json(); })
+        .then(function (res) {
+          if (!res.ok) {
+            notice("가까운 역을 찾지 못했습니다", "걸어서 닿는 역이 없는 지점입니다.");
+            return;
+          }
+          var label = res.ja + (res.ko ? " · " + res.ko : "");
+          if (which === "dest") {
+            setDestination(res.lon, res.lat, label);
+            el("dq").value = res.ja;
+            runPoint();
+          } else {
+            setOrigin(res.lon, res.lat, label);
+            el("q").value = res.ja;
+            run();
+          }
+        })
+        .catch(function (err) { notice("가까운 역을 찾지 못했습니다", err.message); })
+        .then(function () { busy(false); });
+    }
+
+    /* 두 지점을 맞바꾼다. 갔다가 돌아오는 경로를 볼 때 쓴다. 시각표는
+       방향에 따라 달라서 단순히 경로를 뒤집는 것과 결과가 다르다. */
+    el("swap").addEventListener("click", function () {
+      if (!origin || !destination) {
+        notice("맞바꿀 수 없습니다", "출발지와 도착지가 모두 있어야 합니다.");
+        return;
+      }
+      var a = origin, b = destination;
+      var qa = el("q").value, qb = el("dq").value;
+      setOrigin(b.lon, b.lat, b.label);
+      setDestination(a.lon, a.lat, a.label);
+      el("q").value = qb;
+      el("dq").value = qa;
+      run();
+    });
+
+    el("snap-origin").addEventListener("click", function () { snapTo("origin"); });
+    el("snap-dest").addEventListener("click", function () { snapTo("dest"); });
+
+    el("q").addEventListener("focus", function () { setClickMode("origin"); });
+    el("dq").addEventListener("focus", function () { setClickMode("dest"); });
+    el("dest-clear").addEventListener("click", function () {
+      clearDestination();
+      setClickMode("origin");
+    });
+
+    el("now").addEventListener("click", function () {
+      var now = new Date();
+      el("depart").value =
+        String(now.getHours()).padStart(2, "0") + ":" +
+        String(now.getMinutes()).padStart(2, "0");
+      // 주말이면 다이어도 함께 맞춘다
+      var day = now.getDay();
+      el("calendar").value = (day === 0 || day === 6) ? "SaturdayHoliday" : "Weekday";
+      run();
+    });
+
+      el("depart").addEventListener("change", run);
+    el("calendar").addEventListener("change", run);
+    budget.addEventListener("input", syncLabels);
+    egress.addEventListener("input", syncLabels);
+    walkTotal.addEventListener("input", syncLabels);
+    walkUnlimited.addEventListener("change", function () { syncLabels(); run(); });
+    budget.addEventListener("change", run);
+    egress.addEventListener("change", run);
+    walkTotal.addEventListener("change", run);
+
+    /* 도보만 보는 모드에서는 전철 관련 설정이 의미가 없으니 접어 둔다 */
+    el("walk-only").addEventListener("change", function () {
+      var on = this.checked;
+      ["field-dest", "walk-advanced"].forEach(function (id) {
+        var e = el(id);
+        if (e) e.hidden = on;
+      });
+      el("egress").closest(".field").hidden = on;
+      el("calendar").closest(".field").hidden = on;
+      el("depart").closest(".field").hidden = on;
+      if (on) clearDestination();
+      run();
+    });
+
+    el("fit").addEventListener("click", function () {
+      if (lastBounds) mapView.fitBounds(lastBounds);
+    });
+
+    el("toggle-stations").addEventListener("click", function () {
+      var on = this.getAttribute("aria-pressed") !== "true";
+      this.setAttribute("aria-pressed", String(on));
+      if (!on) { mapView.clearStations(); return; }
+      if (!stations.length) {
+        notice("역 목록을 아직 받지 못했습니다", "잠시 후 다시 눌러주세요.");
+        this.setAttribute("aria-pressed", "false");
+        return;
+      }
+      mapView.drawStations(stations.map(function (s) { return [s.lon, s.lat]; }));
+    });
+
+    syncLabels();
+    setClickMode("origin");
+    el("swap").disabled = true;
+  }
+
+  // 지도 위 우클릭은 브라우저 기본 메뉴 대신 도착지 지정에 쓴다
+  el("map").addEventListener("contextmenu", function (e) { e.preventDefault(); });
+
+  var panelWired = false;
+
+  /* 지도 엔진을 붙인다. 구글 지도가 중간에 인증을 거부당하면 이 함수를 다시
+     불러 OpenStreetMap 으로 갈아끼운다. 패널 배선은 한 번만 한다. */
+  function attachMap(view, note) {
+    mapView = view;
+    el("map-note").textContent = note;
+    mapView.onClick(handleMapClick);
+    // 좌클릭은 출발지, 우클릭은 도착지로 고정이다. 우클릭으로 도착지를
+    // 찍었다고 해서 그 다음 좌클릭까지 도착지로 가면 안 된다.
+    // 좌클릭 대상은 패널의 입력칸을 눌렀을 때만 바뀐다.
+    mapView.onRightClick(function (lat, lon) {
+      handleMapClick(lat, lon, "dest");
+    });
+
+    if (!panelWired) {
+      wirePanel();
+      panelWired = true;
+    }
+
+    if (origin) {
+      mapView.setPin("origin", origin.lat, origin.lon);
+    } else {
+      setOrigin(START.lon, START.lat, "新宿 · 신주쿠");
+      el("q").value = "新宿";
+    }
+    if (destination) mapView.setPin("dest", destination.lat, destination.lon);
+    if (coverageGeo) mapView.drawCoverage(coverageGeo);
+    if (el("toggle-stations").getAttribute("aria-pressed") === "true" && stations.length) {
+      mapView.drawStations(stations.map(function (s) { return [s.lon, s.lat]; }));
+    }
+
+    fitNext = true;
+    run();
+  }
+
+  /* 도보 속도나 도보권 상한 같은 값은 서버가 기준이다. 화면에 따로 적어두면
+     서버 상수를 고쳤을 때 안내 문구만 옛날 값으로 남는다. */
+  function applyServerDefaults(cfg) {
+    if (!cfg) return;
+    if (cfg.egress_max_min) {
+      egress.max = cfg.egress_max_min;
+      if (parseInt(egress.value, 10) > cfg.egress_max_min) egress.value = cfg.egress_max_min;
+    }
+    if (cfg.egress_default_min) egress.value = cfg.egress_default_min;
+    if (cfg.walk_speed_m_per_min) {
+      el("walk-hint").textContent =
+        "분속 " + cfg.walk_speed_m_per_min + " m 기준. 역에서 이 시간 넘게는 걷지 않는다고 봅니다.";
+    }
+    syncLabels();
+  }
+
+  var swapped = false;
+
+  function fallbackToLeaflet(note) {
+    if (swapped) return;
+    swapped = true;
+    el("map").textContent = "";   // 구글 지도가 남긴 DOM 을 치운다
+    attachMap(LeafletMap(el("map")), note);
+  }
+
+  /* 구글 지도는 스크립트가 받아진 뒤에야 키를 검증한다. 거부되면 이 훅이
+     불린다. 그대로 두면 지도 객체가 망가진 채로 남아 화면 전체가 멈춘다.
+     리퍼러 제한 위반, API 미사용 설정, 결제 미등록, 할당량 초과가 모두
+     여기로 들어온다. */
+  window.gm_authFailure = function () {
+    fallbackToLeaflet(
+      "구글 지도가 API 키를 거부해 OpenStreetMap 으로 표시합니다. " +
+      "키의 HTTP 리퍼러 제한에 http://127.0.0.1:5173/* 가 있는지 확인하세요."
+    );
+  };
+
+  /* 인증을 통과한 뒤에도 구글 지도 쪽에서 예외가 나면 지도만 갈아끼운다.
+     지도 하나 때문에 계산 결과까지 못 보는 일은 없어야 한다. */
+  function guarded(view) {
+    var out = {};
+    Object.keys(view).forEach(function (name) {
+      if (typeof view[name] !== "function") {
+        out[name] = view[name];
+        return;
+      }
+      out[name] = function () {
+        try {
+          return view[name].apply(view, arguments);
+        } catch (err) {
+          fallbackToLeaflet(
+            "구글 지도에 문제가 생겨 OpenStreetMap 으로 표시합니다 — " + err.message
+          );
+        }
+      };
+    });
+    return out;
+  }
+
+  var coverageGeo = null;
+  var regionList = [];
+
+  /* 권역이 바뀌면 그 권역의 역 목록과 범위를 새로 받아 처음부터 다시 그린다 */
+  function loadRegion(id) {
+    var info = null;
+    for (var i = 0; i < regionList.length; i++) {
+      if (regionList[i].id === id) info = regionList[i];
+    }
+    busy(true);
+    return Promise.all([
+      fetch("/api/stations?region=" + encodeURIComponent(id)).then(function (r) { return r.json(); }),
+      fetch("/api/coverage?region=" + encodeURIComponent(id)).then(function (r) { return r.json(); })
+    ]).then(function (res) {
+      stations = res[0];
+      coverageGeo = res[1];
+      if (mapView) {
+        if (coverageGeo) mapView.drawCoverage(coverageGeo);
+        else mapView.drawCoverage({ type: "Feature", geometry: { type: "MultiLineString", coordinates: [] } });
+        mapView.clearStations();
+        el("toggle-stations").setAttribute("aria-pressed", "false");
+      }
+      if (info && info.center) {
+        clearDestination();
+        setOrigin(info.center[0], info.center[1], info.name);
+        el("q").value = "";
+        fitNext = true;
+      }
+    }).catch(function (err) {
+      notice("권역을 불러오지 못했습니다", err.message);
+    }).then(function () { busy(false); });
+  }
+
+  fetch("/api/regions")
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      regionList = data.regions;
+      var sel = el("region");
+      sel.textContent = "";
+      regionList.forEach(function (r) {
+        var o = document.createElement("option");
+        o.value = r.id;
+        o.textContent = r.name + " (역 " + r.stations.toLocaleString() + ")";
+        sel.appendChild(o);
+      });
+      sel.value = data.default;
+      // 권역이 하나뿐이면 고를 것이 없으니 숨긴다
+      el("field-region").hidden = regionList.length < 2;
+      sel.addEventListener("change", function () {
+        loadRegion(sel.value).then(run);
+      });
+      return loadRegion(data.default);
+    })
+    .catch(function (err) { notice("권역 목록을 받지 못했습니다", err.message); });
+
+  fetch("/api/config")
+    .then(function (r) { return r.json(); })
+    .then(function (cfg) {
+      applyServerDefaults(cfg);
+      if (!cfg.google_maps_key) throw new Error("no-key");
+      return loadGoogleMaps(cfg.google_maps_key).then(function () {
+        attachMap(guarded(GoogleMap(el("map"))), "지도는 Google Maps.");
+      });
+    })
+    .catch(function (err) {
+      if (err && err.message !== "no-key") applyServerDefaults(null);
+      swapped = true;   // 애초에 구글을 못 띄웠으니 갈아끼울 것도 없다
+      attachMap(
+        LeafletMap(el("map")),
+        err && err.message === "no-key"
+          ? "지도는 OpenStreetMap. 구글 지도를 쓰려면 config.json 에 키를 넣으세요."
+          : "구글 지도를 불러오지 못해 OpenStreetMap 으로 표시합니다."
+      );
+    });
+})();
+</script>
+</body>
+</html>
