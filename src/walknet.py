@@ -43,7 +43,6 @@ class WalkNet:
     shed_h: int
     m_per_deg_lon: float
     m_per_deg_lat: float
-    _tree: object = None
     _dist: np.ndarray | None = None
     _prev: np.ndarray | None = None
     # 거리 배열은 호출마다 새로 잡기엔 너무 커서(노드 476만 개) 재사용한다.
@@ -66,23 +65,43 @@ class WalkNet:
         lat = self.lat0 + (gy + 0.5) * self.cell_m / self.m_per_deg_lat
         return lon, lat
 
-    @property
-    def tree(self):
-        if self._tree is None:
-            from scipy.spatial import cKDTree
-
-            lon, lat = self.node_lon, self.node_lat
-            self._tree = cKDTree(
-                np.stack([lon * self.m_per_deg_lon, lat * self.m_per_deg_lat], axis=1)
-            )
-        return self._tree
-
     def nearest_node(self, lon: float, lat: float) -> int:
-        d, i = self.tree.query(
-            [lon * self.m_per_deg_lon, lat * self.m_per_deg_lat],
-            distance_upper_bound=SNAP_RADIUS_M,
-        )
-        return int(i) if np.isfinite(d) else -1
+        """이 지점에 가장 가까운 노드. 너무 멀면 -1.
+
+        KD 트리를 쓰면 노드 611만 개에 대해 트리가 250 MB 넘게 나온다.
+        노드는 이미 격자 셀 번호 순으로 정렬돼 있으므로, 질의 지점 둘레
+        몇 칸만 이분 탐색으로 꺼내 보면 된다. 반경 400 m 면 40 m 칸으로
+        10칸, 21x21 = 441칸이다.
+        """
+        gx = int(np.floor((lon - self.lon0) * self.m_per_deg_lon / self.cell_m))
+        gy = int(np.floor((lat - self.lat0) * self.m_per_deg_lat / self.cell_m))
+        reach = int(np.ceil(SNAP_RADIUS_M / self.cell_m))
+
+        picked = []
+        for row in range(max(gy - reach, 0), min(gy + reach, self.grid_h - 1) + 1):
+            lo_col = max(gx - reach, 0)
+            hi_col = min(gx + reach, self.grid_w - 1)
+            if lo_col > hi_col:
+                continue
+            # 한 줄은 셀 번호가 연속이라 한 번의 이분 탐색으로 잘린다.
+            #
+            # 찾는 값을 배열과 같은 자료형으로 맞춰야 한다. int32 배열에
+            # 파이썬 정수를 넘기면 numpy 가 배열 쪽을 int64 로 올려 통째로
+            # 복사한다. 611만 개 배열이라 건당 10 ms 가 든다 (맞추면 0.008 ms).
+            key = self.node_cell.dtype.type
+            lo = np.searchsorted(self.node_cell, key(row * self.grid_w + lo_col), "left")
+            hi = np.searchsorted(self.node_cell, key(row * self.grid_w + hi_col), "right")
+            if hi > lo:
+                picked.append(np.arange(lo, hi))
+        if not picked:
+            return -1
+
+        cand = np.concatenate(picked)
+        dx = (self.node_lon[cand] - lon) * self.m_per_deg_lon
+        dy = (self.node_lat[cand] - lat) * self.m_per_deg_lat
+        dist = np.hypot(dx, dy)
+        k = int(np.argmin(dist))
+        return int(cand[k]) if dist[k] <= SNAP_RADIUS_M else -1
 
     # ---------- 역 도보권 ----------
 

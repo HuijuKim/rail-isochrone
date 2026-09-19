@@ -13,7 +13,6 @@ from router import (
     WALK_SPEED,
     Graph,
     haversine_m,
-    walk_seconds,
 )
 
 # 하차 후 걸어서 퍼지는 시간의 상한. 제한이 없으면 외곽 역 주변으로 권역이
@@ -301,6 +300,12 @@ def _rings_to_polygons(rings: list[np.ndarray]) -> list[list[np.ndarray]]:
     items.sort(key=lambda t: -t[0])
     paths = [MplPath(r) for _, r in items]
 
+    # 경계상자를 미리 구해 둔다. 이게 없으면 고리 쌍마다 점-다각형 검사를
+    # 하게 되는데, 180분 권역은 고리가 500개라 12만 번이 된다. 실제로는
+    # 서로 멀리 떨어진 고리가 대부분이라 상자 비교 한 번으로 걸러진다.
+    boxes = np.array([[r[:, 0].min(), r[:, 0].max(), r[:, 1].min(), r[:, 1].max()]
+                      for _, r in items]) if items else np.zeros((0, 4))
+
     polygons: list[list[np.ndarray]] = []
     owner: list[int] = []  # 각 고리가 속한 외곽 폴리곤 번호
 
@@ -308,10 +313,18 @@ def _rings_to_polygons(rings: list[np.ndarray]) -> list[list[np.ndarray]]:
         depth = 0
         parent = -1
         point = ring[0]
-        for j in range(i):
+        # 이 점을 상자 안에 담는 고리만 후보다
+        if i:
+            near = np.flatnonzero(
+                (boxes[:i, 0] <= point[0]) & (point[0] <= boxes[:i, 1])
+                & (boxes[:i, 2] <= point[1]) & (point[1] <= boxes[:i, 3])
+            )
+        else:
+            near = ()
+        for j in near:
             if paths[j].contains_point(point):
                 depth += 1
-                parent = j
+                parent = int(j)
         if depth % 2 == 0:
             owner.append(len(polygons))
             polygons.append([ring])

@@ -89,6 +89,24 @@ GRID_LON1 = GRID_LON0 + GRID_SPAN_X / M_PER_DEG_LON
 GRID_LAT1 = GRID_LAT0 + GRID_SPAN_Y / M_PER_DEG_LAT
 
 
+# 셀 번호와 CSR 포인터를 int32 로 담는다. 611만 노드에서 90 MB 가 줄어든다.
+# 다만 넘치면 조용히 뒤틀리므로 빌드 때 한 번 확인한다.
+INT32_MAX = 2**31 - 1
+
+
+def check_grid_fits() -> None:
+    """격자를 키웠을 때 int32 를 넘지 않는지. 넘으면 그 자리에서 멈춘다."""
+    limits = {
+        "격자 셀 번호 (node_cell)": GRID_W * GRID_H,
+        "저장 격자 셀 번호 (node_shed)": SHED_W * SHED_H,
+        "그리기 타일 번호": FINE_W * FINE_H,
+    }
+    over = {k: v for k, v in limits.items() if v > INT32_MAX}
+    if over:
+        detail = ", ".join(f"{k} {v:,} > {INT32_MAX:,}" for k, v in over.items())
+        sys.exit("격자가 int32 를 넘습니다. 칸을 키우거나 권역을 나누세요: " + detail)
+
+
 def cell_index(lon: np.ndarray, lat: np.ndarray) -> np.ndarray:
     """위경도를 전역 격자의 셀 번호로. 범위를 벗어나면 -1."""
     gx = np.floor((np.asarray(lon) - GRID_LON0) * M_PER_DEG_LON / CELL_M).astype(np.int64)
@@ -260,7 +278,7 @@ def build_graph(points, steps) -> dict:
 
     return {
         "n_nodes": len(used),
-        "node_cell": used.astype(np.int64),
+        "node_cell": used.astype(np.int32),
         "node_lon": node_lon,
         "node_lat": node_lat,
         "src": src.astype(np.int32),
@@ -314,7 +332,7 @@ def to_csr(graph: dict) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     src, dst, cost = graph["src"], graph["dst"], graph["cost"]
     order = np.argsort(src, kind="stable")
     src, dst, cost = src[order], dst[order], cost[order]
-    indptr = np.searchsorted(src, np.arange(n + 1)).astype(np.int64)
+    indptr = np.searchsorted(src, np.arange(n + 1)).astype(np.int32)
     return indptr, dst, cost
 
 
@@ -421,7 +439,7 @@ def build_sheds(indptr, indices, data, n_nodes: int, node_shed: np.ndarray,
     return {
         "shed_cell": np.concatenate(shed_cell) if shed_cell else np.zeros(0, np.int32),
         "shed_sec": np.concatenate(shed_sec) if shed_sec else np.zeros(0, np.float32),
-        "shed_ptr": np.array(ptr, dtype=np.int64),
+        "shed_ptr": np.array(ptr, dtype=np.int32),
     }
 
 
@@ -453,7 +471,7 @@ def save_fine_geometry(points) -> None:
     seg, tile = seg[keep], tile[keep]
     order = np.argsort(tile, kind="stable")
     seg, tile = seg[order].astype(np.int32), tile[order]
-    ptr = np.searchsorted(tile, np.arange(FINE_W * FINE_H + 1, dtype=np.int64))
+    ptr = np.searchsorted(tile, np.arange(FINE_W * FINE_H + 1, dtype=np.int64)).astype(np.int32)
 
     np.save(OUT / "fine_pt.npy", pts)
     np.save(OUT / "fine_seg.npy", seg)
@@ -467,6 +485,8 @@ def save_fine_geometry(points) -> None:
 
 
 def main() -> None:
+    check_grid_fits()
+
     missing = [p for p in PBFS if not p.exists()]
     if missing:
         sys.exit("OSM 추출본이 없습니다:\n  " + "\n  ".join(str(p) for p in missing))
@@ -503,7 +523,7 @@ def main() -> None:
 
     # 노드마다 저장용 격자의 어느 칸에 떨어지는지 미리 구해 둔다
     nlon, nlat = cell_center(graph["node_cell"])
-    node_shed = shed_cell_index(nlon, nlat)
+    node_shed = shed_cell_index(nlon, nlat).astype(np.int32)
 
     np.savez_compressed(
         OUT / "graph.npz",
