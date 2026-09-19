@@ -33,6 +33,8 @@ WEB = ROOT / "web"
 
 # 경로 조회에서 열어두는 탐색 지평. 상한과 무관하게 "갈 수 있나" 를 답한다.
 ROUTE_HORIZON_SEC = 300 * 60
+# 소요 시간 상한. 이보다 크면 격자가 수천만 칸이 되어 서버가 멎는다.
+MAX_BUDGET_SEC = 300 * 60
 
 app = Flask(__name__, static_folder=None)
 
@@ -43,13 +45,73 @@ DEFAULT_REGION = "kanto" if "kanto" in REGIONS else next(iter(REGIONS))
 
 
 def pick_region():
-    """요청이 가리키는 권역. 알 수 없으면 기본 권역."""
-    return REGIONS.get(request.args.get("region", DEFAULT_REGION), REGIONS[DEFAULT_REGION])
+    """요청이 가리키는 권역.
+
+    모르는 이름이면 기본 권역으로 때우지 않고 막는다. 오타 하나로 엉뚱한
+    권역의 답을 200 으로 받으면 틀린 줄도 모른다.
+    """
+    name = request.args.get("region")
+    if name is None:
+        return REGIONS[DEFAULT_REGION]
+    if name not in REGIONS:
+        raise BadRequest(f"모르는 권역입니다: {name!r} (쓸 수 있는 것: "
+                         + ", ".join(sorted(REGIONS)) + ")")
+    return REGIONS[name]
+
+
+class BadRequest(Exception):
+    """요청이 잘못됐을 때. 화면이 읽을 수 있는 JSON 으로 돌려준다."""
+
+
+@app.errorhandler(BadRequest)
+def bad_request(err):
+    return jsonify({"error": str(err)}), 400
+
+
+@app.errorhandler(Exception)
+def unexpected(err):
+    """예상 못 한 예외도 JSON 으로. 화면은 응답을 JSON 으로 읽는다.
+
+    HTML 오류 쪽을 돌려주면 화면에서 "Unexpected token '<'" 같은 소리가
+    나와서 무슨 일인지 알 수 없다. 원인은 서버 로그에 그대로 남긴다.
+    """
+    import traceback
+
+    traceback.print_exc()
+    return jsonify({"error": f"{type(err).__name__}: {err}"}), 500
+
+
+def need_float(name: str) -> float:
+    raw = request.args.get(name)
+    if raw is None:
+        raise BadRequest(f"{name} 파라미터가 없습니다")
+    try:
+        value = float(raw)
+    except ValueError:
+        raise BadRequest(f"{name} 값이 숫자가 아닙니다: {raw!r}") from None
+    if not np.isfinite(value):
+        raise BadRequest(f"{name} 값이 유효하지 않습니다: {raw!r}")
+    return value
+
+
+def need_point(prefix: str = "") -> tuple[float, float]:
+    """경위도 한 쌍. 범위를 벗어나면 거기서 막는다."""
+    lon = need_float(prefix + "lon")
+    lat = need_float(prefix + "lat")
+    if not (-180.0 <= lon <= 180.0 and -90.0 <= lat <= 90.0):
+        raise BadRequest(f"좌표가 범위를 벗어났습니다: {lon}, {lat}")
+    return lon, lat
 
 
 def parse_hhmm(text: str) -> int:
-    hh, mm = text.split(":")
-    return int(hh) * 3600 + int(mm) * 60
+    try:
+        hh, mm = text.split(":")
+        value = int(hh) * 3600 + int(mm) * 60
+    except ValueError:
+        raise BadRequest(f"시각 형식이 HH:MM 이 아닙니다: {text!r}") from None
+    if not (0 <= value < 30 * 3600):
+        raise BadRequest(f"시각이 범위를 벗어났습니다: {text!r}")
+    return value
 
 
 def google_maps_key() -> str | None:
@@ -122,7 +184,8 @@ def hhmm(seconds: int) -> str:
 
 
 def station_brief(reg, i: int) -> dict:
-    return {"ja": reg.stops["ja"][i], "ko": reg.stops["ko"][i]}
+    """역 이름을 화면이 고를 수 있는 모든 언어로. 어느 말로 보여줄지는 화면이 정한다."""
+    return {lang: reg.stops[lang][i] for lang in region_mod.LANGS if lang in reg.stops}
 
 
 def leg_path(reg, indices: list[int]) -> list[list[float]]:
@@ -182,11 +245,11 @@ def describe_journey(reg, legs: list[dict], best: np.ndarray, depart: int,
                     "arrive": hhmm(leg["arrive"]),
                     "min": round((leg["arrive"] - leg["depart"]) / 60),
                     "stops": len(leg["path"]) - 1,
-                    "railway": {
-                        "ja": title.get("ja", ""),
-                        "ko": title.get("ko", "") or title.get("ja", ""),
-                        "color": rail.get("color", "#888888"),
-                    },
+                    "railway": dict(
+                        {lang: title.get(lang, "") or title.get("ja", "")
+                         for lang in region_mod.LANGS},
+                        color=rail.get("color", "#888888"),
+                    ),
                     "path": leg_path(reg, leg["path"]),
                 }
             )
@@ -204,9 +267,15 @@ def read_query() -> dict:
     walk_unlimited=1 을 명시해야 한다. 무제한이 기본이면 매 요청이 몇 시간치
     도보를 탐색하게 되어 눈에 띄게 느려진다.
     """
-    thresholds = sorted(
-        int(x) * 60 for x in request.args.get("thresholds", "30,45,60").split(",")
-    )
+    raw_thresholds = request.args.get("thresholds", "30,45,60")
+    try:
+        thresholds = sorted({int(x) * 60 for x in raw_thresholds.split(",") if x.strip()})
+    except ValueError:
+        raise BadRequest(f"thresholds 가 숫자 목록이 아닙니다: {raw_thresholds!r}") from None
+    if not thresholds or thresholds[0] <= 0:
+        raise BadRequest(f"thresholds 는 1분 이상이어야 합니다: {raw_thresholds!r}")
+    if thresholds[-1] > MAX_BUDGET_SEC:
+        raise BadRequest(f"소요 시간 상한은 {MAX_BUDGET_SEC // 60}분을 넘을 수 없습니다")
     budget = max(thresholds)
     raw_total = request.args.get("walk_total", "").strip()
     unlimited = request.args.get("walk_unlimited") in ("1", "true", "yes")
@@ -214,8 +283,13 @@ def read_query() -> dict:
     # 세 값은 포개진 제약이다. 바깥부터 소요 시간 상한, 하차 후 도보, 전체
     # 도보 순이고 안쪽이 바깥을 넘을 수 없다. 화면에서도 같은 순서로 묶지만,
     # 주소창으로 직접 부르면 그 제약을 건너뛰므로 여기서도 맞춘다.
-    egress = min(int(request.args.get("egress", EGRESS_WALK_MAX_SEC // 60)) * 60, budget)
-    walk_total = int(raw_total) * 60 if raw_total else None
+    try:
+        egress = min(int(request.args.get("egress", EGRESS_WALK_MAX_SEC // 60)) * 60, budget)
+        walk_total = int(raw_total) * 60 if raw_total else None
+    except ValueError:
+        raise BadRequest("egress 와 walk_total 은 분 단위 정수여야 합니다") from None
+    if egress < 0 or (walk_total is not None and walk_total < 0):
+        raise BadRequest("도보 시간은 0분 이상이어야 합니다")
     if walk_total is not None:
         walk_total = min(max(walk_total, egress), budget)
     # "제한 없음" 만 예외다. 가장 가까운 역이 몇 시간 거리인 곳에서 쓰라고
@@ -223,9 +297,10 @@ def read_query() -> dict:
     if unlimited:
         walk_total = ACCESS_UNLIMITED_SEC
 
+    lon, lat = need_point()
     return {
-        "lon": float(request.args["lon"]),
-        "lat": float(request.args["lat"]),
+        "lon": lon,
+        "lat": lat,
         "depart": parse_hhmm(request.args.get("depart", "09:00")),
         "calendar": request.args.get("calendar", "Weekday"),
         "thresholds": thresholds,
@@ -249,8 +324,8 @@ def regions():
             "regions": [
                 {
                     "id": r.id,
-                    "name": r.name,
-                    "name_full": r.meta.get("name_full", r.name),
+                    # 이름은 언어별로 보낸다. 어느 말로 보여줄지는 화면이 정한다.
+                    "names": r.names,
                     "center": r.meta.get("center"),
                     "zoom": r.meta.get("zoom", 11),
                     "stations": int(r.supported.sum()),
@@ -321,8 +396,7 @@ def coverage():
 def nearest():
     """이 지점에서 걸어서 가장 가까운 역. 핀을 역에 맞출 때 쓴다."""
     reg = pick_region()
-    lon = float(request.args["lon"])
-    lat = float(request.args["lat"])
+    lon, lat = need_point()
 
     # 라우터가 출발지를 잡을 때와 같은 계산을 쓴다. 따로 구현하면 화면이
     # "가까운 역 없음" 이라는데 권역은 그려지는 식으로 어긋난다.
@@ -361,8 +435,7 @@ def reachable():
     길은 있는데 걸어서 닿는 역이 없는지는 서로 다른 이야기다.
     """
     reg = pick_region()
-    lon = float(request.args["lon"])
-    lat = float(request.args["lat"])
+    lon, lat = need_point()
     cover = reg.coverage
     # 화면이 쓰고 있는 도보 상한을 그대로 적용한다. 서버가 제 기준으로
     # 판정하면 "60분 안에 역이 없다" 는데 화면은 25분으로 계산하는 식이 된다.
@@ -469,8 +542,7 @@ def isochrone():
         seen.add(name)
         far.append(
             {
-                "ja": name,
-                "ko": reg.stops["ko"][i],
+                **station_brief(reg, i),
                 "min": round(elapsed[i] / 60),
                 "km": round(float(away[i]) / 1000, 1),
                 "lon": round(float(reg.coords[i, 0]), 6),
@@ -499,8 +571,7 @@ def point():
     lon, lat, depart = qs["lon"], qs["lat"], qs["depart"]
     egress = qs["egress"]
     budget = max(qs["thresholds"])
-    dest_lon = float(request.args["dest_lon"])
-    dest_lat = float(request.args["dest_lat"])
+    dest_lon, dest_lat = need_point("dest_")
 
     reg = pick_region()
     g = reg.graphs.get(qs["calendar"]) or next(iter(reg.graphs.values()))
@@ -537,10 +608,17 @@ def point():
     usable = (best < INF) & np.isfinite(walk) & (walk <= walk_limit)
     total = np.where(usable, elapsed + walk, np.inf)
 
-    # 대중교통을 아예 타지 않고 걸어가는 쪽이 빠를 수도 있다. 여기에도 같은
-    # 상한을 쓴다. 무제한으로 두면 바다 한복판도 "걸어서 4천 분" 이 된다.
-    direct = direct_walk_seconds(reg, lon, lat, dest_lon, dest_lat, walk_limit)
-    walkable = np.isfinite(direct) and direct <= walk_limit
+    # 대중교통을 아예 타지 않고 걸어가는 쪽이 빠를 수도 있다.
+    #
+    # 상한은 경유 경로가 낼 수 있는 도보 합계와 맞춰야 한다. 직접 도보만
+    # 좁게 자르면, 역까지 걸어갔다가 거기서 목적지까지 또 걷는 더 긴 답이
+    # 이긴다. 실제로 지치부에서 도보 19분 + 도보 59분 = 78분이 나오면서
+    # 직접 걷는 70분짜리가 60분 상한에 걸려 버려지는 일이 있었다.
+    #
+    # 무제한으로 두지는 않는다. 그러면 바다 한복판도 "걸어서 4천 분" 이 된다.
+    direct_cap = access_limit + egress
+    direct = direct_walk_seconds(reg, lon, lat, dest_lon, dest_lat, direct_cap)
+    walkable = np.isfinite(direct) and direct <= direct_cap
 
     via = None
     journey: list[dict] = []
@@ -549,12 +627,9 @@ def point():
         i = int(np.nanargmin(total))
         if total[i] < best_total:
             best_total = float(total[i])
-            via = {
-                "ja": reg.stops["ja"][i],
-                "ko": reg.stops["ko"][i],
-                "ride_min": round(elapsed[i] / 60),
-                "walk_min": round(walk[i] / 60),
-            }
+            via = dict(station_brief(reg, i),
+                        ride_min=round(elapsed[i] / 60),
+                        walk_min=round(walk[i] / 60))
             journey = describe_journey(reg, reconstruct(g, trace, i), best, depart, (lon, lat))
             leg = walk_path(reg, dest_lon, dest_lat, i, float(walk[i]) + 120)
             leg.reverse()   # 역 -> 도착지 방향으로 그린다
@@ -584,6 +659,13 @@ def point():
         return jsonify({"reachable": False})
     best_total = float(best_total)
 
+    # 이 경로가 실제로 얼마나 걷는지. 경로를 보여줄 때는 도보 상한을 넉넉히
+    # 풀어 두므로(한 시간까지), 설정한 상한을 넘는 답이 나올 수 있다. 그때
+    # 경로를 감추지는 않되 넘었다는 것은 말해 줘야 한다.
+    walked = sum(leg["min"] for leg in journey if leg["type"] == "walk")
+    walk_cap = qs["walk_total"] if qs["walk_total"] is not None else budget
+    over_walk = not qs["walk_unlimited"] and walked * 60 > walk_cap
+
     return jsonify(
         {
             "reachable": True,
@@ -593,6 +675,9 @@ def point():
             "via": via,
             "walk_only": via is None,
             "direct_walk_min": round(direct / 60) if walkable else None,
+            "walk_min": walked,
+            "walk_limit_min": round(walk_cap / 60),
+            "over_walk": bool(over_walk),
             "journey": journey,
             "transfers": sum(1 for leg in journey if leg["type"] == "transfer"),
         }

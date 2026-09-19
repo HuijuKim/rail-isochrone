@@ -18,6 +18,9 @@ import numpy as np
 ROOT = Path(__file__).resolve().parent.parent
 REGIONS_DIR = ROOT / "data" / "regions"
 
+# 화면이 고를 수 있는 언어. 역 이름을 이만큼 내보낸다.
+LANGS = ("ja", "en", "ko", "zh-Hans", "zh-Hant")
+
 
 def available() -> list[str]:
     """준비된 권역 id 목록."""
@@ -53,8 +56,15 @@ class Region:
     n_groups: int
 
     @property
+    def names(self) -> dict:
+        """권역 이름을 언어별로. 없는 언어는 id 로 때운다."""
+        listed = self.meta.get("names") or {}
+        return {lang: listed.get(lang) or listed.get("ja") or self.id for lang in LANGS}
+
+    @property
     def name(self) -> str:
-        return self.meta.get("name", self.id)
+        """로그나 오류 메시지용. 화면은 names 를 쓴다."""
+        return self.names.get("ja", self.id)
 
 
 def load(region_id: str) -> Region:
@@ -83,12 +93,6 @@ def load(region_id: str) -> Region:
 
     walk = walknet.load(base / "walk")
     fine = finegeom.load(base / "walk")
-    if walk is not None:
-        # 지점 스냅용 KD 트리는 노드가 수백만이라 세우는 데 시간이 걸린다.
-        # 첫 요청이 그 값을 물지 않도록 여기서 미리 세운다.
-        lon, lat = meta.get("center", [139.7, 35.69])
-        walk.nearest_node(lon, lat)
-
     geometry = Geometry(base / "raw" / "coordinates.json", stops["railway"], coords)
 
     index, groups, n_groups = build_search_index(base, stops, coords)
@@ -189,9 +193,8 @@ def build_search_index(base: Path, stops: dict, coords: np.ndarray):
                 "id": stops["ids"][lead],
                 "lon": float(np.mean(coords[members, 0])),
                 "lat": float(np.mean(coords[members, 1])),
-                "ja": ja,
-                "en": stops["en"][lead],
-                "ko": stops["ko"][lead],
+                **{lang: (stops[lang][lead] if lang != "ja" else ja)
+                   for lang in LANGS if lang in stops},
                 "operators": [operator_title(p, "ko") for p in prefixes],
             }
         )
@@ -332,8 +335,8 @@ def railway_shapes(geometry, railways: dict, stops: dict, coords: np.ndarray,
         out.append(
             {
                 "id": rid,
-                "ja": title.get("ja", ""),
-                "ko": title.get("ko", "") or title.get("ja", ""),
+                **{lang: title.get(lang, "") or title.get("ja", "")
+                   for lang in LANGS},
                 "color": railway.get("color", "#888888"),
                 "prefs": sorted(p for p in seen if p),
                 "path": _simplify(np.asarray(path, dtype=np.float64),
