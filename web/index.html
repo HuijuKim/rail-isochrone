@@ -272,6 +272,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   padding: 13px 15px; display: flex; flex-direction: column; gap: 7px;
 }
 .verdict.over { border-left-color: var(--warn); }
+.verdict .over-walk { color: var(--warn); }
 .verdict .total {
   font-family: var(--mono); font-size: var(--step3); font-weight: 600;
   font-variant-numeric: tabular-nums; line-height: 1.1;
@@ -355,6 +356,12 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 }
 
 .source { padding: 22px var(--pad) 0; font-size: var(--step-1); color: var(--muted); }
+/* 언어 선택기는 패널 맨 아래. 자주 만질 것이 아니라 눈에 덜 띄게 둔다. */
+.lang-field {
+  padding: 16px var(--pad) 22px; gap: 6px;
+  border-top: 1px solid var(--line-soft); margin-top: 18px;
+}
+.lang-field select { font-size: var(--step-1); }
 .source a { color: var(--accent); }
 .source code {
   font-family: var(--mono); font-size: var(--step-2);
@@ -469,63 +476,62 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   <aside class="panel">
     <header class="masthead">
       <p class="eyebrow">Greater Tokyo · Transit Isochrone</p>
-      <h1>수도권 도달권역</h1>
-      <p class="lede">출발지와 출발 시각을 정하면, 그 시각에 집을 나서서 전철과 도보만으로 갈 수 있는 범위를 그립니다.</p>
+      <h1 data-i18n="title">수도권 도달권역</h1>
+      <p class="lede" data-i18n="lede">출발지와 출발 시각을 정하면, 그 시각에 집을 나서서 전철과 도보만으로 갈 수 있는 범위를 그립니다.</p>
     </header>
 
     <div class="controls">
       <div class="field" id="field-region" hidden>
-        <label for="region">권역</label>
+        <label for="region" data-i18n="region">권역</label>
         <select id="region"></select>
       </div>
 
       <div class="field search" id="field-origin">
         <div class="field-head">
-          <label for="q" class="with-dot"><span class="pin-dot origin"></span>출발지</label>
-          <span class="target-tag">지도 클릭</span>
+          <label for="q" class="with-dot"><span class="pin-dot origin"></span><span data-i18n="origin">출발지</span></label>
+          <span class="target-tag" data-i18n="mapClick">지도 클릭</span>
           <button type="button" class="linkish" id="here"
-                  title="브라우저 위치로 출발지를 잡습니다">현위치</button>
-          <button type="button" class="linkish" id="snap-origin" title="출발지를 가까운 역으로 (단축키 D)">가까운 역으로 <kbd>D</kbd></button>
+                  data-i18n-title="hereTitle" title="브라우저 위치로 출발지를 잡습니다"><span data-i18n="here">현위치</span></button>
+          <button type="button" class="linkish" id="snap-origin" data-i18n-title="snapOriginTitle" title="출발지를 가까운 역으로 (단축키 D)"><span data-i18n="snap">가까운 역으로</span> <kbd>D</kbd></button>
         </div>
         <div class="input-row">
-          <input type="text" id="q" autocomplete="off" placeholder="역 이름 (新宿 / Shinjuku / 신주쿠)">
+          <input type="text" id="q" autocomplete="off" data-i18n-placeholder="originPlaceholder" placeholder="역 이름 (新宿 / Shinjuku / 신주쿠)">
           <button type="button" class="square-btn" id="swap"
-                  title="출발지와 도착지를 맞바꿉니다"
-                  aria-label="출발지와 도착지 맞바꾸기">&#8645;</button>
+                  data-i18n-title="swapTitle" title="출발지와 도착지를 맞바꿉니다"
+                  data-i18n-aria="swapAria" aria-label="출발지와 도착지 맞바꾸기">&#8645;</button>
         </div>
         <div class="results" id="results" hidden></div>
       </div>
 
       <div class="field search" id="field-dest">
         <div class="field-head">
-          <label for="dq" class="with-dot"><span class="pin-dot dest"></span>도착지</label>
-          <span class="target-tag">지도 클릭</span>
-          <button type="button" class="linkish" id="snap-dest" title="도착지를 가까운 역으로 (단축키 F)">가까운 역으로 <kbd>F</kbd></button>
+          <label for="dq" class="with-dot"><span class="pin-dot dest"></span><span data-i18n="dest">도착지</span></label>
+          <span class="target-tag" data-i18n="mapClick">지도 클릭</span>
+          <button type="button" class="linkish" id="snap-dest" data-i18n-title="snapDestTitle" title="도착지를 가까운 역으로 (단축키 F)"><span data-i18n="snap">가까운 역으로</span> <kbd>F</kbd></button>
         </div>
         <div class="input-row">
-          <input type="text" id="dq" autocomplete="off" placeholder="선택 사항 — 역 검색하거나 지도에서 고르기">
+          <input type="text" id="dq" autocomplete="off" data-i18n-placeholder="destPlaceholder" placeholder="선택 사항 — 역 검색하거나 지도에서 고르기">
           <button type="button" class="square-btn" id="dest-clear" hidden
-                  title="도착지를 지웁니다" aria-label="도착지 지우기">&#215;</button>
+                  data-i18n-title="clearTitle" title="도착지를 지웁니다" data-i18n-aria="clearAria" aria-label="도착지 지우기">&#215;</button>
         </div>
         <div class="results" id="dest-results" hidden></div>
       </div>
-      <p class="hint">지도 좌클릭은 출발지, 우클릭은 도착지입니다.
-      위 입력칸을 누르면 좌클릭 대상이 그쪽으로 바뀝니다.
-      <kbd>D</kbd> <kbd>F</kbd> 로 각각 가까운 역에 맞춥니다.</p>
+      <p class="hint"><span data-i18n="clickHint">지도 좌클릭은 출발지, 우클릭은 도착지입니다. 위 입력칸을 누르면 좌클릭 대상이 그쪽으로 바뀝니다.</span>
+      <kbd>D</kbd> <kbd>F</kbd> <span data-i18n="keyHint">로 각각 가까운 역에 맞춥니다.</span></p>
 
       <div class="row">
         <div class="field">
           <div class="field-head">
-            <label for="depart">출발 시각</label>
-            <button type="button" class="linkish" id="now">지금</button>
+            <label for="depart" data-i18n="departAt">출발 시각</label>
+            <button type="button" class="linkish" id="now" data-i18n="now">지금</button>
           </div>
           <input type="time" id="depart" value="09:00" step="300">
         </div>
         <div class="field">
-          <label for="calendar">운행 다이어</label>
+          <label for="calendar" data-i18n="calendar">운행 다이어</label>
           <select id="calendar">
-            <option value="Weekday">평일</option>
-            <option value="SaturdayHoliday">토 · 휴일</option>
+            <option value="Weekday" data-i18n="weekday">평일</option>
+            <option value="SaturdayHoliday" data-i18n="holiday">토 · 휴일</option>
           </select>
         </div>
       </div>
@@ -533,42 +539,40 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       <div class="field">
         <label class="check" id="walk-only-row">
           <input type="checkbox" id="walk-only">
-          전철 없이 도보만
+          <span data-i18n="walkOnly">전철 없이 도보만</span>
         </label>
       </div>
 
       <div class="field">
         <div class="slider-head">
-          <label for="budget">소요 시간 상한</label>
+          <label for="budget" data-i18n="budget">소요 시간 상한</label>
           <span class="slider-value" id="budget-value">60분</span>
         </div>
         <input type="range" id="budget" min="15" max="180" step="5" value="60">
-        <p class="hint">이 시간을 3등분해 세 겹의 권역을 그립니다.</p>
+        <p class="hint" data-i18n="budgetHint">이 시간을 3등분해 세 겹의 권역을 그립니다.</p>
       </div>
 
       <div class="field">
         <div class="slider-head">
-          <label for="egress">하차 후 도보</label>
+          <label for="egress" data-i18n="egress">하차 후 도보</label>
           <span class="slider-value" id="egress-value">20분</span>
         </div>
         <input type="range" id="egress" min="5" max="40" step="5" value="20">
-        <p class="hint" id="walk-hint">역에서 이 시간 넘게는 걷지 않는다고 봅니다.</p>
+        <p class="hint" id="walk-hint"></p>
 
         <details id="walk-advanced">
-          <summary>전체 도보 시간</summary>
+          <summary data-i18n="walkAdvanced">전체 도보 시간</summary>
           <div class="field" style="padding-top:10px">
             <div class="slider-head">
-              <label for="walk-total">여정 전체 도보 상한</label>
+              <label for="walk-total" data-i18n="walkTotal">여정 전체 도보 상한</label>
               <span class="slider-value" id="walk-total-value">25분</span>
             </div>
             <input type="range" id="walk-total" min="5" max="60" step="5" value="25">
             <label class="check">
               <input type="checkbox" id="walk-unlimited">
-              제한 없음
+              <span data-i18n="noLimit">제한 없음</span>
             </label>
-            <p class="hint">출발지에서 역까지 걷는 시간도 여기에 묶입니다.
-            제한을 풀면 소요 시간 상한을 넘겨서도 걷습니다. 가장 가까운 역이
-            몇 시간 거리인 곳에서 쓰세요.</p>
+            <p class="hint" data-i18n="walkTotalHint"></p>
           </div>
         </details>
       </div>
@@ -582,48 +586,58 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       <div class="legend" id="legend" hidden></div>
 
       <div class="stat-strip" id="stats" hidden>
-        <div class="stat"><span class="n" id="stat-reached">—</span><span class="k">도달 가능 역</span></div>
-        <div class="stat"><span class="n" id="stat-total">—</span><span class="k">전체 역</span></div>
+        <div class="stat"><span class="n" id="stat-reached">—</span><span class="k" data-i18n="statReached">도달 가능 역</span></div>
+        <div class="stat"><span class="n" id="stat-total">—</span><span class="k" data-i18n="statTotal">전체 역</span></div>
       </div>
 
       <div id="far-wrap" hidden>
-        <p class="legend-title">가장 멀리 닿는 역</p>
-        <p class="hint">직선거리 순. 누르면 도착지로 지정됩니다.</p>
+        <p class="legend-title" data-i18n="farTitle">가장 멀리 닿는 역</p>
+        <p class="hint" data-i18n="farHint">직선거리 순. 누르면 도착지로 지정됩니다.</p>
         <ul class="far-list" id="far"></ul>
       </div>
     </div>
 
     <p class="source">
-      시각표 출처 <a href="https://github.com/nagix/mini-tokyo-3d" target="_blank" rel="noopener">mini-tokyo-3d</a> (MIT),
-      원 데이터 <a href="https://www.odpt.org/" target="_blank" rel="noopener">公共交通オープンデータセンター</a>.
-      보행망·해안선 <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> 기여자 (ODbL).
-      환승은 구내 3분 · 개찰 밖 5분. <span id="walk-note"></span>
+      <span data-i18n="srcTimetable">시각표 출처</span>
+      <a href="https://github.com/nagix/mini-tokyo-3d" target="_blank" rel="noopener">mini-tokyo-3d</a> (MIT),
+      <span data-i18n="srcOrigin">원 데이터</span>
+      <a href="https://www.odpt.org/" target="_blank" rel="noopener">公共交通オープンデータセンター</a>.
+      <span data-i18n="srcWalk">보행망·해안선</span>
+      <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>
+      <span data-i18n="srcContributors">기여자 (ODbL).</span>
+      <span data-i18n="transferNote">환승은 구내 3분 · 개찰 밖 5분.</span>
+      <span id="walk-note"></span>
       <span id="map-note"></span>
     </p>
+
+    <div class="field lang-field">
+      <label for="lang" data-i18n="language">언어</label>
+      <select id="lang"></select>
+    </div>
   </aside>
 
   <div class="map-wrap">
     <div id="map"></div>
     <div class="map-badge" id="badge" hidden></div>
-    <div class="busy" id="busy" hidden>계산 중</div>
+    <div class="busy" id="busy" data-i18n="busy" hidden>계산 중</div>
     <div class="notice" id="notice" role="status" hidden></div>
     <div class="map-actions">
-      <button type="button" id="fit">권역에 맞추기</button>
+      <button type="button" id="fit" data-i18n="fit">권역에 맞추기</button>
       <div class="pref-wrap">
-        <button type="button" id="toggle-lines" aria-pressed="false">지원 노선 표시</button>
+        <button type="button" id="toggle-lines" aria-pressed="false" data-i18n="showLines">지원 노선 표시</button>
         <button type="button" class="caret" id="line-toggle" aria-expanded="false"
-                title="노선을 현별로 골라 봅니다" aria-label="노선 현별 고르기">&#9650;</button>
+                data-i18n-title="lineCaretTitle" title="노선을 현별로 골라 봅니다" data-i18n-aria="lineCaretAria" aria-label="노선 현별 고르기">&#9650;</button>
         <div class="pref-menu" id="line-menu" hidden></div>
       </div>
       <div class="pref-wrap">
-        <button type="button" id="toggle-stations" aria-pressed="false">지원 역 표시</button>
+        <button type="button" id="toggle-stations" aria-pressed="false" data-i18n="showStations">지원 역 표시</button>
         <button type="button" class="caret" id="pref-toggle" aria-expanded="false"
-                title="역을 현별로 골라 봅니다" aria-label="역 현별 고르기">&#9650;</button>
+                data-i18n-title="stationCaretTitle" title="역을 현별로 골라 봅니다" data-i18n-aria="stationCaretAria" aria-label="역 현별 고르기">&#9650;</button>
         <div class="pref-menu" id="pref-menu" hidden></div>
       </div>
     </div>
     <div class="map-actions right">
-      <button type="button" id="toggle-coverage" aria-pressed="true">경계선</button>
+      <button type="button" id="toggle-coverage" aria-pressed="true" data-i18n="coverage">경계선</button>
     </div>
   </div>
 </div>
@@ -634,9 +648,544 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   "use strict";
 
   var BANDS = ["--band-1", "--band-2", "--band-3"];
-  // 화면 언어. 현 이름 같은 이름표를 어느 말로 보여줄지 정한다.
-  var LANG = (document.documentElement.lang || "ko").slice(0, 2);
-  var START = { lat: 35.68962, lon: 139.70025, zoom: 11 };
+  /* ---------- 언어 ----------
+
+     기본은 브라우저 설정이고 패널 맨 아래에서 바꾼다. 고른 값은 브라우저에
+     남겨 다음에 열 때도 유지한다.
+
+     역·노선·현 이름은 데이터가 다섯 언어를 갖고 있다. 일본어로 보는 사람은
+     일본어만 보면 되지만, 다른 언어로 보는 사람에게는 일본어를 함께 적는다.
+     역 이름은 현지에서 그 표기로 붙어 있고, 길을 물을 때도 그게 필요하다. */
+
+  var LANGS = ["ja", "en", "ko", "zh-Hans", "zh-Hant"];
+  var LANG_NAMES = {
+    "ja": "日本語", "en": "English", "ko": "한국어",
+    "zh-Hans": "简体中文", "zh-Hant": "繁體中文"
+  };
+
+  var STRINGS = {
+    ko: {
+      title: "수도권 도달권역",
+      lede: "출발지와 출발 시각을 정하면, 그 시각에 집을 나서서 전철과 도보만으로 갈 수 있는 범위를 그립니다.",
+      region: "권역", origin: "출발지", dest: "도착지",
+      mapClick: "지도 클릭", here: "현위치", snap: "가까운 역으로",
+      hereTitle: "브라우저 위치로 출발지를 잡습니다",
+      snapOriginTitle: "출발지를 가까운 역으로 (단축키 D)",
+      snapDestTitle: "도착지를 가까운 역으로 (단축키 F)",
+      originPlaceholder: "역 이름 (新宿 / Shinjuku / 신주쿠)",
+      destPlaceholder: "선택 사항 — 역 검색하거나 지도에서 고르기",
+      swapTitle: "출발지와 도착지를 맞바꿉니다", swapAria: "출발지와 도착지 맞바꾸기",
+      clearTitle: "도착지를 지웁니다", clearAria: "도착지 지우기",
+      clickHint: "지도 좌클릭은 출발지, 우클릭은 도착지입니다. 위 입력칸을 누르면 좌클릭 대상이 그쪽으로 바뀝니다.",
+      keyHint: "로 각각 가까운 역에 맞춥니다.",
+      departAt: "출발 시각", now: "지금", calendar: "운행 다이어",
+      weekday: "평일", holiday: "토 · 휴일",
+      budget: "소요 시간 상한", budgetHint: "이 시간을 3등분해 세 겹의 권역을 그립니다.",
+      egress: "하차 후 도보", walkAdvanced: "전체 도보 시간", walkTotal: "여정 전체 도보 상한",
+      noLimit: "제한 없음",
+      walkTotalHint: "출발지에서 역까지 걷는 시간도 여기에 묶입니다. 제한을 풀면 소요 시간 상한을 넘겨서도 걷습니다. 가장 가까운 역이 몇 시간 거리인 곳에서 쓰세요.",
+      walkOnly: "전철 없이 도보만",
+      statReached: "도달 가능 역", statTotal: "전체 역",
+      farTitle: "가장 멀리 닿는 역", farHint: "직선거리 순. 누르면 도착지로 지정됩니다.",
+      legend: "범례", busy: "계산 중",
+      srcTimetable: "시각표 출처", srcOrigin: "원 데이터", srcWalk: "보행망·해안선",
+      srcContributors: "기여자 (ODbL).", transferNote: "환승은 구내 3분 · 개찰 밖 5분.",
+      fit: "권역에 맞추기", showLines: "지원 노선 표시", showStations: "지원 역 표시",
+      coverage: "경계선",
+      lineCaretTitle: "노선을 현별로 골라 봅니다", lineCaretAria: "노선 현별 고르기",
+      stationCaretTitle: "역을 현별로 골라 봅니다", stationCaretAria: "역 현별 고르기",
+      language: "언어",
+      all: "전체",
+      min: "분", within: "분 이내", limit: "상한",
+      pickedOnMap: "지도에서 고른 지점",
+      walkNoTransit: "전철 없이 도보 ", toDest: "도착지로",
+      linesFirst: "노선을 먼저 표시하면 현별로 고를 수 있습니다.",
+      stationsNotYet: "역 목록을 아직 받지 못했습니다.",
+      unreachable: "전철로는 닿지 않는 지점입니다. 가장 가까운 역에서도 설정한 도보 시간 안에 들어오지 않습니다.",
+      arriveWithin: "상한 {n}분 안에 도착", overLimit: "{n}분을 넘습니다",
+      overWalk: "도보 상한 초과", overWalkNote: "설정한 도보 {limit}분을 넘습니다 (이 경로는 {n}분).",
+      walkFaster: "전철을 타지 않고 걷는 편이 빠릅니다 (도보 {n}분).",
+      viaSummary: "까지 {ride}분, 내려서 도보 {walk}분", failed: "계산하지 못했습니다 — {msg}",
+      serverSaid: "서버가 {code} 를 돌려줬습니다",
+      transferAt: "{at} 에서 환승 {n}분",
+      walkToDest: "내려서 도착지까지 도보 {n}분",
+      walkFromOrigin: "출발지에서 {to} 까지 도보 {n}분",
+      rideDur: "{n}분 · {stops}개 역",
+      reasonSea: "바다 위입니다. 뭍에 있는 지점을 골라주세요.",
+      reasonOutside: "권역 밖입니다 (보라색 점선 안쪽만 다룹니다).",
+      reasonNoRoad: "도로가 없는 곳입니다. 길이 있는 지점을 골라주세요.",
+      reasonNoStation: "걸어서 닿는 역이 없습니다.",
+      reasonNoStationGate: "걸어서 {n}분 안에 닿는 역이 없습니다.",
+      reasonUnknown: "이 지점은 쓸 수 없습니다.",
+      geoDenied: "위치 권한이 거부됐습니다. 주소창 왼쪽 자물쇠에서 허용해 주세요.",
+      geoUnavailable: "위치를 확인할 수 없습니다. 실내라면 창가에서 다시 시도해 보세요.",
+      geoTimeout: "위치를 가져오는 데 너무 오래 걸립니다.",
+      badDest: "도착지로 쓸 수 없는 지점입니다", badOrigin: "출발지로 쓸 수 없는 지점입니다",
+      pickFirst: "먼저 지점을 찍어주세요",
+      noDestYet: "도착지가 아직 없습니다.", noOriginYet: "출발지가 아직 없습니다.",
+      snapFailed: "가까운 역을 찾지 못했습니다", snapNoStation: "걸어서 닿는 역이 없는 지점입니다.",
+      cannotSwap: "맞바꿀 수 없습니다", needBoth: "출발지와 도착지가 모두 있어야 합니다.",
+      stationsNotYetTitle: "역 목록을 아직 받지 못했습니다", tryAgain: "잠시 후 다시 눌러주세요.",
+      linesFailed: "노선을 불러오지 못했습니다",
+      geoUnsupported: "현위치를 쓸 수 없습니다", geoNoBrowser: "이 브라우저가 위치 기능을 지원하지 않습니다.",
+      geoFailed: "현위치를 가져오지 못했습니다",
+      walkHint: "분속 {n} m 기준. 역에서 이 시간 넘게는 걷지 않는다고 봅니다.",
+      walkNetOn: "도보는 실제 보행로를 따라 계산합니다.",
+      walkNetOff: "보행망이 없어 도보는 직선거리에 1.3배 우회 보정으로 근사합니다.",
+      mapGoogle: "지도는 Google Maps.",
+      mapOsm: "지도는 OpenStreetMap. 구글 지도를 쓰려면 config.json 에 키를 넣으세요.",
+      mapFellBack: "구글 지도를 불러오지 못해 OpenStreetMap 으로 표시합니다.",
+      keyRejected: "구글 지도가 API 키를 거부해 OpenStreetMap 으로 표시합니다.",
+      keyHintReferrer: "키의 HTTP 리퍼러 제한에 http://127.0.0.1:5173/* 가 있는지 확인하세요.",
+      googleTrouble: "구글 지도에 문제가 생겨 OpenStreetMap 으로 표시합니다 — {msg}",
+      googleLoadFailed: "구글 지도를 불러오지 못했습니다", googleNoResponse: "구글 지도 응답 없음",
+      regionFailed: "권역을 불러오지 못했습니다", regionListFailed: "권역 목록을 받지 못했습니다",
+      stationCount: "(역 {n})"
+    },
+    ja: {
+      title: "首都圏 到達圏",
+      lede: "出発地と出発時刻を決めると、その時刻に家を出て電車と徒歩だけで行ける範囲を描きます。",
+      region: "エリア", origin: "出発地", dest: "目的地",
+      mapClick: "地図クリック", here: "現在地", snap: "最寄り駅へ",
+      hereTitle: "ブラウザの位置情報で出発地を決めます",
+      snapOriginTitle: "出発地を最寄り駅へ (ショートカット D)",
+      snapDestTitle: "目的地を最寄り駅へ (ショートカット F)",
+      originPlaceholder: "駅名 (新宿 / Shinjuku / 신주쿠)",
+      destPlaceholder: "任意 — 駅を検索するか地図で選ぶ",
+      swapTitle: "出発地と目的地を入れ替えます", swapAria: "出発地と目的地を入れ替え",
+      clearTitle: "目的地を消します", clearAria: "目的地を消す",
+      clickHint: "地図の左クリックが出発地、右クリックが目的地です。上の入力欄を押すと左クリックの対象がそちらに移ります。",
+      keyHint: "でそれぞれ最寄り駅に合わせます。",
+      departAt: "出発時刻", now: "現在", calendar: "ダイヤ",
+      weekday: "平日", holiday: "土休日",
+      budget: "所要時間の上限", budgetHint: "この時間を3等分して3層の到達圏を描きます。",
+      egress: "降車後の徒歩", walkAdvanced: "全行程の徒歩時間", walkTotal: "全行程の徒歩上限",
+      noLimit: "制限なし",
+      walkTotalHint: "出発地から駅までの徒歩もここに含まれます。制限を外すと所要時間の上限を超えても歩きます。最寄り駅まで何時間もかかる場所で使ってください。",
+      walkOnly: "電車を使わず徒歩のみ",
+      statReached: "到達可能駅", statTotal: "全駅",
+      farTitle: "最も遠くまで届く駅", farHint: "直線距離順。押すと目的地に設定されます。",
+      legend: "凡例", busy: "計算中",
+      srcTimetable: "時刻表の出典", srcOrigin: "元データ", srcWalk: "歩行ネットワーク・海岸線",
+      srcContributors: "コントリビューター (ODbL)。", transferNote: "乗換は構内3分・改札外5分。",
+      fit: "到達圏に合わせる", showLines: "対応路線を表示", showStations: "対応駅を表示",
+      coverage: "境界線",
+      lineCaretTitle: "路線を都県別に選びます", lineCaretAria: "路線を都県別に選ぶ",
+      stationCaretTitle: "駅を都県別に選びます", stationCaretAria: "駅を都県別に選ぶ",
+      language: "言語",
+      all: "すべて",
+      min: "分", within: "分以内", limit: "上限",
+      pickedOnMap: "地図で選んだ地点",
+      walkNoTransit: "電車を使わず徒歩 ", toDest: "目的地に",
+      linesFirst: "路線を表示すると都県別に選べます。",
+      stationsNotYet: "駅一覧をまだ取得していません。",
+      unreachable: "電車では届かない地点です。最寄り駅からでも設定した徒歩時間に収まりません。",
+      arriveWithin: "上限 {n}分以内に到着", overLimit: "{n}分を超えます",
+      overWalk: "徒歩の上限超過", overWalkNote: "設定した徒歩{limit}分を超えます (この経路は{n}分)。",
+      walkFaster: "電車に乗らず歩いた方が速いです (徒歩 {n}分)。",
+      viaSummary: "まで{ride}分、降りて徒歩{walk}分", failed: "計算できませんでした — {msg}",
+      serverSaid: "サーバーが {code} を返しました",
+      transferAt: "{at} で乗換 {n}分",
+      walkToDest: "降りて目的地まで徒歩 {n}分",
+      walkFromOrigin: "出発地から {to} まで徒歩 {n}分",
+      rideDur: "{n}分 · {stops}駅",
+      reasonSea: "海の上です。陸地の地点を選んでください。",
+      reasonOutside: "対応エリア外です (紫の点線の内側のみ)。",
+      reasonNoRoad: "道路がない場所です。道のある地点を選んでください。",
+      reasonNoStation: "歩いて行ける駅がありません。",
+      reasonNoStationGate: "徒歩{n}分以内に行ける駅がありません。",
+      reasonUnknown: "この地点は使えません。",
+      geoDenied: "位置情報が拒否されました。アドレスバー左の鍵マークから許可してください。",
+      geoUnavailable: "位置を特定できません。屋内なら窓際で試してください。",
+      geoTimeout: "位置の取得に時間がかかりすぎています。",
+      badDest: "目的地に使えない地点です", badOrigin: "出発地に使えない地点です",
+      pickFirst: "先に地点を決めてください",
+      noDestYet: "目的地がまだありません。", noOriginYet: "出発地がまだありません。",
+      snapFailed: "最寄り駅が見つかりません", snapNoStation: "歩いて行ける駅がない地点です。",
+      cannotSwap: "入れ替えられません", needBoth: "出発地と目的地の両方が必要です。",
+      stationsNotYetTitle: "駅一覧をまだ取得していません", tryAgain: "少し待ってから押してください。",
+      linesFailed: "路線を読み込めませんでした",
+      geoUnsupported: "現在地を使えません", geoNoBrowser: "このブラウザは位置情報に対応していません。",
+      geoFailed: "現在地を取得できませんでした",
+      walkHint: "分速 {n} m で計算。駅からこれ以上は歩かないものとします。",
+      walkNetOn: "徒歩は実際の歩道を辿って計算します。",
+      walkNetOff: "歩行ネットワークがないため、徒歩は直線距離の1.3倍で近似します。",
+      mapGoogle: "地図は Google Maps。",
+      mapOsm: "地図は OpenStreetMap。Google マップを使うには config.json に鍵を入れてください。",
+      mapFellBack: "Google マップを読み込めず OpenStreetMap で表示しています。",
+      keyRejected: "Google マップが API キーを拒否したため OpenStreetMap で表示します。",
+      keyHintReferrer: "キーの HTTP リファラ制限に http://127.0.0.1:5173/* があるか確認してください。",
+      googleTrouble: "Google マップに問題が起きたため OpenStreetMap で表示します — {msg}",
+      googleLoadFailed: "Google マップを読み込めませんでした", googleNoResponse: "Google マップの応答がありません",
+      regionFailed: "エリアを読み込めませんでした", regionListFailed: "エリア一覧を取得できませんでした",
+      stationCount: "(駅 {n})"
+    },
+    en: {
+      title: "Greater Tokyo Reach",
+      lede: "Pick a starting point and a departure time. The map shows how far you can get by train and on foot.",
+      region: "Region", origin: "Origin", dest: "Destination",
+      mapClick: "map click", here: "My location", snap: "Nearest station",
+      hereTitle: "Use your browser location as the origin",
+      snapOriginTitle: "Snap origin to the nearest station (shortcut D)",
+      snapDestTitle: "Snap destination to the nearest station (shortcut F)",
+      originPlaceholder: "Station name (新宿 / Shinjuku / 신주쿠)",
+      destPlaceholder: "Optional — search a station or pick on the map",
+      swapTitle: "Swap origin and destination", swapAria: "Swap origin and destination",
+      clearTitle: "Clear the destination", clearAria: "Clear destination",
+      clickHint: "Left click sets the origin, right click sets the destination. Focusing a field above moves the left-click target there.",
+      keyHint: "snap the origin and destination to their nearest station.",
+      departAt: "Departure", now: "Now", calendar: "Schedule",
+      weekday: "Weekday", holiday: "Weekend & holidays",
+      budget: "Time limit", budgetHint: "Split into three bands.",
+      egress: "Walk after alighting", walkAdvanced: "Total walking time", walkTotal: "Walking limit for the trip",
+      noLimit: "No limit",
+      walkTotalHint: "This includes the walk from the origin to the first station. Lifting the limit lets you walk past the time limit — useful where the nearest station is hours away.",
+      walkOnly: "Walking only, no trains",
+      statReached: "Stations reached", statTotal: "Stations total",
+      farTitle: "Farthest stations", farHint: "By straight-line distance. Click to set as destination.",
+      legend: "Legend", busy: "Working",
+      srcTimetable: "Timetables from", srcOrigin: "original data", srcWalk: "Pedestrian network and coastline",
+      srcContributors: "contributors (ODbL).", transferNote: "Transfers: 3 min inside a station, 5 min outside the gates.",
+      fit: "Fit to region", showLines: "Show lines", showStations: "Show stations",
+      coverage: "Boundary",
+      lineCaretTitle: "Filter lines by prefecture", lineCaretAria: "Filter lines by prefecture",
+      stationCaretTitle: "Filter stations by prefecture", stationCaretAria: "Filter stations by prefecture",
+      language: "Language",
+      all: "All",
+      min: " min", within: " min", limit: "limit",
+      pickedOnMap: "Point picked on the map",
+      walkNoTransit: "Walking only ", toDest: "as destination",
+      linesFirst: "Show lines first to filter them by prefecture.",
+      stationsNotYet: "Station list not loaded yet.",
+      unreachable: "No train reaches this point. Even the nearest station is beyond your walking limit.",
+      arriveWithin: "Arrives within {n} min", overLimit: "Over {n} min",
+      overWalk: "Over walking limit", overWalkNote: "Exceeds your {limit} min walking limit (this route walks {n} min).",
+      walkFaster: "Walking is faster than taking a train ({n} min on foot).",
+      viaSummary: "in {ride} min, then {walk} min on foot", failed: "Could not compute — {msg}",
+      serverSaid: "Server returned {code}",
+      transferAt: "Transfer at {at}, {n} min",
+      walkToDest: "Walk {n} min to the destination",
+      walkFromOrigin: "Walk {n} min to {to}",
+      rideDur: "{n} min · {stops} stops",
+      reasonSea: "That is open water. Pick a point on land.",
+      reasonOutside: "Outside the covered region (inside the purple dashed line only).",
+      reasonNoRoad: "No road here. Pick a point with a path.",
+      reasonNoStation: "No station within walking distance.",
+      reasonNoStationGate: "No station within a {n} min walk.",
+      reasonUnknown: "This point cannot be used.",
+      geoDenied: "Location permission was denied. Allow it from the lock icon in the address bar.",
+      geoUnavailable: "Could not determine your location. Indoors, try near a window.",
+      geoTimeout: "Getting your location is taking too long.",
+      badDest: "Cannot use as a destination", badOrigin: "Cannot use as an origin",
+      pickFirst: "Pick a point first",
+      noDestYet: "No destination yet.", noOriginYet: "No origin yet.",
+      snapFailed: "No nearby station found", snapNoStation: "No station within walking distance of that point.",
+      cannotSwap: "Cannot swap", needBoth: "Both an origin and a destination are needed.",
+      stationsNotYetTitle: "Station list not loaded yet", tryAgain: "Try again in a moment.",
+      linesFailed: "Could not load the lines",
+      geoUnsupported: "Location is unavailable", geoNoBrowser: "This browser does not support location.",
+      geoFailed: "Could not get your location",
+      walkHint: "At {n} m per minute. You are assumed not to walk longer than this from a station.",
+      walkNetOn: "Walking follows the real pedestrian network.",
+      walkNetOff: "No pedestrian network, so walking is approximated as straight-line distance x 1.3.",
+      mapGoogle: "Map by Google Maps.",
+      mapOsm: "Map by OpenStreetMap. Put a key in config.json to use Google Maps.",
+      mapFellBack: "Google Maps failed to load, showing OpenStreetMap.",
+      keyRejected: "Google Maps rejected the API key, showing OpenStreetMap.",
+      keyHintReferrer: "Check that the key allows the HTTP referrer http://127.0.0.1:5173/*.",
+      googleTrouble: "Google Maps had a problem, showing OpenStreetMap — {msg}",
+      googleLoadFailed: "Could not load Google Maps", googleNoResponse: "No response from Google Maps",
+      regionFailed: "Could not load the region", regionListFailed: "Could not get the region list",
+      stationCount: "({n} stations)"
+    },
+    "zh-Hans": {
+      title: "首都圈可达范围",
+      lede: "选择出发地和出发时间，地图会画出仅用电车和步行所能到达的范围。",
+      region: "区域", origin: "出发地", dest: "目的地",
+      mapClick: "点击地图", here: "当前位置", snap: "最近车站",
+      hereTitle: "用浏览器定位设定出发地",
+      snapOriginTitle: "把出发地移到最近车站 (快捷键 D)",
+      snapDestTitle: "把目的地移到最近车站 (快捷键 F)",
+      originPlaceholder: "车站名 (新宿 / Shinjuku / 신주쿠)",
+      destPlaceholder: "可选 — 搜索车站或在地图上选择",
+      swapTitle: "交换出发地和目的地", swapAria: "交换出发地和目的地",
+      clearTitle: "清除目的地", clearAria: "清除目的地",
+      clickHint: "地图左键设定出发地，右键设定目的地。点击上方输入框可切换左键的对象。",
+      keyHint: "分别移到最近车站。",
+      departAt: "出发时间", now: "现在", calendar: "运行图",
+      weekday: "平日", holiday: "周末及假日",
+      budget: "时间上限", budgetHint: "将这段时间三等分，画出三层范围。",
+      egress: "下车后步行", walkAdvanced: "全程步行时间", walkTotal: "全程步行上限",
+      noLimit: "不限",
+      walkTotalHint: "从出发地走到车站的时间也计入此处。解除限制后即使超过时间上限也会继续步行，适用于最近车站需要数小时的地方。",
+      walkOnly: "只步行，不乘电车",
+      statReached: "可达车站", statTotal: "全部车站",
+      farTitle: "最远可达车站", farHint: "按直线距离排序。点击即设为目的地。",
+      legend: "图例", busy: "计算中",
+      srcTimetable: "时刻表来源", srcOrigin: "原始数据", srcWalk: "步行网络·海岸线",
+      srcContributors: "贡献者 (ODbL)。", transferNote: "换乘：站内3分、出闸5分。",
+      fit: "适应范围", showLines: "显示支持线路", showStations: "显示支持车站",
+      coverage: "边界线",
+      lineCaretTitle: "按都县筛选线路", lineCaretAria: "按都县筛选线路",
+      stationCaretTitle: "按都县筛选车站", stationCaretAria: "按都县筛选车站",
+      language: "语言",
+      all: "全部",
+      min: "分", within: "分以内", limit: "上限",
+      pickedOnMap: "在地图上选的地点",
+      walkNoTransit: "不乘电车步行 ", toDest: "设为目的地",
+      linesFirst: "先显示线路才能按都县筛选。",
+      stationsNotYet: "尚未取得车站列表。",
+      unreachable: "电车到不了这里。即使从最近车站出发也超出设定的步行时间。",
+      arriveWithin: "在上限 {n} 分内到达", overLimit: "超过 {n} 分",
+      overWalk: "超过步行上限", overWalkNote: "超过设定的步行 {limit} 分 (此路线步行 {n} 分)。",
+      walkFaster: "不乘电车步行更快 (步行 {n} 分)。",
+      viaSummary: "需 {ride} 分，下车后步行 {walk} 分", failed: "无法计算 — {msg}",
+      serverSaid: "服务器返回 {code}",
+      transferAt: "在 {at} 换乘 {n} 分",
+      walkToDest: "下车后步行 {n} 分到目的地",
+      walkFromOrigin: "从出发地步行 {n} 分到 {to}",
+      rideDur: "{n} 分 · {stops} 站",
+      reasonSea: "这里是海上。请选择陆地上的地点。",
+      reasonOutside: "超出支持范围 (仅限紫色虚线内侧)。",
+      reasonNoRoad: "这里没有道路。请选择有路的地点。",
+      reasonNoStation: "步行范围内没有车站。",
+      reasonNoStationGate: "步行 {n} 分内没有车站。",
+      reasonUnknown: "无法使用这个地点。",
+      geoDenied: "定位权限被拒绝。请在地址栏左侧的锁形图标中允许。",
+      geoUnavailable: "无法确定位置。若在室内，请靠近窗边再试。",
+      geoTimeout: "获取位置耗时过长。",
+      badDest: "无法用作目的地的地点", badOrigin: "无法用作出发地的地点",
+      pickFirst: "请先选择地点",
+      noDestYet: "还没有目的地。", noOriginYet: "还没有出发地。",
+      snapFailed: "找不到附近的车站", snapNoStation: "该地点步行范围内没有车站。",
+      cannotSwap: "无法交换", needBoth: "出发地和目的地都需要设定。",
+      stationsNotYetTitle: "尚未取得车站列表", tryAgain: "请稍后再试。",
+      linesFailed: "无法载入线路",
+      geoUnsupported: "无法使用当前位置", geoNoBrowser: "此浏览器不支持定位功能。",
+      geoFailed: "无法取得当前位置",
+      walkHint: "按每分钟 {n} 米计算。假设从车站步行不超过这个时间。",
+      walkNetOn: "步行按实际人行道路计算。",
+      walkNetOff: "没有步行网络，步行以直线距离的 1.3 倍近似。",
+      mapGoogle: "地图来自 Google Maps。",
+      mapOsm: "地图来自 OpenStreetMap。要使用 Google 地图请在 config.json 中填入密钥。",
+      mapFellBack: "无法载入 Google 地图，改用 OpenStreetMap。",
+      keyRejected: "Google 地图拒绝了 API 密钥，改用 OpenStreetMap。",
+      keyHintReferrer: "请确认密钥的 HTTP 来源限制中包含 http://127.0.0.1:5173/*。",
+      googleTrouble: "Google 地图出现问题，改用 OpenStreetMap — {msg}",
+      googleLoadFailed: "无法载入 Google 地图", googleNoResponse: "Google 地图无响应",
+      regionFailed: "无法载入区域", regionListFailed: "无法取得区域列表",
+      stationCount: "({n} 站)"
+    },
+    "zh-Hant": {
+      title: "首都圈可達範圍",
+      lede: "選擇出發地和出發時間，地圖會畫出僅用電車和步行所能到達的範圍。",
+      region: "區域", origin: "出發地", dest: "目的地",
+      mapClick: "點擊地圖", here: "目前位置", snap: "最近車站",
+      hereTitle: "用瀏覽器定位設定出發地",
+      snapOriginTitle: "把出發地移到最近車站 (快捷鍵 D)",
+      snapDestTitle: "把目的地移到最近車站 (快捷鍵 F)",
+      originPlaceholder: "車站名 (新宿 / Shinjuku / 신주쿠)",
+      destPlaceholder: "選填 — 搜尋車站或在地圖上選擇",
+      swapTitle: "交換出發地和目的地", swapAria: "交換出發地和目的地",
+      clearTitle: "清除目的地", clearAria: "清除目的地",
+      clickHint: "地圖左鍵設定出發地，右鍵設定目的地。點擊上方輸入框可切換左鍵的對象。",
+      keyHint: "分別移到最近車站。",
+      departAt: "出發時間", now: "現在", calendar: "運行圖",
+      weekday: "平日", holiday: "週末及假日",
+      budget: "時間上限", budgetHint: "將這段時間三等分，畫出三層範圍。",
+      egress: "下車後步行", walkAdvanced: "全程步行時間", walkTotal: "全程步行上限",
+      noLimit: "不限",
+      walkTotalHint: "從出發地走到車站的時間也計入此處。解除限制後即使超過時間上限也會繼續步行，適用於最近車站需要數小時的地方。",
+      walkOnly: "只步行，不乘電車",
+      statReached: "可達車站", statTotal: "全部車站",
+      farTitle: "最遠可達車站", farHint: "按直線距離排序。點擊即設為目的地。",
+      legend: "圖例", busy: "計算中",
+      srcTimetable: "時刻表來源", srcOrigin: "原始資料", srcWalk: "步行網路·海岸線",
+      srcContributors: "貢獻者 (ODbL)。", transferNote: "換乘：站內3分、出閘5分。",
+      fit: "適應範圍", showLines: "顯示支援路線", showStations: "顯示支援車站",
+      coverage: "邊界線",
+      lineCaretTitle: "按都縣篩選路線", lineCaretAria: "按都縣篩選路線",
+      stationCaretTitle: "按都縣篩選車站", stationCaretAria: "按都縣篩選車站",
+      language: "語言",
+      all: "全部",
+      min: "分", within: "分以內", limit: "上限",
+      pickedOnMap: "在地圖上選的地點",
+      walkNoTransit: "不乘電車步行 ", toDest: "設為目的地",
+      linesFirst: "先顯示路線才能按都縣篩選。",
+      stationsNotYet: "尚未取得車站列表。",
+      unreachable: "電車到不了這裡。即使從最近車站出發也超出設定的步行時間。",
+      arriveWithin: "在上限 {n} 分內到達", overLimit: "超過 {n} 分",
+      overWalk: "超過步行上限", overWalkNote: "超過設定的步行 {limit} 分 (此路線步行 {n} 分)。",
+      walkFaster: "不乘電車步行更快 (步行 {n} 分)。",
+      viaSummary: "需 {ride} 分，下車後步行 {walk} 分", failed: "無法計算 — {msg}",
+      serverSaid: "伺服器回傳 {code}",
+      transferAt: "在 {at} 換乘 {n} 分",
+      walkToDest: "下車後步行 {n} 分到目的地",
+      walkFromOrigin: "從出發地步行 {n} 分到 {to}",
+      rideDur: "{n} 分 · {stops} 站",
+      reasonSea: "這裡是海上。請選擇陸地上的地點。",
+      reasonOutside: "超出支援範圍 (僅限紫色虛線內側)。",
+      reasonNoRoad: "這裡沒有道路。請選擇有路的地點。",
+      reasonNoStation: "步行範圍內沒有車站。",
+      reasonNoStationGate: "步行 {n} 分內沒有車站。",
+      reasonUnknown: "無法使用這個地點。",
+      geoDenied: "定位權限被拒絕。請在網址列左側的鎖頭圖示中允許。",
+      geoUnavailable: "無法確定位置。若在室內，請靠近窗邊再試。",
+      geoTimeout: "取得位置耗時過長。",
+      badDest: "無法用作目的地的地點", badOrigin: "無法用作出發地的地點",
+      pickFirst: "請先選擇地點",
+      noDestYet: "還沒有目的地。", noOriginYet: "還沒有出發地。",
+      snapFailed: "找不到附近的車站", snapNoStation: "該地點步行範圍內沒有車站。",
+      cannotSwap: "無法交換", needBoth: "出發地和目的地都需要設定。",
+      stationsNotYetTitle: "尚未取得車站列表", tryAgain: "請稍後再試。",
+      linesFailed: "無法載入路線",
+      geoUnsupported: "無法使用目前位置", geoNoBrowser: "此瀏覽器不支援定位功能。",
+      geoFailed: "無法取得目前位置",
+      walkHint: "按每分鐘 {n} 公尺計算。假設從車站步行不超過這個時間。",
+      walkNetOn: "步行按實際人行道路計算。",
+      walkNetOff: "沒有步行網路，步行以直線距離的 1.3 倍近似。",
+      mapGoogle: "地圖來自 Google Maps。",
+      mapOsm: "地圖來自 OpenStreetMap。要使用 Google 地圖請在 config.json 中填入金鑰。",
+      mapFellBack: "無法載入 Google 地圖，改用 OpenStreetMap。",
+      keyRejected: "Google 地圖拒絕了 API 金鑰，改用 OpenStreetMap。",
+      keyHintReferrer: "請確認金鑰的 HTTP 來源限制中包含 http://127.0.0.1:5173/*。",
+      googleTrouble: "Google 地圖發生問題，改用 OpenStreetMap — {msg}",
+      googleLoadFailed: "無法載入 Google 地圖", googleNoResponse: "Google 地圖無回應",
+      regionFailed: "無法載入區域", regionListFailed: "無法取得區域列表",
+      stationCount: "({n} 站)"
+    }
+  };
+
+  function pickLang() {
+    try {
+      var saved = localStorage.getItem("lang");
+      if (saved && STRINGS[saved]) return saved;
+    } catch (e) { /* 사생활 보호 모드 등 */ }
+    var tags = (navigator.languages && navigator.languages.length)
+      ? navigator.languages : [navigator.language || "ko"];
+    for (var i = 0; i < tags.length; i++) {
+      var tag = String(tags[i]);
+      if (/^ja/i.test(tag)) return "ja";
+      if (/^ko/i.test(tag)) return "ko";
+      if (/^zh/i.test(tag)) {
+        // 번체를 쓰는 지역은 따로 본다
+        return /Hant|TW|HK|MO/i.test(tag) ? "zh-Hant" : "zh-Hans";
+      }
+      if (/^en/i.test(tag)) return "en";
+    }
+    return "ko";
+  }
+
+  var LANG = pickLang();
+
+  /* 문자열 한 개. {이름} 자리에 값을 끼운다. */
+  function t(key, vars) {
+    var table = STRINGS[LANG] || STRINGS.ko;
+    var text = table[key];
+    if (text === undefined) text = (STRINGS.ko[key] !== undefined ? STRINGS.ko[key] : key);
+    if (!vars) return text;
+    return text.replace(/\{(\w+)\}/g, function (whole, name) {
+      return vars[name] !== undefined ? vars[name] : whole;
+    });
+  }
+
+  /* 역·노선·현 이름. 일본어로 보는 사람에게는 일본어만, 다른 언어로 보는
+     사람에게는 일본어를 함께 적는다. 현지 표기를 알아야 길을 물을 수 있다. */
+  function name(obj) {
+    if (!obj) return "";
+    var ja = obj.ja || "";
+    if (LANG === "ja") return ja;
+    var local = obj[LANG] || obj.en || "";
+    if (!local || local === ja) return ja;
+    return ja + " · " + local;
+  }
+
+  /* 현지 표기만 필요한 자리 (검색 결과의 보조 줄 등) */
+  function localName(obj) {
+    if (!obj) return "";
+    return obj[LANG] || obj.en || obj.ja || "";
+  }
+
+  /* 표시된 문자열을 지금 언어로 다시 칠한다. data-i18n 이 붙은 것만 본다. */
+  function applyLanguage() {
+    document.documentElement.lang = LANG;
+    var nodes = document.querySelectorAll("[data-i18n]");
+    for (var i = 0; i < nodes.length; i++) {
+      nodes[i].textContent = t(nodes[i].getAttribute("data-i18n"));
+    }
+    var pairs = [["data-i18n-title", "title"],
+                 ["data-i18n-aria", "aria-label"],
+                 ["data-i18n-placeholder", "placeholder"]];
+    for (var k = 0; k < pairs.length; k++) {
+      var marked = document.querySelectorAll("[" + pairs[k][0] + "]");
+      for (var j = 0; j < marked.length; j++) {
+        marked[j].setAttribute(pairs[k][1], t(marked[j].getAttribute(pairs[k][0])));
+      }
+    }
+  }
+
+  /* 언어를 바꾸면 고정 문자열뿐 아니라 이미 그려진 것들도 다시 그려야 한다.
+     역 이름과 현 이름이 화면 곳곳에 박혀 있다. */
+  /* 언어를 바꾸면 이미 그려진 것들도 다시 그려야 한다. 역 이름과 현 이름이
+     화면 곳곳에 박혀 있고, 권역 계산 결과에도 들어 있다. */
+  /* 권역 목록. 역 수 표기가 언어를 타므로 언어를 바꾸면 다시 만든다. */
+  function buildRegionOptions() {
+    var sel = el("region");
+    var keep = sel.value;
+    sel.textContent = "";
+    regionList.forEach(function (r) {
+      var o = document.createElement("option");
+      o.value = r.id;
+      o.textContent = localName(r.names) + " " + t("stationCount", { n: r.stations.toLocaleString() });
+      sel.appendChild(o);
+    });
+    if (keep) sel.value = keep;
+  }
+
+  /* 시작할 때 한 번 써넣고 마는 안내들. 언어를 바꾸면 다시 칠해야 한다. */
+  function noteText(note) {
+    if (!note) return "";
+    if (typeof note === "string") return t(note);
+    if (Array.isArray(note)) return note.map(function (k) { return t(k); }).join(" ");
+    return t(note.key, note.vars);
+  }
+
+  function paintNotes() {
+    el("map-note").textContent = noteText(mapNoteKey);
+    el("walk-note").textContent = t(walkNetworkOn ? "walkNetOn" : "walkNetOff");
+    el("walk-hint").textContent = walkSpeed ? t("walkHint", { n: walkSpeed }) : "";
+  }
+
+  function redrawAfterLanguage() {
+    paintNotes();
+    if (!mapView) return;
+    buildRegionOptions();
+    Object.keys(MENU).forEach(function (kind) {
+      if (!el(MENU[kind].menu).hidden) buildPrefMenu(kind);
+    });
+    // 권역 모양도 도달역 수도 언어와 무관하다. 응답에 다섯 언어가 모두
+    // 들어 있으므로 서버에 다시 묻지 않고 마지막 결과로 다시 그린다.
+    if (lastIso) {
+      drawLegend(lastIso.mins);
+      drawStats(lastIso.data.stats, lastIso.mins);
+    }
+    if (lastPoint) {
+      drawVerdict(lastPoint);
+      drawJourney(lastPoint.journey);
+    }
+  }
+
+  function setLanguage(next) {
+    if (!STRINGS[next] || next === LANG) return;
+    LANG = next;
+    try { localStorage.setItem("lang", next); } catch (e) { /* 저장 못 해도 동작은 한다 */ }
+    applyLanguage();
+    redrawAfterLanguage();
+  }
+  // 첫 출발지. 이름표는 언어에 맞춰 붙인다.
+  var START = { lat: 35.68962, lon: 139.70025, zoom: 11,
+                names: { ja: "新宿", en: "Shinjuku", ko: "신주쿠",
+                         "zh-Hans": "新宿", "zh-Hant": "新宿" } };
 
   var el = function (id) { return document.getElementById(id); };
   var css = function (name) {
@@ -1051,9 +1600,9 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       s.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(key) +
               "&callback=" + cb + "&loading=async&v=weekly";
       s.async = true;
-      s.onerror = function () { reject(new Error("구글 지도를 불러오지 못했습니다")); };
+      s.onerror = function () { reject(new Error(t("googleLoadFailed"))); };
       // 키가 거부되면 콜백이 오지 않으므로 시간 제한을 둔다
-      setTimeout(function () { reject(new Error("구글 지도 응답 없음")); }, 8000);
+      setTimeout(function () { reject(new Error(t("googleNoResponse"))); }, 8000);
       document.head.appendChild(s);
     });
   }
@@ -1067,6 +1616,10 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   var destination = null; // { lon, lat, label }
   var clickMode = "origin";
   var stations = [];
+  // 마지막 응답. 언어를 바꿀 때 서버에 다시 묻지 않고 이것으로 다시 그린다.
+  var lastIso = null, lastPoint = null;
+  // 지도·보행망 안내는 문자열이 아니라 상태로 들고 있어야 언어를 따라온다.
+  var mapNoteKey = null, walkNetworkOn = false, walkSpeed = null;
   var railwayShapes = null;
   /* 현별 선택. 역과 노선이 따로 고른다. null 이면 안 가리고, Set 이면
      그 현들만 보여준다. 두 목록은 세는 대상도 다르다 — 역은 역 수를,
@@ -1149,9 +1702,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     if (!names.length) {
       var empty = document.createElement("p");
       empty.className = "hint";
-      empty.textContent = kind === "lines"
-        ? "노선을 먼저 표시하면 현별로 고를 수 있습니다."
-        : "역 목록을 아직 받지 못했습니다.";
+      empty.textContent = t(kind === "lines" ? "linesFirst" : "stationsNotYet");
       empty.style.padding = "6px 8px";
       menu.appendChild(empty);
       return;
@@ -1184,7 +1735,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     }
 
     var total = names.reduce(function (a, k) { return a + counts[k]; }, 0);
-    addRow("전체", total, !prefPick[kind], function () { prefPick[kind] = null; });
+    addRow(t("all"), total, !prefPick[kind], function () { prefPick[kind] = null; });
     menu.appendChild(document.createElement("hr"));
     names.forEach(function (k) {
       var on = prefPick[kind];
@@ -1205,18 +1756,24 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   function norm(s) { return (s || "").toLowerCase(); }
 
   function stationLabel(s) {
-    return s.ja + (s.ko ? " · " + s.ko : "");
+    return name(s);
   }
 
   function search(term) {
-    var t = norm(term);
-    if (!t) return [];
+    var q = norm(term);
+    if (!q) return [];
     var head = [], tail = [];
     for (var i = 0; i < stations.length; i++) {
       var s = stations[i];
-      var pj = norm(s.ja).indexOf(t), pe = norm(s.en).indexOf(t), pk = norm(s.ko).indexOf(t);
-      if (pj === 0 || pe === 0 || pk === 0) head.push(s);
-      else if (pj > 0 || pe > 0 || pk > 0) tail.push(s);
+      // 어느 언어로 치든 찾히게 한다. 화면 언어와 상관없이 전부 본다.
+      var best = -1;
+      for (var k = 0; k < LANGS.length; k++) {
+        var at = norm(s[LANGS[k]] || "").indexOf(q);
+        if (at === 0) { best = 0; break; }
+        if (at > 0 && best !== 0) best = at;
+      }
+      if (best === 0) head.push(s);
+      else if (best > 0) tail.push(s);
       if (head.length >= 20) break;
     }
     return head.concat(tail).slice(0, 20);
@@ -1268,13 +1825,21 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 
   /* ---------- 출발지 / 도착지 ---------- */
 
-  function setOrigin(lon, lat, label) {
-    origin = { lon: lon, lat: lat, label: label || null };
+  /* 핀에는 이름표 문자열 대신 이름 묶음도 함께 들려 둔다. 언어를 바꾸면
+     문자열은 옛 언어로 남지만 묶음이 있으면 다시 만들 수 있다. */
+  /* 핀 이름표. 이름 묶음이 있으면 지금 언어로 다시 만든다. */
+  function pinLabel(pin) {
+    if (!pin) return "";
+    return pin.names ? name(pin.names) : (pin.label || "");
+  }
+
+  function setOrigin(lon, lat, label, names) {
+    origin = { lon: lon, lat: lat, label: label || null, names: names || null };
     mapView.setPin("origin", lat, lon);
   }
 
-  function setDestination(lon, lat, label) {
-    destination = { lon: lon, lat: lat, label: label || null };
+  function setDestination(lon, lat, label, names) {
+    destination = { lon: lon, lat: lat, label: label || null, names: names || null };
     mapView.setPin("dest", lat, lon);
     el("dest-clear").hidden = false;
     el("swap").disabled = false;
@@ -1321,11 +1886,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     if (parseInt(walkTotal.value, 10) > b) walkTotal.value = b;
     if (parseInt(walkTotal.value, 10) < e) walkTotal.value = e;
 
-    el("budget-value").textContent = b + "분";
-    el("egress-value").textContent = e + "분";
+    el("budget-value").textContent = b + t("min");
+    el("egress-value").textContent = e + t("min");
     walkTotal.disabled = walkUnlimited.checked;
     el("walk-total-value").textContent =
-      walkUnlimited.checked ? "제한 없음" : walkTotal.value + "분";
+      walkUnlimited.checked ? t("noLimit") : walkTotal.value + t("min");
   }
 
   function thresholds() {
@@ -1398,7 +1963,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     legend.textContent = "";
     var title = document.createElement("p");
     title.className = "legend-title";
-    title.textContent = "범례";
+    title.textContent = t("legend");
     legend.appendChild(title);
 
     mins.forEach(function (m, i) {
@@ -1409,13 +1974,13 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       sw.style.background = bandColor(i);
       var min = document.createElement("span");
       min.className = "min";
-      min.textContent = m + "분 이내";
+      min.textContent = m + t("within");
       row.appendChild(sw);
       row.appendChild(min);
       if (i === mins.length - 1) {
         var note = document.createElement("span");
         note.className = "note";
-        note.textContent = "상한";
+        note.textContent = t("limit");
         row.appendChild(note);
       }
       legend.appendChild(row);
@@ -1430,10 +1995,10 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       var badge = el("badge");
       badge.textContent = "";
       var h = document.createElement("b");
-      h.textContent = (origin && origin.label) || "지도에서 고른 지점";
+      h.textContent = pinLabel(origin) || t("pickedOnMap");
       var sub = document.createElement("span");
       sub.className = "sub";
-      sub.textContent = "전철 없이 도보 " + mins[mins.length - 1] + "분 이내";
+      sub.textContent = t("walkNoTransit") + mins[mins.length - 1] + t("within");
       badge.appendChild(h);
       badge.appendChild(sub);
       badge.hidden = false;
@@ -1451,14 +2016,14 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       var b = document.createElement("button");
       b.type = "button";
 
-      var name = document.createElement("span");
+      var label = document.createElement("span");
       var ja = document.createElement("b");
       ja.textContent = s.ja;
-      var ko = document.createElement("span");
-      ko.className = "ko";
-      ko.textContent = s.ko ? "  " + s.ko : "";
-      name.appendChild(ja);
-      name.appendChild(ko);
+      var local = document.createElement("span");
+      local.className = "ko";
+      local.textContent = (LANG === "ja" || localName(s) === s.ja) ? "" : "  " + localName(s);
+      label.appendChild(ja);
+      label.appendChild(local);
 
       var nums = document.createElement("span");
       nums.className = "nums";
@@ -1467,19 +2032,19 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       km.textContent = s.km + "km";
       var m = document.createElement("span");
       m.className = "m";
-      m.textContent = s.min + "분";
+      m.textContent = s.min + t("min");
       nums.appendChild(km);
       nums.appendChild(m);
 
       var hint = document.createElement("span");
       hint.className = "go-hint";
-      hint.textContent = "도착지로";
+      hint.textContent = t("toDest");
       nums.appendChild(hint);
 
-      b.appendChild(name);
+      b.appendChild(label);
       b.appendChild(nums);
       b.addEventListener("click", function () {
-        setDestination(s.lon, s.lat, s.ja + (s.ko ? " · " + s.ko : ""));
+        setDestination(s.lon, s.lat, name(s), s);
         el("dq").value = s.ja;
         runPoint();
       });
@@ -1491,10 +2056,10 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     var badge = el("badge");
     badge.textContent = "";
     var head = document.createElement("b");
-    head.textContent = origin && origin.label ? origin.label : "지도에서 고른 지점";
+    head.textContent = pinLabel(origin) || t("pickedOnMap");
     var sub = document.createElement("span");
     sub.className = "sub";
-    sub.textContent = el("depart").value + " 출발 · " + mins[mins.length - 1] + "분 이내 · 역 " + stats.reached;
+    sub.textContent = el("depart").value + " · " + mins[mins.length - 1] + t("within") + " · " + stats.reached;
     badge.appendChild(head);
     badge.appendChild(sub);
     badge.hidden = false;
@@ -1528,13 +2093,13 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
         var r = row("ride", leg.railway.color);
         var head = document.createElement("div");
         head.className = "headline";
-        var name = document.createElement("span");
-        name.className = "line-name";
-        name.textContent = leg.railway.ko || leg.railway.ja;
+        var line = document.createElement("span");
+        line.className = "line-name";
+        line.textContent = name(leg.railway);
         var dur = document.createElement("span");
         dur.className = "dur";
-        dur.textContent = leg.min + "분 · " + leg.stops + "개 역";
-        head.appendChild(name);
+        dur.textContent = t("rideDur", { n: leg.min, stops: leg.stops });
+        head.appendChild(line);
         head.appendChild(dur);
 
         var st = document.createElement("div");
@@ -1554,11 +2119,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 
       var w = row(leg.type === "transfer" ? "transfer" : "walk");
       if (leg.type === "transfer") {
-        w.body.textContent = leg.at.ja + " 에서 환승 " + leg.min + "분";
+        w.body.textContent = t("transferAt", { at: name(leg.at), n: leg.min });
       } else if (leg.final) {
-        w.body.textContent = "내려서 도착지까지 도보 " + leg.min + "분";
+        w.body.textContent = t("walkToDest", { n: leg.min });
       } else {
-        w.body.textContent = "출발지에서 " + leg.to.ja + " 까지 도보 " + leg.min + "분";
+        w.body.textContent = t("walkFromOrigin", { to: name(leg.to), n: leg.min });
       }
       list.appendChild(w.li);
     });
@@ -1587,41 +2152,53 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 
     if (!res.reachable) {
       v.classList.add("over");
-      var t = document.createElement("p");
-      t.className = "breakdown";
-      t.textContent = "전철로는 닿지 않는 지점입니다. 가장 가까운 역에서도 설정한 도보 시간 안에 들어오지 않습니다.";
-      v.appendChild(t);
+      var why = document.createElement("p");
+      why.className = "breakdown";
+      why.textContent = t("unreachable");
+      v.appendChild(why);
       v.hidden = false;
       return;
     }
 
-    if (!res.within_budget) v.classList.add("over");
+    // 소요 시간과 도보 시간은 따로 본다. 시간 안에 닿아도 걷는 시간이
+    // 설정을 넘을 수 있다. 경로는 그대로 보여주되 넘었다고 말해 준다.
+    if (!res.within_budget || res.over_walk) v.classList.add("over");
 
     var tag = document.createElement("span");
     tag.className = "tag";
-    tag.textContent = res.within_budget
-      ? "상한 " + res.budget_min + "분 안에 도착"
-      : "상한 " + res.budget_min + "분을 넘습니다";
+    tag.textContent = !res.within_budget
+      ? t("overLimit", { n: res.budget_min })
+      : res.over_walk
+        ? t("overWalk")
+        : t("arriveWithin", { n: res.budget_min });
     v.appendChild(tag);
 
     var total = document.createElement("span");
     total.className = "total";
-    total.textContent = res.total_min + "분";
+    total.textContent = res.total_min + t("min");
     v.appendChild(total);
 
     var p = document.createElement("p");
     p.className = "breakdown";
     if (res.walk_only) {
-      p.textContent = "전철을 타지 않고 걷는 편이 빠릅니다 (도보 " + res.direct_walk_min + "분).";
+      p.textContent = t("walkFaster", { n: res.direct_walk_min });
     } else {
       var b = document.createElement("b");
-      b.textContent = res.via.ja + (res.via.ko ? " " + res.via.ko : "");
+      b.textContent = name(res.via);
       p.appendChild(b);
       p.appendChild(document.createTextNode(
-        "까지 " + res.via.ride_min + "분, 내려서 도보 " + res.via.walk_min + "분"
+        t("viaSummary", { ride: res.via.ride_min, walk: res.via.walk_min })
       ));
     }
     v.appendChild(p);
+
+    // 도보가 설정을 넘으면 그 사실만 덧붙인다. 경로는 그대로 보여준다.
+    if (res.over_walk) {
+      var note = document.createElement("p");
+      note.className = "breakdown over-walk";
+      note.textContent = t("overWalkNote", { limit: res.walk_limit_min, n: res.walk_min });
+      v.appendChild(note);
+    }
     v.hidden = false;
   }
 
@@ -1650,9 +2227,29 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     el("busy").hidden = pending === 0;
   }
 
+  /* 서버 응답 읽기. 실패하면 서버가 보낸 사유를 그대로 쓴다.
+
+     이게 없으면 오류 쪽이 HTML 로 올 때 r.json() 이 "Unexpected token '<'"
+     으로 터져서, 화면에 무슨 일인지 알 수 없는 문구가 뜬다. */
+  function getJSON(url) {
+    return fetch(url).then(function (r) {
+      return r.text().then(function (body) {
+        var data = null;
+        try { data = JSON.parse(body); } catch (e) { /* JSON 이 아니다 */ }
+        if (r.ok) {
+          if (data === null) throw new Error(t("serverSaid", { code: r.status }));
+          return data;
+        }
+        throw new Error(
+          (data && data.error) || t("serverSaid", { code: r.status })
+        );
+      });
+    });
+  }
+
   function fail(message) {
     var badge = el("badge");
-    badge.textContent = "계산하지 못했습니다 — " + message;
+    badge.textContent = t("failed", { msg: message });
     badge.hidden = false;
   }
 
@@ -1661,13 +2258,10 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     var mins = thresholds();
     var seq = ++seqs.iso;
     busy(true);
-    return fetch("/api/isochrone?" + new URLSearchParams(baseParams()))
-      .then(function (r) {
-        if (!r.ok) throw new Error("서버가 " + r.status + " 를 돌려줬습니다");
-        return r.json();
-      })
+    return getJSON("/api/isochrone?" + new URLSearchParams(baseParams()))
       .then(function (data) {
         if (seq !== seqs.iso) return;   // 그 사이 새 요청이 있었다
+        lastIso = { data: data, mins: mins };
         drawIsochrone(data.geojson);
         drawLegend(mins);
         drawStats(data.stats, mins);
@@ -1683,13 +2277,10 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     params.dest_lat = destination.lat;
     var seq = ++seqs.point;
     busy(true);
-    return fetch("/api/point?" + new URLSearchParams(params))
-      .then(function (r) {
-        if (!r.ok) throw new Error("서버가 " + r.status + " 를 돌려줬습니다");
-        return r.json();
-      })
+    return getJSON("/api/point?" + new URLSearchParams(params))
       .then(function (res) {
         if (seq !== seqs.point) return;
+        lastPoint = res;
         drawVerdict(res);
         drawJourney(res.journey);
       })
@@ -1724,41 +2315,29 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     noticeTimer = setTimeout(function () { box.hidden = true; }, 5000);
   }
 
-  var REASONS = {
-    sea: "바다 위입니다. 뭍에 있는 지점을 골라주세요.",
-    outside_region: "수도권 밖입니다. 지금은 간토 권역만 다룹니다 (보라색 점선 안쪽).",
-    no_road: "도로가 없는 곳입니다. 길이 있는 지점을 골라주세요.",
-    no_station_in_range: "걸어서 닿는 역이 없습니다.",
-    unknown: "이 지점은 쓸 수 없습니다."
+  var REASON_KEYS = {
+    sea: "reasonSea", outside_region: "reasonOutside", no_road: "reasonNoRoad",
+    no_station_in_range: "reasonNoStation", unknown: "reasonUnknown"
   };
-
   // navigator.geolocation 의 오류 코드
-  var GEO_ERRORS = {
-    1: "위치 권한이 거부됐습니다. 주소창 왼쪽 자물쇠에서 허용해 주세요.",
-    2: "위치를 확인할 수 없습니다. 실내라면 창가에서 다시 시도해 보세요.",
-    3: "위치를 가져오는 데 너무 오래 걸립니다."
-  };
+  var GEO_KEYS = { 1: "geoDenied", 2: "geoUnavailable", 3: "geoTimeout" };
 
   /* 찍기 전에 쓸 수 있는 지점인지 먼저 확인한다. 바다나 권역 밖을 찍어두고
      빈 결과를 보는 것보다, 찍히지 않는 편이 낫다. */
   function handleMapClick(lat, lon, forced) {
     var target = forced || clickMode;
-    fetch("/api/reachable?" + new URLSearchParams(
+    getJSON("/api/reachable?" + new URLSearchParams(
       walkUnlimited.checked
         ? { region: el("region").value || "kanto", lon: lon, lat: lat, walk_unlimited: "1" }
         : { region: el("region").value || "kanto", lon: lon, lat: lat, walk_total: walkTotal.value }
     ))
-      .then(function (r) { return r.json(); })
       .then(function (res) {
         if (!res.ok) {
-          var why = REASONS[res.reason] || REASONS.unknown;
+          var why = t(REASON_KEYS[res.reason] || "reasonUnknown");
           if (res.reason === "no_station_in_range" && res.gate_min) {
-            why = "걸어서 " + res.gate_min + "분 안에 닿는 역이 없습니다.";
+            why = t("reasonNoStationGate", { n: res.gate_min });
           }
-          notice(
-            target === "dest" ? "도착지로 쓸 수 없는 지점입니다" : "출발지로 쓸 수 없는 지점입니다",
-            why
-          );
+          notice(t(target === "dest" ? "badDest" : "badOrigin"), why);
           return;
         }
         el("notice").hidden = true;
@@ -1781,11 +2360,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 
   function wirePanel() {
     attachSearch(el("q"), el("results"), function (s) {
-      setOrigin(s.lon, s.lat, stationLabel(s));
+      setOrigin(s.lon, s.lat, stationLabel(s), s);
       run();
     });
     attachSearch(el("dq"), el("dest-results"), function (s) {
-      setDestination(s.lon, s.lat, stationLabel(s));
+      setDestination(s.lon, s.lat, stationLabel(s), s);
       runPoint();
     });
 
@@ -1801,13 +2380,13 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       return null;
     }
 
-    function applySnap(which, lon, lat, label, ja, moved) {
+    function applySnap(which, lon, lat, label, ja, moved, names) {
       if (which === "dest") {
-        setDestination(lon, lat, label);
+        setDestination(lon, lat, label, names);
         el("dq").value = ja;
         if (moved) runPoint();
       } else {
-        setOrigin(lon, lat, label);
+        setOrigin(lon, lat, label, names);
         el("q").value = ja;
         if (moved) run();
       }
@@ -1816,7 +2395,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     function snapTo(which) {
       var pin = which === "dest" ? destination : origin;
       if (!pin) {
-        notice("먼저 지점을 찍어주세요", which === "dest" ? "도착지가 아직 없습니다." : "출발지가 아직 없습니다.");
+        notice(t("pickFirst"), t(which === "dest" ? "noDestYet" : "noOriginYet"));
         return;
       }
 
@@ -1824,29 +2403,26 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       // 지도를 눌러 역 위에 찍으면 입력칸이 비어 있을 수 있다.
       var here = stationAt(pin);
       if (here) {
-        applySnap(which, pin.lon, pin.lat,
-                  here.ja + (here.ko ? " · " + here.ko : ""), here.ja, false);
+        applySnap(which, pin.lon, pin.lat, name(here), here.ja, false, here);
         return;
       }
 
       var seq = ++seqs.snap;
       busy(true);
-      fetch("/api/nearest?" + new URLSearchParams({ region: el("region").value || "kanto", lon: pin.lon, lat: pin.lat }))
-        .then(function (r) { return r.json(); })
+      getJSON("/api/nearest?" + new URLSearchParams({ region: el("region").value || "kanto", lon: pin.lon, lat: pin.lat }))
         .then(function (res) {
           // 그 사이 다른 스냅이나 맞바꾸기가 있었으면 이 답은 옛 핀 기준이다.
           // 그대로 쓰면 출발지와 도착지가 한 점으로 합쳐진다.
           if (seq !== seqs.snap) return;
           if (!res.ok) {
-            notice("가까운 역을 찾지 못했습니다", "걸어서 닿는 역이 없는 지점입니다.");
+            notice(t("snapFailed"), t("snapNoStation"));
             return;
           }
           var moved = Math.abs(res.lon - pin.lon) > 1e-6 || Math.abs(res.lat - pin.lat) > 1e-6;
-          applySnap(which, res.lon, res.lat,
-                    res.ja + (res.ko ? " · " + res.ko : ""), res.ja, moved);
+          applySnap(which, res.lon, res.lat, name(res), res.ja, moved, res);
         })
         .catch(function (err) {
-          if (seq === seqs.snap) notice("가까운 역을 찾지 못했습니다", err.message);
+          if (seq === seqs.snap) notice(t("snapFailed"), err.message);
         })
         // busy 는 카운터다. busy(true) 하나에 반드시 하나가 짝지어야 한다.
         // 순번으로 걸러 버리면 진행 표시가 영영 안 꺼진다.
@@ -1857,7 +2433,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
        방향에 따라 달라서 단순히 경로를 뒤집는 것과 결과가 다르다. */
     el("swap").addEventListener("click", function () {
       if (!origin || !destination) {
-        notice("맞바꿀 수 없습니다", "출발지와 도착지가 모두 있어야 합니다.");
+        notice(t("cannotSwap"), t("needBoth"));
         return;
       }
       // 진행 중인 스냅 응답을 무효로 만든다. 옛 핀 기준으로 찾은 역이
@@ -1865,8 +2441,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       seqs.snap++;
       var a = origin, b = destination;
       var qa = el("q").value, qb = el("dq").value;
-      setOrigin(b.lon, b.lat, b.label);
-      setDestination(a.lon, a.lat, a.label);
+      setOrigin(b.lon, b.lat, b.label, b.names);
+      setDestination(a.lon, a.lat, a.label, a.names);
       el("q").value = qb;
       el("dq").value = qa;
       run();
@@ -1945,7 +2521,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     el("toggle-stations").addEventListener("click", function () {
       var on = this.getAttribute("aria-pressed") !== "true";
       if (on && !stations.length) {
-        notice("역 목록을 아직 받지 못했습니다", "잠시 후 다시 눌러주세요.");
+        notice(t("stationsNotYetTitle"), t("tryAgain"));
         return;
       }
       this.setAttribute("aria-pressed", String(on));
@@ -1959,15 +2535,14 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       if (railwayShapes) { refreshLines(); return; }
       if (railwayShapes) { refreshLines(); return; }
       busy(true);
-      fetch("/api/railways?region=" + encodeURIComponent(el("region").value || "kanto"))
-        .then(function (r) { return r.json(); })
+      getJSON("/api/railways?region=" + encodeURIComponent(el("region").value || "kanto"))
         .then(function (list) {
           railwayShapes = list;
           refreshLines();
           if (!el("line-menu").hidden) buildPrefMenu("lines");
         })
         .catch(function (err) {
-          notice("노선을 불러오지 못했습니다", err.message);
+          notice(t("linesFailed"), err.message);
           el("toggle-lines").setAttribute("aria-pressed", "false");
         })
         .then(function () { busy(false); });
@@ -1977,7 +2552,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
        권역 밖인지, 바다인지, 걸어 닿는 역이 없는지는 거기서 가려 준다. */
     el("here").addEventListener("click", function () {
       if (!navigator.geolocation) {
-        notice("현위치를 쓸 수 없습니다", "이 브라우저가 위치 기능을 지원하지 않습니다.");
+        notice(t("geoUnsupported"), t("geoNoBrowser"));
         return;
       }
       var button = this;
@@ -1993,11 +2568,21 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
         function (err) {
           busy(false);
           button.disabled = false;
-          notice("현위치를 가져오지 못했습니다", GEO_ERRORS[err.code] || err.message);
+          notice(t("geoFailed"), GEO_KEYS[err.code] ? t(GEO_KEYS[err.code]) : err.message);
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
       );
     });
+
+    var langSel = el("lang");
+    LANGS.forEach(function (code) {
+      var o = document.createElement("option");
+      o.value = code;
+      o.textContent = LANG_NAMES[code];
+      langSel.appendChild(o);
+    });
+    langSel.value = LANG;
+    langSel.addEventListener("change", function () { setLanguage(this.value); });
 
     el("toggle-coverage").addEventListener("click", function () {
       this.setAttribute("aria-pressed",
@@ -2034,9 +2619,10 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 
   /* 지도 엔진을 붙인다. 구글 지도가 중간에 인증을 거부당하면 이 함수를 다시
      불러 OpenStreetMap 으로 갈아끼운다. 패널 배선은 한 번만 한다. */
-  function attachMap(view, note) {
+  function attachMap(view, noteKey) {
     mapView = view;
-    el("map-note").textContent = note;
+    mapNoteKey = noteKey;
+    paintNotes();
     mapView.onClick(handleMapClick);
     // 좌클릭은 출발지, 우클릭은 도착지로 고정이다. 우클릭으로 도착지를
     // 찍었다고 해서 그 다음 좌클릭까지 도착지로 가면 안 된다.
@@ -2053,7 +2639,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     if (origin) {
       mapView.setPin("origin", origin.lat, origin.lon);
     } else {
-      setOrigin(START.lon, START.lat, "新宿 · 신주쿠");
+      setOrigin(START.lon, START.lat, name(START.names), START.names);
       el("q").value = "新宿";
     }
     if (destination) mapView.setPin("dest", destination.lat, destination.lon);
@@ -2081,23 +2667,19 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       if (parseInt(egress.value, 10) > egressCap) egress.value = egressCap;
     }
     if (cfg.egress_default_min) egress.value = cfg.egress_default_min;
-    if (cfg.walk_speed_m_per_min) {
-      el("walk-hint").textContent =
-        "분속 " + cfg.walk_speed_m_per_min + " m 기준. 역에서 이 시간 넘게는 걷지 않는다고 봅니다.";
-    }
-    el("walk-note").textContent = cfg.walk_network
-      ? "도보는 실제 보행로를 따라 계산합니다."
-      : "보행망이 없어 도보는 직선거리에 1.3배 우회 보정으로 근사합니다.";
+    walkNetworkOn = !!(cfg && cfg.walk_network);
+    walkSpeed = cfg && cfg.walk_speed_m_per_min;
+    paintNotes();
     syncLabels();
   }
 
   var swapped = false;
 
-  function fallbackToLeaflet(note) {
+  function fallbackToLeaflet(noteKey) {
     if (swapped) return;
     swapped = true;
     el("map").textContent = "";   // 구글 지도가 남긴 DOM 을 치운다
-    attachMap(LeafletMap(el("map")), note);
+    attachMap(LeafletMap(el("map")), noteKey);
   }
 
   /* 구글 지도는 스크립트가 받아진 뒤에야 키를 검증한다. 거부되면 이 훅이
@@ -2105,28 +2687,23 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
      리퍼러 제한 위반, API 미사용 설정, 결제 미등록, 할당량 초과가 모두
      여기로 들어온다. */
   window.gm_authFailure = function () {
-    fallbackToLeaflet(
-      "구글 지도가 API 키를 거부해 OpenStreetMap 으로 표시합니다. " +
-      "키의 HTTP 리퍼러 제한에 http://127.0.0.1:5173/* 가 있는지 확인하세요."
-    );
+    fallbackToLeaflet(["keyRejected", "keyHintReferrer"]);
   };
 
   /* 인증을 통과한 뒤에도 구글 지도 쪽에서 예외가 나면 지도만 갈아끼운다.
      지도 하나 때문에 계산 결과까지 못 보는 일은 없어야 한다. */
   function guarded(view) {
     var out = {};
-    Object.keys(view).forEach(function (name) {
-      if (typeof view[name] !== "function") {
-        out[name] = view[name];
+    Object.keys(view).forEach(function (key) {
+      if (typeof view[key] !== "function") {
+        out[key] = view[key];
         return;
       }
-      out[name] = function () {
+      out[key] = function () {
         try {
-          return view[name].apply(view, arguments);
+          return view[key].apply(view, arguments);
         } catch (err) {
-          fallbackToLeaflet(
-            "구글 지도에 문제가 생겨 OpenStreetMap 으로 표시합니다 — " + err.message
-          );
+          fallbackToLeaflet({ key: "googleTrouble", vars: { msg: err.message } });
         }
       };
     });
@@ -2154,10 +2731,10 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     }
     busy(true);
     return Promise.all([
-      fetch("/api/stations?region=" + encodeURIComponent(id)).then(function (r) { return r.json(); }),
-      fetch("/api/coverage?region=" + encodeURIComponent(id)).then(function (r) { return r.json(); }),
-      fetch("/api/prefectures?region=" + encodeURIComponent(id))
-        .then(function (r) { return r.json(); })
+      getJSON("/api/stations?region=" + encodeURIComponent(id)),
+      getJSON("/api/coverage?region=" + encodeURIComponent(id)),
+      // 현 정보는 없어도 나머지는 돌아간다
+      getJSON("/api/prefectures?region=" + encodeURIComponent(id))
         .catch(function () { return {}; })
     ]).then(function (res) {
       stations = res[0];
@@ -2170,27 +2747,23 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       }
       if (info && info.center) {
         clearDestination();
-        setOrigin(info.center[0], info.center[1], info.name);
+        setOrigin(info.center[0], info.center[1], localName(info.names), info.names);
         el("q").value = "";
         fitNext = true;
       }
     }).catch(function (err) {
-      notice("권역을 불러오지 못했습니다", err.message);
+      notice(t("regionFailed"), err.message);
     }).then(function () { busy(false); });
   }
 
-  fetch("/api/regions")
-    .then(function (r) { return r.json(); })
+  // 고정 문자열을 먼저 칠한다. 마크업의 한국어는 번역이 없을 때의 대비책이다.
+  applyLanguage();
+
+  getJSON("/api/regions")
     .then(function (data) {
       regionList = data.regions;
       var sel = el("region");
-      sel.textContent = "";
-      regionList.forEach(function (r) {
-        var o = document.createElement("option");
-        o.value = r.id;
-        o.textContent = r.name + " (역 " + r.stations.toLocaleString() + ")";
-        sel.appendChild(o);
-      });
+      buildRegionOptions();
       sel.value = data.default;
       // 권역이 하나뿐이면 고를 것이 없으니 숨긴다
       el("field-region").hidden = regionList.length < 2;
@@ -2199,15 +2772,14 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       });
       return loadRegion(data.default);
     })
-    .catch(function (err) { notice("권역 목록을 받지 못했습니다", err.message); });
+    .catch(function (err) { notice(t("regionListFailed"), err.message); });
 
-  fetch("/api/config")
-    .then(function (r) { return r.json(); })
+  getJSON("/api/config")
     .then(function (cfg) {
       applyServerDefaults(cfg);
       if (!cfg.google_maps_key) throw new Error("no-key");
       return loadGoogleMaps(cfg.google_maps_key).then(function () {
-        attachMap(guarded(GoogleMap(el("map"))), "지도는 Google Maps.");
+        attachMap(guarded(GoogleMap(el("map"))), "mapGoogle");
       });
     })
     .catch(function (err) {
@@ -2215,9 +2787,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       swapped = true;   // 애초에 구글을 못 띄웠으니 갈아끼울 것도 없다
       attachMap(
         LeafletMap(el("map")),
-        err && err.message === "no-key"
-          ? "지도는 OpenStreetMap. 구글 지도를 쓰려면 config.json 에 키를 넣으세요."
-          : "구글 지도를 불러오지 못해 OpenStreetMap 으로 표시합니다."
+        err && err.message === "no-key" ? "mapOsm" : "mapFellBack"
       );
     });
 })();
