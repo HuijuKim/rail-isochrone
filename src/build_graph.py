@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import json
 import re
-from collections import defaultdict
 import os
 from pathlib import Path
 
@@ -25,6 +24,9 @@ BASE = ROOT / "data" / "regions" / REGION
 RAW = BASE / "raw"
 TIMETABLES = RAW / "train-timetables"
 OUT = BASE
+
+# 화면이 고를 수 있는 언어. 역·노선 이름을 이만큼 담는다.
+LANGS = ("ja", "en", "ko", "zh-Hans", "zh-Hant")
 
 # 같은 역 구내에서의 환승(플랫폼 이동)에 드는 시간
 TRANSFER_SAME_COMPLEX_SEC = 180
@@ -217,9 +219,12 @@ def build(calendar: str = "Weekday") -> dict:
         "calendar": calendar,
         "ids": ids,
         "coords": coords,
-        "titles_ja": [by_id[s]["title"].get("ja", "") for s in ids],
-        "titles_en": [by_id[s]["title"].get("en", "") for s in ids],
-        "titles_ko": [by_id[s]["title"].get("ko", "") for s in ids],
+        # 화면이 고를 수 있는 언어만큼 담는다. 원본에는 프랑스어도 있지만
+        # UI 를 번역하지 않는 언어는 넣어 봐야 반쪽이라 뺀다.
+        "titles": {
+            lang: [by_id[s]["title"].get(lang, "") for s in ids]
+            for lang in LANGS
+        },
         "railway": [by_id[s].get("railway", "") for s in ids],
         "ev_stop": np.array(ev_stop, dtype=np.int32),
         "ev_arr": np.array(ev_arr, dtype=np.int32),
@@ -251,9 +256,7 @@ def main() -> None:
                 {
                     "ids": g["ids"],
                     "coords": g["coords"].tolist(),
-                    "ja": g["titles_ja"],
-                    "en": g["titles_en"],
-                    "ko": g["titles_ko"],
+                    **g["titles"],
                     "railway": g["railway"],
                 },
                 ensure_ascii=False,

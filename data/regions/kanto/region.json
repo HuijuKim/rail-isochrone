@@ -1,7 +1,5 @@
 {
   "id": "kanto",
-  "name": "수도권",
-  "name_full": "Greater Tokyo",
   "center": [
     139.70025,
     35.68962
@@ -20,5 +18,12 @@
   "osm_files": [
     "kanto-latest.osm.pbf",
     "chubu-latest.osm.pbf"
-  ]
+  ],
+  "names": {
+    "ja": "首都圏",
+    "en": "Greater Tokyo",
+    "ko": "수도권",
+    "zh-Hans": "首都圈",
+    "zh-Hant": "首都圈"
+  }
 }

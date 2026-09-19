@@ -64,8 +64,14 @@ def prefecture_polygons() -> dict[str, list[np.ndarray]]:
         names.add(name)
         labels[name] = {
             "ja": name,
-            "ko": tags.get("name:ko") or name,
             "en": tags.get("name:en") or name,
+            "ko": tags.get("name:ko") or name,
+            # 간체가 없으면 name:zh 를 쓴다. 거기에 "东京都/東京都" 처럼
+            # 두 표기가 빗금으로 붙어 오는 경우가 있어 앞쪽만 취한다.
+            "zh-Hans": (tags.get("name:zh-Hans")
+                        or (tags.get("name:zh") or name).split("/")[0]),
+            "zh-Hant": (tags.get("name:zh-Hant")
+                        or (tags.get("name:zh") or name).split("/")[-1]),
         }
         for member in rel.members:
             if member.type == "w":
