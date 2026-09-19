@@ -70,6 +70,15 @@ def google_maps_key() -> str | None:
     return None
 
 
+def draw_on_roads(reg, path: list[list[float]]) -> list[list[float]]:
+    """그린 선을 원본 도로 위로 옮긴다. 시간과 경로 선택은 그대로 둔다.
+
+    40 m 격자에서 나온 선은 도로에서 최대 40 m 벗어난다. 지도에 겹쳐 놓으면
+    건물 위를 지나가는 것처럼 보인다.
+    """
+    return reg.fine.trace(path) if getattr(reg, "fine", None) is not None else path
+
+
 def direct_walk_seconds(reg, lon: float, lat: float, dest_lon: float, dest_lat: float,
                         limit: float) -> float:
     """출발지에서 도착지까지 전철 없이 걸었을 때의 시간."""
@@ -84,6 +93,27 @@ def direct_walk_seconds(reg, lon: float, lat: float, dest_lon: float, dest_lat: 
         return float("inf")
 
     return WALK.time_to_node(lon, lat, WALK.nearest_node(dest_lon, dest_lat), limit)
+
+
+def direct_walk_path(reg, lon: float, lat: float, dest_lon: float, dest_lat: float,
+                     limit: float) -> list[list[float]]:
+    """전철을 타지 않고 걸어갈 때 실제로 걷는 길.
+
+    walk_path 는 도착점이 역일 때만 쓸 수 있어서 따로 둔다. 걷는 편이
+    빠르다고 답해 놓고 지도에 선이 없으면 어디로 걸으라는 건지 알 수 없다.
+    """
+    ends = [
+        [round(float(lon), 6), round(float(lat), 6)],
+        [round(float(dest_lon), 6), round(float(dest_lat), 6)],
+    ]
+    WALK = reg.walk
+    if WALK is None:
+        return ends
+    path = WALK.path_to_node(lon, lat, WALK.nearest_node(dest_lon, dest_lat), limit)
+    if len(path) < 2:
+        return ends
+    # 다익스트라는 스냅된 노드에서 시작하고 끝나므로 양 끝에 실제 지점을 잇는다
+    return draw_on_roads(reg, [ends[0]] + path + [ends[1]])
 
 
 def hhmm(seconds: int) -> str:
@@ -114,7 +144,7 @@ def walk_path(reg, lon: float, lat: float, station: int, limit: float) -> list[l
     if len(path) < 2:
         return ends
     # 다익스트라는 스냅된 노드에서 시작하고 끝나므로 양 끝에 실제 지점을 잇는다
-    return [ends[0]] + path + [ends[1]]
+    return draw_on_roads(reg, [ends[0]] + path + [ends[1]])
 
 
 def describe_journey(reg, legs: list[dict], best: np.ndarray, depart: int,
@@ -177,17 +207,30 @@ def read_query() -> dict:
     thresholds = sorted(
         int(x) * 60 for x in request.args.get("thresholds", "30,45,60").split(",")
     )
+    budget = max(thresholds)
     raw_total = request.args.get("walk_total", "").strip()
     unlimited = request.args.get("walk_unlimited") in ("1", "true", "yes")
+
+    # 세 값은 포개진 제약이다. 바깥부터 소요 시간 상한, 하차 후 도보, 전체
+    # 도보 순이고 안쪽이 바깥을 넘을 수 없다. 화면에서도 같은 순서로 묶지만,
+    # 주소창으로 직접 부르면 그 제약을 건너뛰므로 여기서도 맞춘다.
+    egress = min(int(request.args.get("egress", EGRESS_WALK_MAX_SEC // 60)) * 60, budget)
+    walk_total = int(raw_total) * 60 if raw_total else None
+    if walk_total is not None:
+        walk_total = min(max(walk_total, egress), budget)
+    # "제한 없음" 만 예외다. 가장 가까운 역이 몇 시간 거리인 곳에서 쓰라고
+    # 둔 것이라, 소요 시간 상한을 넘겨서도 걷는 것이 이 선택의 목적이다.
+    if unlimited:
+        walk_total = ACCESS_UNLIMITED_SEC
+
     return {
         "lon": float(request.args["lon"]),
         "lat": float(request.args["lat"]),
         "depart": parse_hhmm(request.args.get("depart", "09:00")),
         "calendar": request.args.get("calendar", "Weekday"),
         "thresholds": thresholds,
-        "egress": int(request.args.get("egress", EGRESS_WALK_MAX_SEC // 60)) * 60,
-        "walk_total": ACCESS_UNLIMITED_SEC if unlimited else
-                      (int(raw_total) * 60 if raw_total else None),
+        "egress": egress,
+        "walk_total": walk_total,
         "walk_unlimited": unlimited,
     }
 
@@ -210,7 +253,7 @@ def regions():
                     "name_full": r.meta.get("name_full", r.name),
                     "center": r.meta.get("center"),
                     "zoom": r.meta.get("zoom", 11),
-                    "stations": r.n_groups,
+                    "stations": int(r.supported.sum()),
                     "note": r.meta.get("note", ""),
                 }
                 for r in REGIONS.values()
@@ -223,6 +266,23 @@ def regions():
 def stations():
     """검색창 자동완성용 역 목록."""
     return jsonify(pick_region().search_index)
+
+
+@app.get("/api/prefectures")
+def prefectures():
+    """도도부현 이름표. 화면 언어에 맞춰 보여주려고 언어별로 들고 있다."""
+    return jsonify(pick_region().pref_names)
+
+
+@app.get("/api/railways")
+def railways():
+    """지원 노선의 선형. 지도에 겹쳐 보여주는 용도다.
+
+    원본 선형은 7만 6천 점이라 1.6 MB 다. 지도에 그리는 데는 그만한
+    해상도가 필요 없으므로 25 m 오차로 줄여 보낸다. 7천 점, 150 KB 다.
+    """
+    reg = pick_region()
+    return jsonify(reg.railway_shapes)
 
 
 @app.get("/api/config")
@@ -266,10 +326,17 @@ def nearest():
 
     # 라우터가 출발지를 잡을 때와 같은 계산을 쓴다. 따로 구현하면 화면이
     # "가까운 역 없음" 이라는데 권역은 그려지는 식으로 어긋난다.
+    #
+    # 다만 상한은 좁게 잡고 시작한다. 6시간을 열어두면 사람이 사는 곳에서도
+    # 매번 수십만 노드를 훑어 2.3초가 걸린다. 한 시간 안에 역이 있으면 그중
+    # 가장 가까운 역이 답이고, 더 멀리 볼 이유가 없다.
     g = next(iter(reg.graphs.values()))
-    secs = access_seconds(g, lon, lat, ACCESS_UNLIMITED_SEC, reg.walk)
-    secs = np.where(np.isfinite(reg.coords[:, 0]), secs, np.inf)
-    if not np.isfinite(secs).any():
+    coords_ok = np.isfinite(reg.coords[:, 0])
+    for limit in (ACCESS_GATE_SEC, ACCESS_UNLIMITED_SEC):
+        secs = np.where(coords_ok, access_seconds(g, lon, lat, limit, reg.walk), np.inf)
+        if np.isfinite(secs).any():
+            break
+    else:
         return jsonify({"ok": False})
 
     i = int(np.argmin(secs))
@@ -348,7 +415,8 @@ def isochrone():
         return jsonify(
             {
                 "geojson": contour_geojson(field, thresholds),
-                "stats": {"reached": 0, "total": reg.n_groups, "farthest": [], "mode": "walk"},
+                "stats": {"reached": 0, "total": int(reg.supported.sum()),
+                          "farthest": [], "mode": "walk"},
             }
         )
 
@@ -417,7 +485,7 @@ def isochrone():
             "geojson": geojson,
             "stats": {
                 "reached": reached,
-                "total": reg.n_groups,
+                "total": int(reg.supported.sum()),
                 "farthest": far,
             },
         }
@@ -499,6 +567,18 @@ def point():
                     "path": leg,
                 }
             )
+
+    # 걷는 편이 빠른 경우에도 경로는 그려 줘야 한다
+    if via is None and walkable:
+        journey = [
+            {
+                "type": "walk",
+                "to": None,
+                "min": round(direct / 60),
+                "final": True,
+                "path": direct_walk_path(reg, lon, lat, dest_lon, dest_lat, direct + 120),
+            }
+        ]
 
     if not np.isfinite(best_total):
         return jsonify({"reachable": False})
