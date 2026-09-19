@@ -244,6 +244,9 @@ def config():
             "walk_speed_m_per_min": round(WALK_SPEED * 60),
             "egress_default_min": EGRESS_WALK_MAX_SEC // 60,
             "egress_max_min": max_egress,
+            # 보행망이 없으면 직선거리 근사로 떨어진다. 화면 설명이 실제
+            # 계산과 달라지지 않도록 어느 쪽인지 알려준다.
+            "walk_network": reg.walk is not None,
         }
     )
 

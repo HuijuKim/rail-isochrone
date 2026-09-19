@@ -524,7 +524,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     <p class="source">
       시각표 출처 <a href="https://github.com/nagix/mini-tokyo-3d" target="_blank" rel="noopener">mini-tokyo-3d</a> (MIT),
       원 데이터 <a href="https://www.odpt.org/" target="_blank" rel="noopener">公共交通オープンデータセンター</a>.
-      환승은 구내 3분 · 개찰 밖 5분, 도보는 직선거리에 1.3배 우회 보정.
+      보행망·해안선 <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> 기여자 (ODbL).
+      환승은 구내 3분 · 개찰 밖 5분. <span id="walk-note"></span>
       <span id="map-note"></span>
     </p>
   </aside>
@@ -1564,6 +1565,9 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       el("walk-hint").textContent =
         "분속 " + cfg.walk_speed_m_per_min + " m 기준. 역에서 이 시간 넘게는 걷지 않는다고 봅니다.";
     }
+    el("walk-note").textContent = cfg.walk_network
+      ? "도보는 실제 보행로를 따라 계산합니다."
+      : "보행망이 없어 도보는 직선거리에 1.3배 우회 보정으로 근사합니다.";
     syncLabels();
   }
 
