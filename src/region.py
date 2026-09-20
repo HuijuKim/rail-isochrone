@@ -224,7 +224,7 @@ def supported_mask(walk, coords: np.ndarray, groups: np.ndarray, n_groups: int) 
 
 def coverage_seeds(base: Path, stops: dict, coords: np.ndarray, groups: np.ndarray,
                    n_groups: int, supported: np.ndarray):
-    """권역을 칠할 씨앗 점과, 각 점이 노선의 끝인지.
+    """권역을 칠할 시드 점과, 각 점이 노선의 끝인지.
 
     끝인지는 노선의 정차역 목록에서 본다. 어떤 노선의 첫 역이거나 마지막
     역이면서, 다른 노선의 중간역이 아닌 역이 끝이다. 예전에는 이웃 역의

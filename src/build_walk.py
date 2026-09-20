@@ -710,9 +710,9 @@ def build_land_mask() -> dict:
     free = ~coast
     labels, _ = ndimage.label(free)
 
-    # 바다 씨앗점. 권역마다 다르므로 region.json 에 적는다. 격자 밖의
+    # 바다 시드. 권역마다 다르므로 region.json 에 적는다. 격자 밖의
     # 점은 아무 일도 하지 않으므로, 간토 좌표를 그대로 둔 채 간사이를
-    # 빌드하면 씨앗이 하나도 바다에 닿지 않아 전부 육지가 된다.
+    # 빌드하면 시드가 하나도 바다에 닿지 않아 전부 육지가 된다.
     seeds = _GRID.get("ocean_seeds") if isinstance(_GRID, dict) else None
     OCEAN_SEEDS = [tuple(x) for x in seeds] if seeds else [
         (142.0, 35.5),   # 지바 동쪽 먼바다
@@ -734,12 +734,12 @@ def build_land_mask() -> dict:
     ratio = float(land.mean())
     print(f"  육지 마스크 {land.shape}, 육지 칸 {int(land.sum()):,} "
           f"({ratio * 100:.0f}%)", flush=True)
-    # 바다에 닿은 씨앗이 없으면 전부 육지가 되고, 그러면 등시선이 물
+    # 바다에 닿은 시드가 없으면 전부 육지가 되고, 그러면 등시선이 물
     # 위로 번진다. 조용히 넘어가면 나중에 지도를 보고서야 안다.
     if not sea_labels or ratio > 0.98:
         print(f"  !! 바다를 하나도 못 찾았습니다. region.json 의 "
               f"grid.ocean_seeds 가 이 격자 안의 바다를 가리키는지 "
-              f"확인하세요. 지금 씨앗: {OCEAN_SEEDS}", flush=True)
+              f"확인하세요. 지금 시드: {OCEAN_SEEDS}", flush=True)
     return {
         "land": land,
         "grid": np.array([lon0, lat0, LAND_CELL_M, w, hgt, m_lon, M_PER_DEG_LAT]),
