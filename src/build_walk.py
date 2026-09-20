@@ -71,15 +71,28 @@ CELL_M = 40.0
 # 질의 속도가 감당된다.
 SHED_CELL_M = 100.0
 
-# 격자 원점 (간토 남서쪽 귀퉁이). 모든 도보권이 같은 격자를 공유해야
+# 격자 원점 (권역 남서쪽 귀퉁이). 모든 도보권이 같은 격자를 공유해야
 # 질의할 때 셀 번호로 바로 겹칠 수 있다.
-# 이즈 반도 남단(34.679)과 고후·오마에(138.53) 까지 담아야 한다
-GRID_LON0, GRID_LAT0 = 138.38, 34.53
-GRID_LAT_REF = 35.7
+# 권역마다 다르므로 region.json 에 적는다. 없으면 간토 값을 쓴다.
+# 간토는 이즈 반도 남단(34.679)과 고후·오마에(138.53) 까지 담아야 한다.
+def _grid_conf() -> dict:
+    path = BASE / "region.json"
+    if path.exists():
+        import json as _json
+        conf = _json.loads(path.read_text(encoding="utf-8")).get("grid")
+        if conf:
+            return conf
+    return {"lon0": 138.38, "lat0": 34.53, "lat_ref": 35.7,
+            "span_x": 440_000.0, "span_y": 330_000.0}
+
+
+_GRID = _grid_conf()
+GRID_LON0, GRID_LAT0 = float(_GRID["lon0"]), float(_GRID["lat0"])
+GRID_LAT_REF = float(_GRID["lat_ref"])
 M_PER_DEG_LAT = 111_132.0
 M_PER_DEG_LON = 111_320.0 * np.cos(np.radians(GRID_LAT_REF))
-GRID_SPAN_X = 440_000.0    # 동서
-GRID_SPAN_Y = 330_000.0    # 남북
+GRID_SPAN_X = float(_GRID["span_x"])    # 동서
+GRID_SPAN_Y = float(_GRID["span_y"])    # 남북
 GRID_W = int(np.ceil(GRID_SPAN_X / CELL_M))
 GRID_H = int(np.ceil(GRID_SPAN_Y / CELL_M))
 SHED_W = int(np.ceil(GRID_SPAN_X / SHED_CELL_M))
@@ -510,6 +523,15 @@ def main() -> None:
             + "\n  서버(src/server.py)를 멈춘 뒤 다시 돌려주세요."
         )
 
+    # 역 목록은 3단계에서야 쓰지만 없으면 거기서 멈춘다. 1~2 단계에
+    # 몇 분을 들이고 나서 실패하지 않도록 여기서 먼저 본다.
+    if not (BASE / "stops.json").exists():
+        sys.exit(
+            f"역 목록이 없습니다: {BASE / 'stops.json'}. "
+            "시각표 권역은 build_graph.py, 나이브 권역은 build_naive.py 를 "
+            "먼저 돌려주세요."
+        )
+
     OUT.mkdir(parents=True, exist_ok=True)
     import json
 
@@ -688,7 +710,11 @@ def build_land_mask() -> dict:
     free = ~coast
     labels, _ = ndimage.label(free)
 
-    OCEAN_SEEDS = [
+    # 바다 씨앗점. 권역마다 다르므로 region.json 에 적는다. 격자 밖의
+    # 점은 아무 일도 하지 않으므로, 간토 좌표를 그대로 둔 채 간사이를
+    # 빌드하면 씨앗이 하나도 바다에 닿지 않아 전부 육지가 된다.
+    seeds = _GRID.get("ocean_seeds") if isinstance(_GRID, dict) else None
+    OCEAN_SEEDS = [tuple(x) for x in seeds] if seeds else [
         (142.0, 35.5),   # 지바 동쪽 먼바다
         (140.0, 33.0),   # 남쪽 먼바다
         (139.0, 34.3),   # 사가미나다
@@ -705,8 +731,15 @@ def build_land_mask() -> dict:
     sea = np.isin(labels, sorted(sea_labels)) if sea_labels else np.zeros_like(free)
     land = ~sea          # 해안선 자체도 육지로 친다
 
+    ratio = float(land.mean())
     print(f"  육지 마스크 {land.shape}, 육지 칸 {int(land.sum()):,} "
-          f"({land.mean() * 100:.0f}%)", flush=True)
+          f"({ratio * 100:.0f}%)", flush=True)
+    # 바다에 닿은 씨앗이 없으면 전부 육지가 되고, 그러면 등시선이 물
+    # 위로 번진다. 조용히 넘어가면 나중에 지도를 보고서야 안다.
+    if not sea_labels or ratio > 0.98:
+        print(f"  !! 바다를 하나도 못 찾았습니다. region.json 의 "
+              f"grid.ocean_seeds 가 이 격자 안의 바다를 가리키는지 "
+              f"확인하세요. 지금 씨앗: {OCEAN_SEEDS}", flush=True)
     return {
         "land": land,
         "grid": np.array([lon0, lat0, LAND_CELL_M, w, hgt, m_lon, M_PER_DEG_LAT]),
