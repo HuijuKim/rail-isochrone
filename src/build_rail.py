@@ -71,6 +71,18 @@ DUP_LINE = 0.90             # 이만큼 같으면 중복 노선
 MIN_WAYS = 5                # 선로에서 역을 찾아볼 최소 웨이 수
 
 
+def _pbf_list():
+    """어느 OSM 추출본을 읽을지. 권역 설정에 적고, 인자로 덮을 수 있다."""
+    if len(sys.argv) > 1:
+        return [Path(a) for a in sys.argv[1:]]
+    meta = ROOT / "data" / "regions" / REGION / "region.json"
+    if meta.exists():
+        listed = json.loads(meta.read_text(encoding="utf-8")).get("osm_files")
+        if listed:
+            return [ROOT / "data" / "osm" / n for n in listed]
+    return [ROOT / "data" / "osm" / (REGION + "-latest.osm.pbf")]
+
+
 def kind_of(name):
     for kind, pat in KINDS:
         if re.search(pat, name):
@@ -97,8 +109,14 @@ class Relations(osmium.SimpleHandler):
         self.want_nodes = set()
         self.want_ways = set()
         self.dropped = 0
+        # OSM id 는 추출본 사이에서 전역이다. 권역이 두 추출본에 걸치면
+        # 경계의 관계가 양쪽에 다 들어 있어 그대로 읽으면 두 번 잡힌다.
+        self.seen = set()
 
     def relation(self, r):
+        if r.id in self.seen:
+            return
+        self.seen.add(r.id)
         t = r.tags
         if t.get("type") != "route":
             return
@@ -119,8 +137,9 @@ class Relations(osmium.SimpleHandler):
         if len(stops) < 2 and len(ways) < MIN_WAYS:
             return
         self.want_nodes.update(stops)
-        if len(stops) < 2:
-            self.want_ways.update(ways)
+        # 선로 기하는 두 곳에 쓴다. 정차역이 없는 관계에서 정차 순서를
+        # 되살릴 때와, 지도에 노선을 그릴 때다. 그래서 전부 챙긴다.
+        self.want_ways.update(ways)
         self.routes.append({
             "name": name,
             "titles": {g: t.get("name:" + g, "") for g in LANGS},
@@ -129,7 +148,7 @@ class Relations(osmium.SimpleHandler):
             "colour": t.get("colour", ""),
             "kind": kind_of(name),
             "stops": stops,
-            "ways": ways if len(stops) < 2 else [],
+            "ways": ways,
         })
 
 
@@ -142,7 +161,7 @@ class Ways(osmium.SimpleHandler):
         self.geom = {}
 
     def way(self, w):
-        if w.id not in self.want:
+        if w.id not in self.want or w.id in self.geom:
             return
         try:
             self.geom[w.id] = [(n.lon, n.lat) for n in w.nodes if n.location.valid()]
@@ -160,6 +179,8 @@ class StationNodes(osmium.SimpleHandler):
         self.stations = {}
 
     def node(self, n):
+        if n.id in self.pos:
+            return
         t = n.tags
         is_station = (t.get("railway") in STATION_TAGS
                       or t.get("public_transport") == "station")
@@ -253,22 +274,25 @@ def overlap(small, big):
 
 
 def main():
-    pbf = sys.argv[1] if len(sys.argv) > 1 else str(
-        ROOT / "data" / "osm" / (REGION + "-latest.osm.pbf"))
-    print("[" + REGION + "] " + Path(pbf).name + " 읽는 중...", flush=True)
+    pbfs = _pbf_list()
+    print("[" + REGION + "] " + ", ".join(p.name for p in pbfs) + " 읽는 중...",
+          flush=True)
 
     rel = Relations()
-    rel.apply_file(pbf)
+    for p in pbfs:
+        rel.apply_file(str(p))
     track_only = sum(1 for r in rel.routes if not r["stops"])
     print(f"  철도 계통 관계 {len(rel.routes):,}개 (신칸센 {rel.dropped}개 제외), "
           f"선로만 있는 것 {track_only:,}개", flush=True)
 
     ways = Ways(rel.want_ways)
-    ways.apply_file(pbf, locations=True, idx="flex_mem")
+    for p in pbfs:
+        ways.apply_file(str(p), locations=True, idx="flex_mem")
     print(f"  선로 웨이 {len(ways.geom):,}개", flush=True)
 
     nodes = StationNodes(rel.want_nodes)
-    nodes.apply_file(pbf)
+    for p in pbfs:
+        nodes.apply_file(str(p))
     print(f"  역 노드 {len(nodes.stations):,}개, 정차 노드 {len(nodes.pos):,}개",
           flush=True)
 
@@ -371,6 +395,21 @@ def main():
     groups = [ids for _, ids in sorted(by_cluster.items())]
 
     OUT.mkdir(parents=True, exist_ok=True)
+    # 지도에 그릴 선형. 역과 역을 직선으로 이으면 실제 선로와 어긋난다.
+    # mini-tokyo-3d 의 coordinates.json 과 같은 모양으로 맞춘다.
+    shapes = []
+    for ln in lines:
+        path = stitch(ln["rep"]["ways"], ways.geom)
+        if len(path) < 2:
+            continue
+        shapes.append({"id": ln["lid"],
+                       "sublines": [{"type": "main",
+                                     "coords": [[round(x, 6), round(y, 6)]
+                                                for x, y in path]}]})
+    (OUT / "coordinates.json").write_text(
+        json.dumps({"railways": shapes, "airways": []}, ensure_ascii=False),
+        encoding="utf-8")
+
     for name, data in (("railways.json", railways),
                        ("stations.json", stations),
                        ("station-groups.json", [[g] for g in groups]),
@@ -386,6 +425,7 @@ def main():
     print("  계통: " + ", ".join(f"{k} {v}" for k, v in sorted(kinds.items())))
     print(f"  통과 계통이 있는 노선 {n_exp:,}개 "
           f"({n_exp / max(len(railways), 1) * 100:.0f}%)")
+    print(f"  노선 선형 {len(shapes):,}개")
     print("  저장 -> " + str(OUT))
 
 
