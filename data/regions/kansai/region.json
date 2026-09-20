@@ -1,0 +1,55 @@
+{
+ "id": "kansai",
+ "center": [
+  135.4959,
+  34.7024
+ ],
+ "zoom": 11,
+ "names": {
+  "ja": "関西",
+  "en": "Kansai",
+  "ko": "간사이",
+  "zh-Hans": "关西",
+  "zh-Hant": "關西"
+ },
+ "model": "naive",
+ "timetable": null,
+ "rail": {
+  "source": "OpenStreetMap",
+  "license": "ODbL 1.0",
+  "express_source": "ja.wikipedia.org",
+  "express_license": "CC BY-SA 4.0"
+ },
+ "osm_extracts": [
+  "kansai"
+ ],
+ "osm_files": [
+  "kansai-latest.osm.pbf"
+ ],
+ "grid": {
+  "lon0": 134.15,
+  "lat0": 33.33,
+  "lat_ref": 34.7,
+  "span_x": 270000.0,
+  "span_y": 290000.0,
+  "ocean_seeds": [
+   [
+    134.5,
+    34.35
+   ],
+   [
+    135.2,
+    34.35
+   ],
+   [
+    135.3,
+    33.6
+   ],
+   [
+    135.0,
+    35.8
+   ]
+  ]
+ },
+ "note": "시각표가 없어 나이브 모델로 돈다. 노선·역은 OSM 에서 뽑고, 통과 계통(쾌속·급행·특급)의 정차 패턴은 OSM 에 있는 것과 일본어 위키백과 역 일람 표에서 읽은 것을 합쳤다. 격자는 역 좌표 범위(134.32-136.85E, 33.48-35.67N)에 사방 15km 여유를 둔 값이다. 바다 씨앗점은 잇닿은 성분을 확인해 고른 값이다. 이세만과 와카사만은 건너편 기슭이 추출본 밖이라 바다로 닫히지 않아 씨앗으로 쓸 수 없다. 두 곳은 육지로 남지만 그 위에 도로가 없어 등시선에는 잡히지 않는다."
+}
