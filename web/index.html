@@ -343,16 +343,29 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 }
 .far-list button:hover { background: var(--surface-2); }
 .far-list button:hover .go-hint { opacity: 1; }
+/* 이름은 한 줄로 묶어 둔다. 현지어 이름이 길어 줄바꿈되면 행 높이가
+   흔들려 오른쪽 숫자 칸의 기준선까지 어긋난다. */
+.far-list .label {
+  min-width: 0; overflow: hidden;
+  white-space: nowrap; text-overflow: ellipsis;
+}
 .far-list .ko { color: var(--muted); }
 .far-list .nums {
-  display: flex; gap: 9px; flex: none;
+  display: flex; gap: 9px; flex: none; align-items: baseline;
   font-family: var(--mono); font-variant-numeric: tabular-nums;
 }
-.far-list .km { color: var(--ink); font-weight: 600; }
-.far-list .m { color: var(--muted); }
+/* 거리와 시간은 폭을 고정해 행마다, 언어마다 칸이 밀리지 않게 한다.
+   단위 표기가 "분"(1자)에서 " min"(4자)까지 벌어지므로 넉넉히 잡는다. */
+.far-list .km {
+  color: var(--ink); font-weight: 600;
+  min-width: 7ch; text-align: end; flex: none;
+}
+.far-list .m { color: var(--muted); min-width: 7ch; text-align: end; flex: none; }
+/* 안내 문구는 언어마다 폭이 크게 다르다. 숫자 왼쪽에 두어야 숫자가
+   오른쪽 끝에 붙은 채로 있는다. */
 .far-list .go-hint {
   font-size: var(--step-2); color: var(--dest); opacity: 0;
-  flex: none; align-self: center;
+  flex: none; align-self: center; margin-inline-end: 2px;
 }
 
 .source { padding: 22px var(--pad) 0; font-size: var(--step-1); color: var(--muted); }
@@ -2017,6 +2030,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       b.type = "button";
 
       var label = document.createElement("span");
+      label.className = "label";
       var ja = document.createElement("b");
       ja.textContent = s.ja;
       var local = document.createElement("span");
@@ -2029,17 +2043,18 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       nums.className = "nums";
       var km = document.createElement("span");
       km.className = "km";
-      km.textContent = s.km + "km";
+      // 34 처럼 딱 떨어지는 값도 34.0 으로 자리를 맞춘다
+      km.textContent = Number(s.km).toFixed(1) + "km";
       var m = document.createElement("span");
       m.className = "m";
       m.textContent = s.min + t("min");
-      nums.appendChild(km);
-      nums.appendChild(m);
 
       var hint = document.createElement("span");
       hint.className = "go-hint";
       hint.textContent = t("toDest");
       nums.appendChild(hint);
+      nums.appendChild(km);
+      nums.appendChild(m);
 
       b.appendChild(label);
       b.appendChild(nums);
