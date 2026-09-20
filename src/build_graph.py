@@ -97,8 +97,18 @@ def merge_through_services(trips: dict[str, dict]) -> list[list[dict]]:
     return chains
 
 
-def chain_to_stops(chain: list[dict]) -> list[tuple[str, int, int]]:
-    """연결된 운행을 (역, 도착초, 출발초) 목록으로 편다."""
+def chain_to_stops(chain: list[dict]) -> list[list[tuple[str, int, int]]]:
+    """연결된 운행을 (역, 도착초, 출발초) 목록으로 편다.
+
+    시각이 뒤로 가면 둘 중 하나다. 자정을 넘겨 25:13 이 01:13 이 된
+    것이거나, nt 체인이 엉뚱한 편성을 물어 온 것이다. 앞은 24시간을
+    더해 펴면 되지만 뒤는 펼 수가 없다. 닛포리에서 카시와로 -26분에
+    가는 구간이 그렇게 생겼고, 그 값이 그대로 남으면 그 역 너머가
+    26분 일찍 닿는 것으로 계산된다.
+
+    앞 값으로 눌러 0초 구간으로 만들면 순간이동이 되므로, 거기서
+    체인을 끊고 두 운행으로 나눈다. 그래서 운행 목록을 돌려준다.
+    """
     stops: list[tuple[str, int, int]] = []
     for trip in chain:
         for entry in trip["tt"]:
@@ -117,6 +127,7 @@ def chain_to_stops(chain: list[dict]) -> list[tuple[str, int, int]]:
             stops.append((station, arr, dep))
 
     # 자정을 넘겨 시각이 되감기면 24시간을 더해 단조 증가로 만든다
+    runs: list[list[tuple[str, int, int]]] = []
     fixed: list[tuple[str, int, int]] = []
     offset = 0
     last = -1
@@ -125,11 +136,20 @@ def chain_to_stops(chain: list[dict]) -> list[tuple[str, int, int]]:
         if a < last - 6 * 3600:  # 큰 폭의 되감김 = 날짜 변경
             offset += 24 * 3600
             a, d = arr + offset, dep + offset
+        if a < last:
+            # 날짜 변경으로 설명되지 않는 되감김. 체인을 잘못 이었다.
+            if len(fixed) >= 2:
+                runs.append(fixed)
+            fixed = []
+            last = -1
+            a, d = arr + offset, dep + offset
         if d < a:
             d = a
         fixed.append((station, a, d))
         last = d
-    return fixed
+    if len(fixed) >= 2:
+        runs.append(fixed)
+    return runs
 
 
 def build_station_index(by_id: dict) -> tuple[list[str], dict[str, int], np.ndarray]:
@@ -189,21 +209,26 @@ def build(calendar: str = "Weekday") -> dict:
     trip_start: list[int] = []
     skipped = 0
 
+    split = 0
     for chain in chains:
-        stops = chain_to_stops(chain)
-        if len(stops) < 2:
+        runs = chain_to_stops(chain)
+        if not runs:
             skipped += 1
             continue
-        missing = [s for s, _, _ in stops if s not in index]
-        if missing:
-            skipped += 1
-            continue
-        trip_start.append(len(ev_stop))
-        for station, arr, dep in stops:
-            ev_stop.append(index[station])
-            ev_arr.append(arr)
-            ev_dep.append(dep)
+        if len(runs) > 1:
+            split += 1
+        for stops in runs:
+            if any(s not in index for s, _, _ in stops):
+                skipped += 1
+                continue
+            trip_start.append(len(ev_stop))
+            for station, arr, dep in stops:
+                ev_stop.append(index[station])
+                ev_arr.append(arr)
+                ev_dep.append(dep)
     trip_start.append(len(ev_stop))
+    if split:
+        print(f"  시각이 뒤로 간 체인 {split:,}건을 끊어 나눔", flush=True)
 
     print(f"  정차 이벤트 {len(ev_stop):,}개 (제외 {skipped:,}건)", flush=True)
 
