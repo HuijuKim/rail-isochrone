@@ -14,9 +14,13 @@
     zh-Hans 铁路等时线 / zh-Hant 鐵路等時線
 
 저장소 이름은 `rail-isochrone`. User-Agent 세 곳(`build_colors`,
-`build_express`, `fetch_data`)과 README·REQUESTS 를 맞췄다. 폴더명과
-GitHub 저장소 이름은 아직 `tokyo-isochrone` 이다. 빌드가 끝난 뒤에
-옮겨야 한다.
+`build_express`, `fetch_data`)과 README·REQUESTS 를 맞췄다.
+
+GitHub 저장소는 `HuijuKim/rail-isochrone` 으로 바꿨고 원격 주소도 옮겼다
+(옛 주소는 GitHub 가 넘겨 준다). **로컬 폴더는 아직 `tokyo-isochrone`
+이다.** VS Code 가 작업 공간으로 열고 있으면 잠겨서 못 바꾼다. 창을 닫고
+바꾼 뒤 `C:/Users/Huiju/rail-isochrone` 을 다시 열면 된다. git 설정은
+폴더 안에 있어 따라간다.
 
 브라우저 탭 제목이 `<title>` 에 한국어로 박혀 있어 언어를 바꿔도 안
 바뀌던 것을 고쳤다. `data-i18n` 은 요소 안 텍스트만 갈아 끼우는데
@@ -224,7 +228,8 @@ OSM 은 운행 계통대로 관계를 만든다. `阪急京都本線・千里線
 구간 선형이 있는 자리는 제 선로를 탄다. 없는 자리는 예전 방식으로 떨어지고,
 그건 **근처를 지나는 아무 노선의 선형이나 골라 쓰는 것**이다.
 
-    구간 선형이 있는 비율   간토 83% -> 87%,  간토OSM 94%,  간사이 97%
+    구간 선형이 있는 비율   간토 98.8%,  간토OSM 99.5%,  간사이 99.8%
+    (위 "제 선로를 못 찾던 진짜 원인 둘" 을 고친 뒤)
 
 秋葉原·神田 에서 노선들이 서로의 선로를 타고, 신주쿠에서 게이오선이 488m
 벗어나고, 大崎 발 武蔵野線 이 사실은 埼京線 인 것이 전부 이 자리다.
