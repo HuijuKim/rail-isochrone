@@ -16,5 +16,11 @@
   "far_neighbour_lines": 10,
   "pieces_per_line": 1.006,
   "stations": 2768
+ },
+ "tokai": {
+  "boundary_disagree": 0.0,
+  "far_neighbour_lines": 0,
+  "pieces_per_line": 1.0,
+  "stations": 1220
  }
 }

@@ -43,7 +43,7 @@
   "en": "JR Obama Line (Tsuruga => Nishi-Maizuru)"
  },
  "JR御殿場線 (沼津->国府津)": {
-  "ko": "JR 고템바선 (누마즈→고즈)",
+  "ko": "JR 고텐바선 (누마즈→고즈)",
   "en": "JR Gotemba Line (Numazu-Kozu)"
  },
  "JR成田エクスプレス (大船 → 成田空港)": {
@@ -1880,5 +1880,299 @@
   "ko": "와다미사키선",
   "zh-Hans": "和田岬线",
   "zh-Hant": "和田岬線"
+ },
+ "JR伊東線": {
+  "en": "Itō Line",
+  "ko": "이토선",
+  "zh-Hans": "伊东线",
+  "zh-Hant": "伊東線"
+ },
+ "JR太多線": {
+  "en": "Taita Line",
+  "ko": "다이타선",
+  "zh-Hans": "太多线",
+  "zh-Hant": "太多線"
+ },
+ "JR武豊線 (大府->武豊)": {
+  "en": "Taketoyo Line",
+  "ko": "다케토요선",
+  "zh-Hans": "武丰线",
+  "zh-Hant": "武豐線"
+ },
+ "JR身延線 (西富士宮=>富士)": {
+  "en": "Minobu Line",
+  "ko": "미노부선",
+  "zh-Hans": "身延线",
+  "zh-Hant": "身延線"
+ },
+ "JR飯田線 (豊橋=>豊川)": {
+  "en": "Iida Line",
+  "ko": "이이다선",
+  "zh-Hans": "饭田线",
+  "zh-Hant": "飯田線"
+ },
+ "飯田線": {
+  "en": "Iida Line",
+  "ko": "이이다선",
+  "zh-Hans": "饭田线",
+  "zh-Hant": "飯田線"
+ },
+ "岳南電車岳南線 (吉原->岳南江尾)": {
+  "en": "Gakunan Line",
+  "ko": "가쿠난선",
+  "zh-Hans": "岳南线",
+  "zh-Hant": "岳南線"
+ },
+ "近畿日本鉄道山田線 普通 (伊勢中川 => 宇治山田)": {
+  "en": "Yamada Line",
+  "ko": "야마다선",
+  "zh-Hans": "山田线",
+  "zh-Hant": "山田線"
+ },
+ "長良川鉄道越美南線": {
+  "en": "Etsumi-Nan Line",
+  "ko": "에쓰미난선",
+  "zh-Hans": "越美南线",
+  "zh-Hant": "越美南線"
+ },
+ "名古屋市営1号線東山線 (高畑 --> 藤が丘)": {
+  "en": "Higashiyama Line",
+  "ko": "히가시야마선",
+  "zh-Hans": "东山线",
+  "zh-Hant": "東山線"
+ },
+ "名古屋市営3号線鶴舞線 (上小田井=>赤池)": {
+  "en": "Tsurumai Line",
+  "ko": "쓰루마이선",
+  "zh-Hans": "鹤舞线",
+  "zh-Hant": "鶴舞線"
+ },
+ "名古屋市営6号線桜通線 (中村区役所 --> 徳重)": {
+  "en": "Sakura-dōri Line",
+  "ko": "사쿠라도리선",
+  "zh-Hans": "樱通线",
+  "zh-Hant": "櫻通線"
+ },
+ "名古屋市営上飯田線": {
+  "en": "Kamiiida Line",
+  "ko": "가미이이다선",
+  "zh-Hans": "上饭田线",
+  "zh-Hant": "上飯田線"
+ },
+ "名古屋市営名城線 (右回り)": {
+  "en": "Meijō Line",
+  "ko": "메이조선",
+  "zh-Hans": "名城线",
+  "zh-Hant": "名城線"
+ },
+ "名古屋市営名港線 (名古屋港→金山)": {
+  "en": "Meikō Line",
+  "ko": "메이코선",
+  "zh-Hans": "名港线",
+  "zh-Hant": "名港線"
+ },
+ "樽見鉄道樽見線": {
+  "en": "Tarumi Line",
+  "ko": "다루미선",
+  "zh-Hans": "樽见线",
+  "zh-Hant": "樽見線"
+ },
+ "天竜浜名湖鉄道天竜浜名湖線": {
+  "en": "Tenryū Hamanako Line",
+  "ko": "덴류하마나코선",
+  "zh-Hans": "天龙滨名湖线",
+  "zh-Hant": "天龍濱名湖線"
+ },
+ "豊橋鉄道東田本線": {
+  "en": "Azumada Main Line",
+  "ko": "아즈마다 본선",
+  "zh-Hans": "东田本线",
+  "zh-Hant": "東田本線"
+ },
+ "豊橋鉄道渥美線 (三河田原=>新豊橋)": {
+  "en": "Atsumi Line",
+  "ko": "아쓰미선",
+  "zh-Hans": "渥美线",
+  "zh-Hant": "渥美線"
+ },
+ "東海交通事業城北線 (枇杷島=>勝川)": {
+  "en": "Jōhoku Line",
+  "ko": "조호쿠선",
+  "zh-Hans": "城北线",
+  "zh-Hant": "城北線"
+ },
+ "愛知高速交通株式会社 Linimo (藤が丘=>八草)": {
+  "en": "Linimo",
+  "ko": "리니모",
+  "zh-Hans": "东部丘陵线",
+  "zh-Hant": "東部丘陵線"
+ },
+ "名古屋鉄道三河線": {
+  "en": "Mikawa Line",
+  "ko": "미카와선",
+  "zh-Hans": "三河线",
+  "zh-Hant": "三河線"
+ },
+ "名古屋鉄道各務原線 (新鵜沼=>名鉄岐阜)": {
+  "en": "Kakamigahara Line",
+  "ko": "가카미가하라선",
+  "zh-Hans": "各务原线",
+  "zh-Hant": "各務原線"
+ },
+ "名古屋鉄道小牧線": {
+  "en": "Komaki Line",
+  "ko": "고마키선",
+  "zh-Hans": "小牧线",
+  "zh-Hant": "小牧線"
+ },
+ "名古屋鉄道尾西線": {
+  "en": "Bisai Line",
+  "ko": "비사이선",
+  "zh-Hans": "尾西线",
+  "zh-Hant": "尾西線"
+ },
+ "名古屋鉄道常滑線": {
+  "en": "Tokoname Line",
+  "ko": "도코나메선",
+  "zh-Hans": "常滑线",
+  "zh-Hant": "常滑線"
+ },
+ "名古屋鉄道広見線": {
+  "en": "Hiromi Line",
+  "ko": "히로미선",
+  "zh-Hans": "广见线",
+  "zh-Hant": "廣見線"
+ },
+ "名古屋鉄道河和線": {
+  "en": "Kōwa Line",
+  "ko": "고와선",
+  "zh-Hans": "河和线",
+  "zh-Hant": "河和線"
+ },
+ "名古屋鉄道津島線": {
+  "en": "Tsushima Line",
+  "ko": "쓰시마선",
+  "zh-Hans": "津岛线",
+  "zh-Hant": "津島線"
+ },
+ "名古屋鉄道瀬戸線 (栄町=>尾張瀬戸)": {
+  "en": "Seto Line",
+  "ko": "세토선",
+  "zh-Hans": "濑户线",
+  "zh-Hant": "瀨戶線"
+ },
+ "名古屋鉄道犬山線": {
+  "en": "Inuyama Line",
+  "ko": "이누야마선",
+  "zh-Hans": "犬山线",
+  "zh-Hant": "犬山線"
+ },
+ "名古屋鉄道知多新線": {
+  "en": "Chita New Line",
+  "ko": "지타신선",
+  "zh-Hans": "知多新线",
+  "zh-Hant": "知多新線"
+ },
+ "名古屋鉄道空港線 (中部国際空港 => 常滑)": {
+  "en": "Airport Line",
+  "ko": "공항선",
+  "zh-Hans": "空港线",
+  "zh-Hant": "空港線"
+ },
+ "名古屋鉄道竹鼻線": {
+  "en": "Takehana Line",
+  "ko": "다케하나선",
+  "zh-Hans": "竹鼻线",
+  "zh-Hant": "竹鼻線"
+ },
+ "名古屋鉄道築港線": {
+  "en": "Chikkō Line",
+  "ko": "지쿠코선",
+  "zh-Hans": "筑港线",
+  "zh-Hant": "築港線"
+ },
+ "名古屋鉄道蒲郡線": {
+  "en": "Gamagōri Line",
+  "ko": "가마고리선",
+  "zh-Hans": "蒲郡线",
+  "zh-Hant": "蒲郡線"
+ },
+ "名古屋鉄道西尾線 (新安城=>吉良吉田)": {
+  "en": "Nishio Line",
+  "ko": "니시오선",
+  "zh-Hans": "西尾线",
+  "zh-Hant": "西尾線"
+ },
+ "名古屋鉄道豊川線": {
+  "en": "Toyokawa Line",
+  "ko": "도요카와선",
+  "zh-Hans": "丰川线",
+  "zh-Hant": "豐川線"
+ },
+ "名古屋鉄道豊田線 (豊田市=>赤池)": {
+  "en": "Toyota Line",
+  "ko": "도요타선",
+  "zh-Hans": "丰田线",
+  "zh-Hant": "豐田線"
+ },
+ "名鉄名古屋本線": {
+  "en": "Nagoya Main Line",
+  "ko": "나고야 본선",
+  "zh-Hans": "名古屋本线",
+  "zh-Hant": "名古屋本線"
+ },
+ "静岡鉄道静岡清水線 (新清水=>新静岡)": {
+  "en": "Shizuoka-Shimizu Line",
+  "ko": "시즈오카시미즈선",
+  "zh-Hans": "静冈清水线",
+  "zh-Hant": "靜岡清水線"
+ },
+ "あおなみ線": {
+  "en": "Aonami Line",
+  "ko": "아오나미선",
+  "zh-Hans": "青波线",
+  "zh-Hant": "青波線"
+ },
+ "愛知環状鉄道線": {
+  "en": "Aichi Loop Line",
+  "ko": "아이치 환상철도선",
+  "zh-Hans": "爱知环状铁道线",
+  "zh-Hant": "愛知環狀鐵道線"
+ },
+ "明知鉄道明知線": {
+  "en": "Akechi Line",
+  "ko": "아케치선",
+  "zh-Hans": "明知线",
+  "zh-Hant": "明知線"
+ },
+ "遠州鉄道鉄道線 (新浜松=>西鹿島)": {
+  "en": "Enshū Railway Line",
+  "ko": "엔슈철도선",
+  "zh-Hans": "远州铁道线",
+  "zh-Hant": "遠州鐵道線"
+ },
+ "大井川鐵道井川線: 井川 => 千頭": {
+  "en": "Ikawa Line",
+  "ko": "이카와선",
+  "zh-Hans": "井川线",
+  "zh-Hant": "井川線"
+ },
+ "大井川鐵道大井川本線": {
+  "en": "Ōigawa Main Line",
+  "ko": "오이가와 본선",
+  "zh-Hans": "大井川本线",
+  "zh-Hant": "大井川本線"
+ },
+ "伊豆急行線 (伊東->伊豆急下田)": {
+  "en": "Izukyu Line",
+  "ko": "이즈 급행선",
+  "zh-Hans": "伊豆急行线",
+  "zh-Hant": "伊豆急行線"
+ },
+ "伊豆箱根鉄道駿豆線 (三島->修善寺)": {
+  "en": "Sunzu Line",
+  "ko": "슨즈선",
+  "zh-Hans": "骏豆线",
+  "zh-Hant": "駿豆線"
  }
 }

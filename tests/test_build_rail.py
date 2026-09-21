@@ -26,9 +26,10 @@ os.environ.setdefault("REGION", "kanto_osm")
 def _line(ids, lon0=139.0, step=0.05, lat=35.7):
     """번호 순서대로 한 줄로 늘어선 역들.
 
-    build_rail 이 쓰는 꼴은 (경도, 위도, 이름들, 이름) 이다.
+    build_rail 이 쓰는 꼴은 (경도, 위도, 이름들, 이름) 이다. 이름 없는 역
+    노드는 fill_missing 이 후보로 안 받으므로 이름을 붙여 둔다.
     """
-    return {i: (lon0 + i * step, lat, {}, "") for i in ids}
+    return {i: (lon0 + i * step, lat, {}, f"역{i}") for i in ids}
 
 
 def test_stops_on_ways_orders_scrambled_members():
@@ -126,6 +127,66 @@ def test_fill_missing_skips_a_station_already_there():
     stations[99] = (139.1005, 35.7, {}, "浜坂駅")    # 40m 옆의 같은 역
     geom = {10: _chain()}
     assert fill_missing([1, 2, 3], [10], geom, stations, [99], 0.81) == [1, 2, 3]
+
+
+def test_fill_missing_survives_a_shredded_track():
+    """선로가 토막 나 아는 역이 없는 토막에 있는 역도 제자리에 끼운다.
+
+    関西本線 은 역 구내 측선 때문에 사슬이 191개로 쪼개져, 柘植 너머
+    新堂·佐那具·伊賀上野·島ヶ原 이 아는 역 없는 토막에 떨어져 버려졌다.
+    """
+    from build_rail import fill_missing
+
+    stations = _line([1, 2, 3, 4, 5])
+    # 역마다 따로 떨어진 짧은 토막
+    geom = {10 + i: _chain(139.0 + i * 0.05 - 0.01, 139.0 + i * 0.05 + 0.01)
+            for i in range(1, 6)}
+    seq = fill_missing([1, 2], list(geom), geom, stations, [5, 3, 4], 0.81)
+    assert seq == [1, 2, 3, 4, 5]
+
+
+def test_fill_missing_skips_a_station_on_another_track():
+    """제 선로 200m 안이어도 가장 가까운 선로가 남의 것이면 버린다.
+
+    JR 長島 가 近鉄長島 옆이라 近鉄名古屋線 에 딸려 왔다.
+    """
+    from build_rail import fill_missing
+
+    stations = _line([1, 2, 3])
+    stations[99] = (139.125, 35.7005, {}, "長島")    # 역 사이 55m 옆, 남의 선로 위
+    geom = {10: _chain()}
+    owner = {99: {20}}.get
+    assert fill_missing([1, 2, 3], [10], geom, stations, [99], 0.81,
+                        owner=lambda n: owner(n, {10})) == [1, 2, 3]
+
+
+def test_fill_missing_keeps_a_junction_terminus():
+    """가장 가까운 선로가 남의 것이어도 제 선로 가까운 노선 끝은 받는다.
+
+    参宮線 은 分岐駅 多気 에서 끝나는데, 多気 에 가장 가까운 선로는
+    紀勢本線 이다. 한가운데 역만 거르던 조건에 종점이 같이 걸렸다.
+    """
+    from build_rail import fill_missing
+
+    stations = _line([1, 2, 3])
+    stations[99] = (139.2003, 35.7003, {}, "多気")    # 3 너머 노선 끝, 선로 40m 옆
+    geom = {10: _chain(139.0, 139.21)}
+    assert fill_missing([1, 2, 3], [10], geom, stations, [99], 0.81,
+                        owner=lambda n: {20}) == [1, 2, 3, 99]
+
+
+def test_drop_strays_keeps_the_occurrence_that_fits():
+    """같은 역이 두 번 나오면 떠돌이 쪽을 버린다.
+
+    紀勢本線 은 "下里 那智 和歌山市 …" 로 시작하고 下里·那智 가 제자리에
+    또 나왔다. 처음 나온 것을 남기면 노선이 331km 에서 427km 가 됐다.
+    """
+    from build_rail import _drop_strays
+
+    st = _line(range(10))
+    xy = lambda n: (st[n][0] * 0.81 * 111_320.0, st[n][1] * 111_132.0)
+    seq = [8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    assert _drop_strays(seq, xy, lambda n: n) == list(range(10))
 
 
 def test_join_runs_flips_and_places_fragments():
@@ -228,6 +289,30 @@ def test_shinkansen_filter_matches_whole_names(name, is_shinkansen):
     from build_rail import SHINKANSEN
 
     assert bool(SHINKANSEN.search(name)) is is_shinkansen
+
+
+@pytest.mark.parametrize(
+    "name, kind",
+    [
+        ("踊り子 (伊豆急下田=>東京)", "특급"),
+        ("ひだ", "특급"),
+        ("しなの (名古屋 => 長野)", "특급"),
+        ("サンダーバード: 大阪 -> 敦賀", "특급"),
+        # 애칭이 회사·노선 이름 앞머리일 뿐이다.
+        ("しなの鉄道線 (軽井沢 => 篠ノ井)", None),
+        ("JR伊東線", None),
+    ],
+)
+def test_named_limited_express_is_not_a_line(name, kind):
+    """特急 이 안 적힌 특급 애칭도 특급으로 본다.
+
+    종별 없는 노선으로 읽히면 정차역이 많아 뼈대로 먼저 뽑히고, 진짜
+    노선을 부분 계통으로 밀어낸다. 伊東線 이 踊り子 밑으로 들어가
+    熱海·宇佐美·伊東 를 잃었다.
+    """
+    from build_rail import kind_of
+
+    assert kind_of(name) == kind
 
 
 def test_express_kind_labels_match_build_rail():

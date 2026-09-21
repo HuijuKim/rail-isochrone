@@ -77,6 +77,16 @@ SHINKANSEN = re.compile(
     r"新幹線|Shinkansen|"
     r"(?:^|[\s(（:：・=>＞、,])(?:" + _TRAIN_NAMES + r")(?:$|列車|[\s(（)）:：・=>＞、,])")
 
+# 재래선 특급 애칭. 이름에 特急 이 안 적혀 종별 없는 노선으로 읽히면,
+# 정차역이 많은 것부터 뼈대로 고르므로 진짜 노선을 부분 계통으로 밀어낸다.
+# 踊り子(10역)가 뼈대가 되어 伊東線 이 熱海·宇佐美·伊東 를 잃고 3역만
+# 남았다. OSM 에 종별 태그가 없어 이름으로 본다. 뒤에 구분 기호가 와야
+# 한다. しなの鉄道線 은 しなの 가 아니다.
+_LTD_EXPRESS_NAMES = (r"ひだ|しなの|南紀|ふじかわ|伊那路|踊り子|ミュースカイ|"
+                      r"しらさぎ|サンダーバード|はまかぜ|こうのとり")
+LTD_EXPRESS = re.compile(
+    r"^(?:" + _LTD_EXPRESS_NAMES + r")(?:$|[\s(（:：・=>＞、,])")
+
 PAREN_RE = re.compile(r"[（(][^）)]*[）)]")
 DIR_RE = re.compile(r"(上り|下り|内回り|外回り|環状)")
 ANGLE_RE = re.compile(r"[〈《<][^〉》>]*[〉》>]")
@@ -96,6 +106,8 @@ DUP_LINE = 0.90             # 이만큼 같으면 중복 노선
 # 2 로 두었더니 고이즈미선 지선이 안 걸렸다. 竜舞 만 새 역이고 太田 는
 # 이세사키선에 이미 있어서다. 1 로 해도 두 권역 합쳐 5개만 늘어난다.
 MIN_BRANCH = 1
+# 같은 노선으로 묶인 계통 끝에서 지선을 세울 때 역 사이 상한
+BRANCH_GAP_M = 5000.0
 MIN_WAYS = 5                # 선로에서 역을 찾아볼 최소 웨이 수
 # 정차 순서에서 이 정도로 튀는 자리는 순서가 틀린 것으로 보고 다시 잇는다
 # 5.0 으로 두었더니 남부선이 안 걸렸다. 가와사키-무카이가하라 5.3km 인데
@@ -183,6 +195,8 @@ def _pbf_list():
 
 
 def kind_of(name):
+    if LTD_EXPRESS.match(name.strip()):
+        return "특급"
     for kind, pat in KINDS:
         if re.search(pat, name):
             return kind
@@ -382,7 +396,7 @@ def stitch_all(ways, geom):
     맞대어 사슬을 만들고 가장 긴 사슬을 쓴다. 갈라지는 지선은 버린다.
     """
     segs = [(wid, geom[wid]) for wid in ways
-            if geom.get(wid) and len(geom[wid]) >= 2]
+            if len(geom.get(wid, ())) >= 2]
     if not segs:
         return []
 
@@ -491,6 +505,15 @@ def _max_gap_m(seq, cpos, scale):
                           np.diff(P[:, 1]) * 111_132.0).max())
 
 
+def _path_m(seq, cpos, scale):
+    """역을 순서대로 이은 길이(m)."""
+    if len(seq) < 2:
+        return 0.0
+    P = np.array([cpos[c] for c in seq], dtype=np.float64)
+    return float(np.hypot(np.diff(P[:, 0]) * scale * 111_320.0,
+                          np.diff(P[:, 1]) * 111_132.0).sum())
+
+
 def repair_order(seq, cpos, scale):
     """정차 순서에서 튀는 자리를 찾아 토막을 내고 다시 잇는다.
 
@@ -523,6 +546,30 @@ def repair_order(seq, cpos, scale):
         if c not in seen:
             seen.add(c)
             plain.append(c)
+    # 처음 나온 순서로만 지우면 돌아오는 반에만 있는 역이 반환점 뒤에
+    # 거꾸로 붙는다. 近鉄名古屋線 은 하행에 白子 남쪽 역이 빠져 있어
+    # 豊津上野-霞ヶ浦 가 伊勢中川 뒤로 갔다. 가는 반을 뼈대로 두고 나머지를
+    # 가장 덜 돌아가는 자리에 끼운다.
+    turn = next((i for i, c in enumerate(seq) if c in seq[:i]), None)
+    if turn is not None:
+        head = []
+        for c in seq[:turn]:
+            if c not in head:
+                head.append(c)
+        rest = [c for c in plain if c not in head]
+        if len(head) >= 2 and rest:
+
+            def xy(c):
+                return (cpos[c][0] * scale * 111_320.0, cpos[c][1] * 111_132.0)
+            for c in rest:
+                _insert_cheapest(head, c, xy)
+            # 가는 반이 듬성하면 끼우는 차례에 따라 지그재그가 된다
+            # (名鉄名古屋本線). 떠돌이 역이 앞에 붙은 것은 이웃과 가장 잘
+            # 맞는 자리만 남겨야 풀린다(紀勢本線). 셋 중 순서대로 이은
+            # 길이가 가장 짧은 것을 쓴다.
+            best = _drop_strays(seq, xy, lambda c: c)
+            plain = min((plain, head, best),
+                        key=lambda q: _path_m(q, cpos, scale))
     if len(plain) < 4:
         return plain if len(plain) < len(seq) else seq
 
@@ -676,13 +723,19 @@ def stops_on_ways(ways, refs, stations, scale):
 
 # 제 선로 사슬에서 이만큼 안에 있는 역까지 줍는다. 플랫폼 노드가 선로
 # 중심에서 떨어져 있어 너무 좁히면 큰 역을 놓친다. 120m 로 두었더니
-# 山陰本線 의 石原 이 153m 라 빠졌다. 제 노선 사슬만 보므로 나란히
-# 달리는 남의 선로를 집을 걱정은 없다.
+# 山陰本線 의 石原 이 153m 라 빠졌다. 나란히 달리는 남의 선로 역은
+# 가장 가까운 선로가 제 선로인지로 거른다(fill_missing 의 owner).
 FILL_NEAR_M = 200.0
 # 이만큼 안에 이미 정차역이 있으면 그 역이다. 이름 없는 정차 노드는
 # 이름으로 가릴 수 없어 자리로 가린다. 新川崎 와 鹿島田 이 300m 라
 # 그보다 넉넉히 좁게 잡는다.
 FILL_SAME_M = 200.0
+# 가장 가까운 선로가 남의 것인 역을 노선 끝에 붙일 때 제 선로와의 거리
+# 상한. 分岐駅 多気 가 参宮線 선로에서 38m 다.
+FILL_END_M = 60.0
+# 같은 역의 다른 자리가 이만큼 더 어긋나면 떠돌이로 보고 버린다.
+# 紀勢本線 앞머리의 那智 는 150km 어긋났다.
+STRAY_SLACK_M = 5000.0
 
 
 def _name_key(rec):
@@ -692,45 +745,6 @@ def _name_key(rec):
         if br in nm:
             nm = nm.split(br)[0].strip()
     return nm[:-1] if nm.endswith("駅") else nm
-
-
-def _single(out, near, k0, chain, stations, scale, fresh, put):
-    """사슬 위에 아는 역이 하나뿐일 때 그 둘레에 역을 끼운다."""
-    anchor = near[k0][1]
-    arc_a = near[k0][0]
-    k = out.index(anchor)
-    nb_i = k + 1 if k + 1 < len(out) else k - 1
-    if nb_i < 0 or out[nb_i] not in stations:
-        return
-    nb = stations[out[nb_i]]
-    side = 1 if nb_i > k else -1
-
-    def far(pt):
-        return float(np.hypot((nb[0] - pt[0]) * scale * 111_320.0,
-                              (nb[1] - pt[1]) * 111_132.0))
-
-    # 이웃 역이 사슬의 어느 끝에 가까운가. 그쪽이 목록에서 이웃 쪽이다.
-    to_end = far(chain[-1]) < far(chain[0])
-    lead, trail = [], []
-    for a, nid in near:
-        if not fresh(nid):
-            continue
-        ((lead if (a > arc_a) == to_end else trail)
-         ).append((abs(a - arc_a), nid))
-    lead.sort()
-    trail.sort()
-    if lead:
-        g = [n for _d, n in lead]
-        put(k + 1, g) if side > 0 else put(k, g[::-1])
-    if trail:
-        g = [n for _d, n in trail]
-        k = out.index(anchor)       # 앞에서 끼운 만큼 자리가 밀렸다
-        # 이웃 반대쪽은 그 역이 목록의 끝일 때만 붙인다. 가운데면
-        # 어느 쪽으로 뻗는지 알 수 없다.
-        if side > 0 and k == 0:
-            put(0, g[::-1])
-        elif side < 0 and k == len(out) - 1:
-            put(len(out), g)
 
 
 def _at_spot(rec, spots, scale):
@@ -743,8 +757,111 @@ def _at_spot(rec, spots, scale):
     return bool(d.min() < FILL_SAME_M)
 
 
-def fill_missing(seq, way_ids, geom, stations, pool, scale):
-    """정차 목록에 빠진 역을, 제 선로 사슬 위 위치에 맞춰 끼워 넣는다.
+def _insert_cheapest(out, item, xy, ends_only=False):
+    """노선 길이가 가장 적게 늘어나는 자리에 item 을 끼운다.
+
+    xy(원소) 는 미터 좌표나 None. 끼웠으면 True. 노선은 길이라 역을
+    순서대로 이은 길이가 짧을수록 옳은 순서다(reseat_strays 와 같은 뜻).
+    """
+    p = xy(item)
+    if p is None:
+        return False
+    p = np.asarray(p, dtype=np.float64)
+    best, best_k = None, None
+    for k in range(len(out) + 1):
+        a = xy(out[k - 1]) if k > 0 else None
+        b = xy(out[k]) if k < len(out) else None
+        if a is None and b is None:
+            continue
+        if a is None:
+            cost = float(np.hypot(*(p - b)))
+        elif b is None:
+            cost = float(np.hypot(*(p - a)))
+        else:
+            a, b = np.asarray(a), np.asarray(b)
+            cost = float(np.hypot(*(p - a)) + np.hypot(*(p - b))
+                         - np.hypot(*(a - b)))
+        if best is None or cost < best:
+            best, best_k = cost, k
+    if best_k is None:
+        return False
+    if ends_only and 0 < best_k < len(out):
+        return False
+    out.insert(best_k, item)
+    return True
+
+
+def _drop_strays(seq, xy, key, slack_m=None):
+    """같은 역이 여러 번 나오면 이웃과 가장 잘 맞는 자리 하나만 남긴다.
+
+    선로 관계를 웨이 조각으로 이으면 먼 조각이 맨 앞에 붙어 떠돌이 역이
+    생긴다. 紀勢本線 은 "下里 那智 和歌山市 …" 로 시작하고 下里·那智 가
+    제자리에 또 나온다. 처음 나온 것을 남기면 떠돌이가 살고, 그 옆에
+    역을 끼우면 떠돌이 덩어리가 커져 노선이 331km 에서 427km 가 됐다.
+    """
+    at = defaultdict(list)
+    for i, n in enumerate(seq):
+        at[key(n)].append(i)
+
+    def cost(i):
+        p = xy(seq[i])
+        if p is None:
+            return 0.0
+        p = np.asarray(p, dtype=np.float64)
+        a = xy(seq[i - 1]) if i > 0 else None
+        b = xy(seq[i + 1]) if i + 1 < len(seq) else None
+        if a is None and b is None:
+            return 0.0
+        if a is None:
+            return float(np.hypot(*(p - b)))
+        if b is None:
+            return float(np.hypot(*(p - a)))
+        a, b = np.asarray(a), np.asarray(b)
+        return float(np.hypot(*(p - a)) + np.hypot(*(p - b)) - np.hypot(*(a - b)))
+
+    # slack_m 을 주면 가장 잘 맞는 자리보다 그만큼 넘게 어긋나는 자리만
+    # 버린다. 복선의 상행·하행이 한 목록에 섞여 온 것은 두 자리가 다
+    # 맞으므로 둘 다 남는다. 하나만 남기면 두 반의 자리가 뒤섞여
+    # 東海道本線 이 310km 에서 575km 가 됐다. 왕복은 repair_order 가 편다.
+    drop = set()
+    for k, idx in at.items():
+        if k and len(idx) > 1:
+            c = {i: cost(i) for i in idx}
+            keep = min(idx, key=c.get)
+            if slack_m is None:
+                drop.update(i for i in idx if i != keep)
+            else:
+                drop.update(i for i in idx if c[i] > c[keep] + slack_m)
+    return [n for i, n in enumerate(seq) if i not in drop]
+
+
+def _nearest_track(geom, scale, pos, slack_m=15.0):
+    """역 -> 그 역에서 가장 가까운 선로 웨이들. 가장 가까운 것보다
+    slack_m 안쪽에 있는 것까지 준다. 선로를 공유하는 노선이 함께 걸린다."""
+    from scipy.spatial import cKDTree
+
+    wid, xy = [], []
+    for w, g in geom.items():
+        a = np.asarray(g, dtype=np.float64).reshape(-1, 2)
+        wid.extend([w] * len(a))
+        xy.append(np.c_[a[:, 0] * scale * 111_320.0, a[:, 1] * 111_132.0])
+    if not xy:
+        return lambda n: set()
+    wid = np.asarray(wid)
+    tree = cKDTree(np.concatenate(xy))
+    memo = {}
+
+    def owner(n):
+        if n not in memo:
+            p = (pos[n][0] * scale * 111_320.0, pos[n][1] * 111_132.0)
+            d, _i = tree.query(p)
+            memo[n] = set(wid[tree.query_ball_point(p, d + slack_m)].tolist())
+        return memo[n]
+    return owner
+
+
+def fill_missing(seq, way_ids, geom, stations, pool, scale, owner=None):
+    """정차 목록에 빠진 역을, 노선 길이가 가장 적게 늘어나는 자리에 끼운다.
 
     OSM 이 어떤 역에는 선로 위 정차 노드를 두지 않고 옆에 역 노드만
     둔다. 그러면 웨이 구성 노드만 보는 방식으로는 그 역이 통째로
@@ -753,88 +870,76 @@ def fill_missing(seq, way_ids, geom, stations, pool, scale):
     pool 은 후보가 될 노드다. 아무 계통도 정차역으로 부르지 않은 역
     노드만 들어 있다. 이 거름이 없으면 나란히 달리는 남의 노선 역이
     딸려 온다. 산인 본선 옆 사가노 관광철도의 トロッコ嵯峨 와 京福 의
-    撮影所前 이 120m 안에 있다.
+    撮影所前 이 120m 안에 있다. owner(역) 가 주어지면 그 역에서 가장
+    가까운 선로 웨이들을 돌려받아, 그중에 제 웨이가 없으면 버린다.
+    어느 계통도 안 부른 남의 역이 제 선로 200m 안에 있을 때 거른다.
+    JR 長島 가 近鉄長島 옆이라 近鉄名古屋線 에 딸려 왔다.
 
-    사슬 하나를 놓고, 그 위에 후보와 이미 있는 역을 함께 투영해 한 줄로
-    세운 다음, 이미 있는 역 둘 사이에 든 후보만 그 사이에 끼운다.
-    사슬을 이어 붙인 거리로 한꺼번에 세우면 안 된다. 사슬의 순서도
-    방향도 노선을 따르지 않아, 제자리를 못 찾은 역이 목록 맨 앞이나 맨
-    뒤로 가 이웃 간격을 도리어 벌린다. 양 끝 밖을 버리는 것도 같은
-    이유다. 和歌山線 머리의 薬水, 泉北線 꼬리의 なかもず 가 그랬다.
+    예전에는 선로를 끝점끼리 이은 사슬 위에서 아는 역 사이에 끼웠다.
+    역 구내 측선 때문에 사슬이 잘게 쪼개지면(関西本線 은 191개) 아는
+    역이 없는 사슬의 역은 버려지고(新堂·佐那具·伊賀上野·島ヶ原), 방향을
+    잘못 잡은 사슬은 한 무리를 노선 끝 뒤로 거꾸로 붙였다(近鉄名古屋線
+    의 長島-豊津上野 가 伊勢中川 뒤로 갔다). 노선은 길이라 역을 순서대로
+    이은 길이가 가장 적게 늘어나는 자리가 제자리다. 아는 역에 가까운
+    후보부터 끼운다.
     """
+    from scipy.spatial import cKDTree
+
+    def xy(n):
+        return (stations[n][0] * scale * 111_320.0, stations[n][1] * 111_132.0)
+
+    pts = [np.asarray(geom[w], dtype=np.float64).reshape(-1, 2)
+           for w in way_ids if len(geom.get(w, ())) >= 1]
+    known = [n for n in seq if n in stations]
+    if not pts or not known:
+        return list(seq)
+    P = np.concatenate(pts)
+    tree = cKDTree(np.c_[P[:, 0] * scale * 111_320.0, P[:, 1] * 111_132.0])
+    own = set(way_ids)
+
     have = set(seq)
     # 이름 없는 정차 노드의 빈 이름이 들어가면 안 된다. 그러면 이름
     # 없는 후보가 통째로 막힌다. 빈 이름은 자리로만 가린다.
-    taken = {k for k in (_name_key(stations[n]) for n in seq if n in stations) if k}
-    spots = [(stations[n][0], stations[n][1]) for n in seq if n in stations]
+    taken = {k for k in (_name_key(stations[n]) for n in known) if k}
+    spots = [(stations[n][0], stations[n][1]) for n in known]
+
+    K = np.array([xy(n) for n in known])
+    cands = []
+    for nid in pool:
+        # 이름 없는 역 노드는 끼워도 목록에 빈 칸으로 설 뿐이다
+        if nid in have or nid not in stations or not _name_key(stations[nid]):
+            continue
+        p = xy(nid)
+        d_own = tree.query(p)[0]
+        if d_own > FILL_NEAR_M:
+            continue
+        # 가장 가까운 선로가 남의 것이면 한가운데로는 안 받는다. 다만 제
+        # 선로 가까이 있는 노선 끝은 받는다. 分岐駅 이 그렇다. 参宮線 은
+        # 多気 에서 紀勢本線 과 갈라져, 多気 에 가장 가까운 선로가 紀勢本線
+        # 이다(제 선로 38m). 東大垣(35m 차이)·長島 같은 남의 역은 노선
+        # 한가운데로 들어오려 해서 걸린다.
+        ends_only = owner is not None and not (owner(nid) & own)
+        if ends_only and d_own > FILL_END_M:
+            continue
+        cands.append((float(np.hypot(K[:, 0] - p[0], K[:, 1] - p[1]).min()),
+                      nid, ends_only))
+    cands.sort()
+
     out = list(seq)
-    for chain in stitch_all(way_ids, geom):
-        if len(chain) < 2:
+
+    def xy_or_none(n):
+        return xy(n) if n in stations else None
+
+    for _d, nid, ends_only in cands:
+        if (nid in have or _name_key(stations[nid]) in taken
+                or _at_spot(stations[nid], spots, scale)):
             continue
-        C = np.asarray(chain, dtype=np.float64)
-        cx = C[:, 0] * scale * 111_320.0
-        cy = C[:, 1] * 111_132.0
-        arc = np.concatenate([[0.0], np.cumsum(np.hypot(np.diff(cx), np.diff(cy)))])
-        near = []
-        for nid in list(pool) + [n for n in have if n in stations]:
-            lon, lat = stations[nid][0], stations[nid][1]
-            d = np.hypot(cx - lon * scale * 111_320.0, cy - lat * 111_132.0)
-            k = int(np.argmin(d))
-            if d[k] <= FILL_NEAR_M:
-                near.append((float(arc[k]), nid))
-        near.sort()
-        at = [i for i, (_a, nid) in enumerate(near) if nid in have]
-        if not at:
+        if not _insert_cheapest(out, nid, xy_or_none, ends_only):
             continue
-
-        def fresh(nid):
-            return (nid not in have
-                    and _name_key(stations[nid]) not in taken
-                    and not _at_spot(stations[nid], spots, scale))
-
-        def put(k, group):
-            out[k:k] = group
-            for g in group:
-                have.add(g)
-                if _name_key(stations[g]):
-                    taken.add(_name_key(stations[g]))
-                spots.append((stations[g][0], stations[g][1]))
-
-        if len(at) < 2:
-            # 사슬 위에 아는 역이 하나뿐이면 그 역만으로는 방향을 못
-            # 정한다. 그 역의 이웃 정차역이 사슬의 어느 끝에 가까운지로
-            # 정한다. 山陰本線 의 佐津·柴山·石原 과 関西本線 加茂-柘植
-            # 사이 여섯 역이 이 경우다.
-            _single(out, near, at[0], C, stations, scale, fresh, put)
-            continue
-
-        # 사슬을 따라가는 방향이 정차 목록 방향과 같은가
-        forward = out.index(near[at[-1]][1]) > out.index(near[at[0]][1])
-        group, prev = [], None
-        for _a, nid in near[at[0]:at[-1] + 1]:
-            if nid in have:
-                if group:
-                    put(out.index(prev if forward else nid) + 1,
-                        group if forward else group[::-1])
-                    group = []
-                prev = nid
-            elif fresh(nid):
-                group.append(nid)
-
-        # 사슬에서 아는 역들 바깥에 있는 역은 그 끝 역 옆에 붙인다.
-        # 사슬 위 차례도 방향도 알고 있어 자리가 정해진다. 목록의 끝일
-        # 때만 붙이던 때는 JR닛코선의 日光 는 들어왔지만 山陰本線 의
-        # 佐津·柴山 이 버려졌다. 둘 다 아는 역 바로 옆자리다.
-        for side, span in ((0, near[:at[0]]), (-1, near[at[-1] + 1:])):
-            add = [nid for _a, nid in span if fresh(nid)]
-            if not add:
-                continue
-            anchor = near[at[0] if side == 0 else at[-1]][1]
-            k = out.index(anchor)
-            if (side == 0) == forward:          # 그 역 앞에 붙는다
-                put(k, add if forward else add[::-1])
-            else:                               # 그 역 뒤에 붙는다
-                put(k + 1, add if forward else add[::-1])
+        have.add(nid)
+        if _name_key(stations[nid]):
+            taken.add(_name_key(stations[nid]))
+        spots.append((stations[nid][0], stations[nid][1]))
     return out
 
 
@@ -1091,6 +1196,10 @@ def load_osm_cache(pbfs):
 
     rel = _Bag()
     rel.routes = meta["routes"]
+    # 종별은 이름에서 다시 매긴다. 종별 규칙만 고쳤을 때 PBF 를 다시
+    # 훑지 않아도 되게.
+    for r in rel.routes:
+        r["kind"] = kind_of(r["name"])
     rel.dropped = meta.get("dropped", 0)
     rel.skipped = meta.get("skipped", 0)
     rel.want_nodes = {n for r in rel.routes for n in r["stops"]}
@@ -1161,6 +1270,53 @@ def main():
     return _build(pbfs, rel, ways, nodes)
 
 
+def extend_lines(lines, members, pos):
+    """data/line-extensions.json 에 적은 대로 노선 끝을 이어 붙인다.
+
+    OSM 은 노선을 시설 기준으로 적어 둔다. 名鉄犬山線 은 新鵜沼-下小田井
+    이지만 열차는 역이 아닌 枇杷島分岐点 에서 본선으로 들어가 名鉄名古屋
+    까지 간다. 분기점이 역이 아니라 두 노선이 어느 역에서도 만나지 않고,
+    나고야에서 이누야마까지 기후를 돌아 80분이 나왔다.
+    """
+    path = ROOT / "data" / "line-extensions.json"
+    if not path.exists():
+        return
+    book = json.loads(path.read_text(encoding="utf-8")).get(REGION) or {}
+    if not book:
+        return
+    by_name = defaultdict(list)
+    for cl, ns in enumerate(members):
+        if ns:
+            v = pos[ns[0]]
+            by_name[(v[2].get("ja") or v[3] or "").strip()].append(cl)
+    for ln in lines:
+        rep = ln["rep"]["name"]
+        ext = book.get(rep) or book.get(base_name(rep))
+        if not ext:
+            continue
+        for end, names in ext.items():
+            cls = []
+            for nm in names:
+                got = by_name.get(nm) or []
+                if len(got) != 1:
+                    print(f"  !! 이어 붙일 역 {nm} 이 {len(got)}개라 {rep} 를 "
+                          f"잇지 않는다", flush=True)
+                    break
+                cls.append(got[0])
+            else:
+                seq = ln["seq"]
+                if by_name.get(end) == [seq[-1]]:
+                    ln["seq"] = seq + cls
+                elif by_name.get(end) == [seq[0]]:
+                    ln["seq"] = cls[::-1] + seq
+                else:
+                    print(f"  !! {rep} 의 끝이 {end} 가 아니라 잇지 않는다",
+                          flush=True)
+                    continue
+                print(f"  {rep}: {end} 뒤로 {'·'.join(names)} 를 이었다",
+                      flush=True)
+
+
 def _build(pbfs, rel, ways, nodes):
 
     lat0 = float(np.median([v[1] for v in nodes.pos.values()])) if nodes.pos else 35.0
@@ -1179,12 +1335,18 @@ def _build(pbfs, rel, ways, nodes):
     recovered, by_node, picked_up = 0, 0, 0
     # 빠진 역을 메울 후보. 어느 관계도 정차역으로 가리키지 않은 역
     # 노드만 남긴다. 남의 노선 역과 같은 역의 다른 노드를 빼는 거름이다.
+    # 특급이 부른 역은 거르지 않는다. 특급 정차역은 그 선로의 완행역이기도
+    # 해서, 거르면 高山本線 이 ひだ 가 서는 下呂·高山 등을 못 줍고 그 역들이
+    # ひだ 에만 붙는다. 쾌속·급행은 그대로 거른다. 総武快速線 처럼 제 선로를
+    # 가진 쾌속이 있어, 풀면 新日本橋 가 옆의 銀座線 에 붙는다.
     claimed = {_name_key(nodes.stations[n]) for r in rel.routes
+               if r["kind"] != "특급"
                for n in r["stops"] if n in nodes.stations}
     pool = [n for n in nodes.rail
             if _name_key(nodes.stations[n]) not in claimed
             and "貨物" not in _name_key(nodes.stations[n])]
     print(f"  어느 계통도 안 부른 역 노드 {len(pool):,}개", flush=True)
+    owner = _nearest_track(ways.geom, scale, nodes.pos)
     for r in rel.routes:
         track = r.get("rtype") == "railway"
         # 정차역을 되살릴 필요가 없는 관계라도 빠진 역은 메워야 한다.
@@ -1196,7 +1358,7 @@ def _build(pbfs, rel, ways, nodes):
         if not need:
             if r["kind"] in (None, "각역정차") and len(r["stops"]) >= 2:
                 filled = fill_missing(r["stops"], r["ways"], ways.geom,
-                                      nodes.pos, pool, scale)
+                                      nodes.pos, pool, scale, owner)
                 if len(filled) > len(r["stops"]):
                     picked_up += len(filled) - len(r["stops"])
                     r["stops"] = filled
@@ -1204,9 +1366,24 @@ def _build(pbfs, rel, ways, nodes):
         # 먼저 웨이의 구성 노드에서 찾는다. 확실한 대신 갖춰지지 않은
         # 노선이 있어, 그때만 선로 옆 거리로 줍는다.
         seq = stops_on_ways(r["ways"], ways.refs, nodes.stations, scale)
+        seq = _drop_strays(
+            seq,
+            lambda n: ((nodes.pos[n][0] * scale * 111_320.0,
+                        nodes.pos[n][1] * 111_132.0) if n in nodes.pos else None),
+            lambda n: _name_key(nodes.pos[n]) if n in nodes.pos else "",
+            slack_m=STRAY_SLACK_M)
         found = "웨이 노드"
         if len(seq) < 2 and not track:
             seq = stops_along(stitch(r["ways"], ways.geom), nodes.stations, scale)
+            found = "선로 옆"
+        elif len(seq) < 2:
+            # 선로 관계는 간선이면 나란한 남의 노선 역까지 줍는다. 어느
+            # 계통도 안 부른 역(pool)과 선로 위에서 이미 찾은 역만 본다.
+            # 樽見鉄道 는 계통 관계 없이 선로 관계만 있고, 역이 전부
+            # 선로 옆 railway=station 이라 大垣 하나만 잡혀 노선째 빠졌다.
+            near = {n: nodes.stations[n] for n in pool}
+            near.update({n: nodes.pos[n] for n in seq if n in nodes.pos})
+            seq = stops_along(stitch(r["ways"], ways.geom), near, scale)
             found = "선로 옆"
         # 웨이 구성 노드만 보면 놓치는 역이 있다. OSM 이 그 역에 선로
         # 위 정차 노드를 안 두고 옆에 railway=station 노드만 둔 경우다.
@@ -1218,7 +1395,7 @@ def _build(pbfs, rel, ways, nodes):
             # 역 태그가 없어 stations 에 없는 것이 있는데, 그것을 모르면
             # 같은 역이 이름만 같은 다른 노드로 또 들어간다.
             filled = fill_missing(seq, r["ways"], ways.geom,
-                                  nodes.pos, pool, scale)
+                                  nodes.pos, pool, scale, owner)
             if len(filled) > len(seq):
                 picked_up += len(filled) - len(seq)
                 seq = filled
@@ -1306,6 +1483,44 @@ def _build(pbfs, rel, ways, nodes):
                 patterns.append((best, r))
             continue
         lines.append({"seq": r["seq"], "rep": r, "rels": [r]})
+    # 같은 노선으로 묶인 계통 중 가장 긴 것의 역만 쓰면 다른 계통에만 있는
+    # 역이 빠진다. 近鉄山田線 은 선로 관계가 뼈대가 되며 완행 계통에만
+    # 있는 종점 宇治山田 를 잃었다. 노선 끝에만 붙인다. 한가운데까지 받으면
+    # 묶인 계통의 오류가 딸려 온다. きのさき 가 품은 西舞鶴·東舞鶴 이
+    # 山陰本線 에, 空港線 계통의 関西空港 이 南海本線 에 끼었다.
+
+    def cxy(c):
+        return ((cpos[c][0] * scale * 111_320.0, cpos[c][1] * 111_132.0)
+                if c in cpos else None)
+    for ln in lines:
+        for r in ln["rels"][1:]:
+            for c in r["seq"]:
+                if c not in ln["seq"] and _name_key(pos[members[c][0]]):
+                    ln["seq"] = list(ln["seq"])
+                    _insert_cheapest(ln["seq"], c, cxy, ends_only=True)
+    # 끝에 못 붙은 역이 그 계통의 한쪽 끝에 이어져 있으면 지선이다.
+    # 豊橋鉄道東田本線 의 運動公園前 는 井原 에서 갈라지는 한 정거장짜리
+    # 지선인데, 그 계통이 본선과 90% 넘게 겹쳐 한 노선으로 묶이며 버려졌다.
+    # 아래 "지선만 덮는 계통" 으로 넘겨 지선을 세운다. 계통 한가운데에만
+    # 있는 역(近鉄奈良線 계통에 잘못 실린 鳥居前)이나 멀리 튀는 역
+    # (きのさき 가 품은 西舞鶴, 城崎温泉 에서 60km)은 넘기지 않는다.
+    for k, ln in enumerate(lines):
+        have_seq = set(ln["seq"])
+        for r in ln["rels"][1:]:
+            seq_r = [c for c in r["seq"] if _name_key(pos[members[c][0]])]
+            out_at = [i for i, c in enumerate(seq_r) if c not in have_seq]
+            if not out_at or len(seq_r) < 2:
+                continue
+            n = len(seq_r)
+            tail = out_at == list(range(n - len(out_at), n))
+            head = out_at == list(range(len(out_at)))
+            if not (tail or head) or len(out_at) == n:
+                continue
+            part = (seq_r[out_at[0] - 1:] if tail else seq_r[:out_at[-1] + 2])
+            gaps = [float(np.hypot(*(np.asarray(cxy(x)) - np.asarray(cxy(y)))))
+                    for x, y in zip(part, part[1:])]
+            if max(gaps) <= BRANCH_GAP_M:
+                patterns.append((k, r))
     # 지선만 덮는 계통은 통과 계통이 아니라 노선이다.
     #
     # 東武小泉線 은 OSM 에 館林 => 西小泉 과 館林 => 太田 두 계통으로 들어
@@ -1341,6 +1556,8 @@ def _build(pbfs, rel, ways, nodes):
     patterns = rest
     print(f"  뼈대 노선 {len(lines):,}개 (지선이라 따로 세운 계통 {promoted}개), "
           f"통과·부분 계통 {len(patterns):,}개", flush=True)
+
+    extend_lines(lines, members, pos)
 
     railways, stations, express = [], [], []
     used_ids, seen_sid = set(), set()

@@ -2721,7 +2721,9 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 
   function setOrigin(lon, lat, label, names) {
     origin = { lon: lon, lat: lat, label: label || null, names: names || null };
-    mapView.setPin("origin", lat, lon);
+    // 권역이 지도보다 먼저 올라오면 아직 지도가 없다. 핀은 attachMap 이
+    // origin 을 보고 찍는다.
+    if (mapView) mapView.setPin("origin", lat, lon);
   }
 
   function setDestination(lon, lat, label, names) {
@@ -2733,13 +2735,13 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 
   function clearDestination() {
     destination = null;
-    mapView.clearPin("dest");
+    if (mapView) mapView.clearPin("dest");
     el("dq").value = "";
     el("dest-clear").hidden = true;
     el("swap").disabled = true;
     el("verdict").hidden = true;
     el("journey").hidden = true;
-    mapView.clearRoute();
+    if (mapView) mapView.clearRoute();
   }
 
   /* 지도 클릭이 어느 칸을 찍을지. 입력칸을 누르면 그쪽으로 넘어간다. */

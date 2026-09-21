@@ -1,0 +1,84 @@
+{
+ "id": "tokai",
+ "center": [
+  136.8815,
+  35.1709
+ ],
+ "zoom": 11,
+ "names": {
+  "ja": "東海",
+  "en": "Tokai",
+  "ko": "도카이",
+  "zh-Hans": "东海",
+  "zh-Hant": "東海"
+ },
+ "model": "naive",
+ "timetable": null,
+ "rail": {
+  "source": "OpenStreetMap",
+  "license": "ODbL 1.0",
+  "express_source": "ja.wikipedia.org",
+  "express_license": "CC BY-SA 4.0"
+ },
+ "osm_extracts": [
+  "chubu",
+  "kansai",
+  "kanto"
+ ],
+ "osm_files": [
+  "chubu-latest.osm.pbf",
+  "kansai-latest.osm.pbf",
+  "kanto-latest.osm.pbf"
+ ],
+ "grid": {
+  "lon0": 135.75,
+  "lat0": 33.62,
+  "lat_ref": 35.1,
+  "span_x": 322000.0,
+  "span_y": 326000.0,
+  "ocean_seeds": [
+   [
+    136.75,
+    34.85
+   ],
+   [
+    137.1,
+    34.72
+   ],
+   [
+    137.6,
+    34.4
+   ],
+   [
+    138.6,
+    34.9
+   ],
+   [
+    139.15,
+    34.85
+   ],
+   [
+    136.5,
+    33.9
+   ]
+  ]
+ },
+ "note": "시각표가 없어 나이브 모델로 돈다. 권역은 도카이 4현(아이치·기후·시즈오카·미에)이고 경계는 현 경계를 해안선으로 자른 것이다. 미에는 간사이에도 들어 있지만 긴테쓰 나고야선으로 나고야 통근권이라 넣었다. 간사이 추출본은 미에가 그 안에 있어서, 간토 추출본은 아타미 건너편 사가미만 기슭이 없으면 해안선이 닫히지 않아서 함께 읽는다.",
+ "start": {
+  "lon": 136.8815,
+  "lat": 35.1709,
+  "names": {
+   "ja": "名古屋",
+   "en": "Nagoya",
+   "ko": "나고야",
+   "zh-Hans": "名古屋",
+   "zh-Hant": "名古屋"
+  }
+ },
+ "prefectures": [
+  "愛知県",
+  "岐阜県",
+  "静岡県",
+  "三重県"
+ ]
+}

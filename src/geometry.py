@@ -227,22 +227,49 @@ def smooth_spikes(path, scale, keep=None):
                                                   (py - ay) * vy) / n))
         return math.hypot(px - (ax + t * vx), py - (ay + t * vy)) >= SPIKE_AWAY_M
 
-    out = []
-    for p in path:
-        out.append([float(p[0]), float(p[1])])
-        while len(out) >= 3:
-            a, b, c = out[-3], out[-2], out[-1]
-            l1, l2 = m(a, b), m(b, c)
-            if l1 < SPIKE_MIN_LEG_M or l2 < SPIKE_MIN_LEG_M:
-                break
-            if turn_deg(a, b, c, scale) <= SPIKE_TURN_DEG:
-                break
-            if l1 + l2 - m(a, c) > SPIKE_MAX_M * 2:
-                break
-            if loses_station(a, b, c):
-                break       # 지우면 선이 그 역에서 떨어진다.
-            out.pop(-2)
-    return out
+    def sweep(pinned):
+        out, idx = [], []
+        for i, p in enumerate(path):
+            out.append([float(p[0]), float(p[1])])
+            idx.append(i)
+            while len(out) >= 3:
+                a, b, c = out[-3], out[-2], out[-1]
+                if idx[-2] in pinned:
+                    break
+                l1, l2 = m(a, b), m(b, c)
+                if l1 < SPIKE_MIN_LEG_M or l2 < SPIKE_MIN_LEG_M:
+                    break
+                if turn_deg(a, b, c, scale) <= SPIKE_TURN_DEG:
+                    break
+                if l1 + l2 - m(a, c) > SPIKE_MAX_M * 2:
+                    break
+                if loses_station(a, b, c):
+                    break       # 지우면 선이 그 역에서 떨어진다.
+                out.pop(-2)
+                idx.pop(-2)
+        return out
+
+    out = sweep(set())
+    if K is None:
+        return out
+    # 하나씩은 작게 빼도 되풀이하면 스위치백 끝을 통째로 먹는다. 역에서
+    # 30m 안의 점만 지키므로, 끝이 조금 물러나면 그다음부터는 못 막는다.
+    # 養老線 은 大垣 에서 방향을 바꾸는데 선이 역에서 924m 떨어졌다.
+    # 원래 선이 지나던 역에서 정리한 선이 멀어졌으면 그 역에 가장 가까운
+    # 원래 점을 고정하고 다시 정리한다.
+    P = np.asarray(path, dtype=np.float64)
+    pinned = set()
+    for k in range(len(K)):
+        d0 = np.hypot((P[:, 0] - K[k, 0]) * scale * 111_320.0,
+                      (P[:, 1] - K[k, 1]) * 111_132.0)
+        if d0.min() >= SPIKE_AT_STATION_M:
+            continue
+        Q = np.asarray(out, dtype=np.float64)
+        d1 = np.hypot((Q[:, 0] - K[k, 0]) * scale * 111_320.0,
+                      (Q[:, 1] - K[k, 1]) * 111_132.0)
+        if d1.min() >= SPIKE_AWAY_M:
+            pinned.add(int(np.argmin(d0)))
+    return sweep(pinned) if pinned else out
 
 class Geometry:
     """노선 선형과, 각 역이 어느 선형 위 어디에 놓이는지."""

@@ -35,6 +35,10 @@
   "color": "#0072ba",
   "source": "ja.wikipedia:JR京都線"
  },
+ "JR伊東線": {
+  "color": "#22aa33",
+  "source": "ja.wikipedia:伊東線"
+ },
  "JR内房線 (千葉 → 安房鴨川)": {
   "color": "#00b2e5",
   "source": "ja.wikipedia:内房線"
@@ -82,6 +86,10 @@
  "JR大阪環状線 (内回り)": {
   "color": "#e80000",
   "source": "ja.wikipedia:大阪環状線"
+ },
+ "JR太多線": {
+  "color": "#bfba2f",
+  "source": "ja.wikipedia:太多線"
  },
  "JR奈良線 普通 (京都 => 奈良)": {
   "color": "#aa731c",
@@ -167,6 +175,10 @@
   "color": "#f15a22",
   "source": "ja.wikipedia:JR武蔵野線"
  },
+ "JR武豊線 (大府->武豊)": {
+  "color": "#83502f",
+  "source": "ja.wikipedia:JR武豊線"
+ },
  "JR水戸線": {
   "color": "#3333ff",
   "source": "ja.wikipedia:水戸線"
@@ -215,6 +227,10 @@
   "color": "#0072ba",
   "source": "ja.wikipedia:赤穂線"
  },
+ "JR身延線 (西富士宮=>富士)": {
+  "color": "#6f2d98",
+  "source": "ja.wikipedia:身延線"
+ },
  "JR関西本線": {
   "color": "#ad3e28",
   "source": "지어냄"
@@ -234,6 +250,10 @@
  "JR青梅線": {
   "color": "#f15a22",
   "source": "ja.wikipedia:JR青梅線"
+ },
+ "JR飯田線 (豊橋=>豊川)": {
+  "color": "#75a2db",
+  "source": "ja.wikipedia:飯田線"
  },
  "JR鶴見線": {
   "color": "#ffd400",
@@ -375,6 +395,10 @@
   "color": "#005ba5",
   "source": "권역 맞춤:横浜市営地下鉄ブルーライン(B32:あざみ野=>B01:湘南台)"
  },
+ "あおなみ線": {
+  "color": "#334fa0",
+  "source": "ja.wikipedia:あおなみ線"
+ },
  "いすみ線": {
   "color": "#ffd400",
   "source": "ja.wikipedia:いすみ線"
@@ -514,6 +538,10 @@
  "ポートライナー (三宮=>神戸空港)": {
   "color": "#056637",
   "source": "ja.wikipedia:ポートライナー"
+ },
+ "ミュースカイ": {
+  "color": "#004898",
+  "source": "ODPT:ミュースカイ"
  },
  "ユーカリが丘線": {
   "color": "#2f9d66",
@@ -807,9 +835,17 @@
   "color": "#00BFFF",
   "source": "ODPT:伊豆急行線"
  },
+ "伊豆急行線 (伊東->伊豆急下田)": {
+  "color": "#00BFFF",
+  "source": "ODPT:伊豆急行線 (伊東->伊豆急下田)"
+ },
  "伊豆箱根鉄道大雄山線 (小田原->大雄山)": {
   "color": "#0000ff",
   "source": "ja.wikipedia:伊豆箱根鉄道大雄山線"
+ },
+ "伊豆箱根鉄道駿豆線 (三島->修善寺)": {
+  "color": "#0000ff",
+  "source": "ja.wikipedia:伊豆箱根鉄道駿豆線"
  },
  "伊賀鉄道伊賀線": {
   "color": "#703664",
@@ -971,6 +1007,106 @@
   "color": "#ff0000",
   "source": "ja.wikipedia:叡山電鉄鞍馬線"
  },
+ "名古屋市営1号線東山線 (高畑 --> 藤が丘)": {
+  "color": "#FAB123",
+  "source": "ODPT:名古屋市営1号線東山線 (高畑 --> 藤が丘)"
+ },
+ "名古屋市営3号線鶴舞線 (上小田井=>赤池)": {
+  "color": "#009BBF",
+  "source": "ODPT:名古屋市営3号線鶴舞線 (上小田井=>赤池)"
+ },
+ "名古屋市営6号線桜通線 (中村区役所 --> 徳重)": {
+  "color": "#C92F44",
+  "source": "ODPT:名古屋市営6号線桜通線 (中村区役所 --> 徳重)"
+ },
+ "名古屋市営上飯田線": {
+  "color": "#ea7ab2",
+  "source": "ODPT:名古屋市営上飯田線"
+ },
+ "名古屋市営名城線 (右回り)": {
+  "color": "#B074D6",
+  "source": "ODPT:名古屋市営名城線 (右回り)"
+ },
+ "名古屋市営名港線 (名古屋港→金山)": {
+  "color": "#B074D6",
+  "source": "ODPT:名古屋市営名港線 (名古屋港→金山)"
+ },
+ "名古屋鉄道三河線": {
+  "color": "#2859ad",
+  "source": "지어냄"
+ },
+ "名古屋鉄道各務原線 (新鵜沼=>名鉄岐阜)": {
+  "color": "#A2C7A8",
+  "source": "ODPT:名古屋鉄道各務原線 (新鵜沼=>名鉄岐阜)"
+ },
+ "名古屋鉄道小牧線": {
+  "color": "#8aad28",
+  "source": "지어냄"
+ },
+ "名古屋鉄道尾西線": {
+  "color": "#57ad28",
+  "source": "지어냄"
+ },
+ "名古屋鉄道常滑線": {
+  "color": "#ad7828",
+  "source": "지어냄"
+ },
+ "名古屋鉄道広見線": {
+  "color": "#6b28ad",
+  "source": "지어냄"
+ },
+ "名古屋鉄道河和線": {
+  "color": "#ad288c",
+  "source": "지어냄"
+ },
+ "名古屋鉄道津島線": {
+  "color": "#adad28",
+  "source": "지어냄"
+ },
+ "名古屋鉄道瀬戸線 (栄町=>尾張瀬戸)": {
+  "color": "#ad282a",
+  "source": "지어냄"
+ },
+ "名古屋鉄道犬山線": {
+  "color": "#ad8c28",
+  "source": "지어냄"
+ },
+ "名古屋鉄道知多新線": {
+  "color": "#a628ad",
+  "source": "지어냄"
+ },
+ "名古屋鉄道空港線 (中部国際空港 => 常滑)": {
+  "color": "#2388C8",
+  "source": "ODPT:名古屋鉄道空港線 (中部国際空港 => 常滑)"
+ },
+ "名古屋鉄道竹鼻線": {
+  "color": "#33ad28",
+  "source": "지어냄"
+ },
+ "名古屋鉄道築港線": {
+  "color": "gray",
+  "source": "ODPT:名古屋鉄道築港線"
+ },
+ "名古屋鉄道蒲郡線": {
+  "color": "#654E9E",
+  "source": "ODPT:名古屋鉄道蒲郡線"
+ },
+ "名古屋鉄道西尾線 (新安城=>吉良吉田)": {
+  "color": "#654E9E",
+  "source": "ODPT:名古屋鉄道西尾線 (新安城=>吉良吉田)"
+ },
+ "名古屋鉄道豊川線": {
+  "color": "#ad28ad",
+  "source": "지어냄"
+ },
+ "名古屋鉄道豊田線 (豊田市=>赤池)": {
+  "color": "#D4D7AB",
+  "source": "ODPT:名古屋鉄道豊田線 (豊田市=>赤池)"
+ },
+ "名鉄名古屋本線": {
+  "color": "#ce1929",
+  "source": "ja.wikipedia:名鉄名古屋本線"
+ },
  "吾妻線": {
   "color": "#0f5474",
   "source": "ja.wikipedia:吾妻線"
@@ -1027,6 +1163,14 @@
   "color": "#2288cc",
   "source": "ja.wikipedia:多摩線"
  },
+ "大井川鐵道井川線: 井川 => 千頭": {
+  "color": "#ff0000",
+  "source": "ja.wikipedia:大井川鐵道井川線"
+ },
+ "大井川鐵道大井川本線": {
+  "color": "#ff0000",
+  "source": "ja.wikipedia:大井川鐵道大井川本線"
+ },
  "大井町線": {
   "color": "#f18c43",
   "source": "ja.wikipedia:大井町線"
@@ -1058,6 +1202,10 @@
  "大雄山線": {
   "color": "#0000ff",
   "source": "ja.wikipedia:大雄山線"
+ },
+ "天竜浜名湖鉄道天竜浜名湖線": {
+  "color": "#1884cd",
+  "source": "ja.wikipedia:天竜浜名湖鉄道天竜浜名湖線"
  },
  "奈良線": {
   "color": "#aa731c",
@@ -1159,6 +1307,10 @@
   "color": "#ff0000",
   "source": "ja.wikipedia:山陽電気鉄道網干線"
  },
+ "岳南電車岳南線 (吉原->岳南江尾)": {
+  "color": "#ff4f00",
+  "source": "ja.wikipedia:岳南電車岳南線"
+ },
  "嵯峨野観光鉄道嵯峨野観光線": {
   "color": "#b22222",
   "source": "ja.wikipedia:嵯峨野観光鉄道嵯峨野観光線"
@@ -1198,6 +1350,14 @@
  "快速急行 (神戸三宮 => 近鉄奈良)": {
   "color": "#E7A61A",
   "source": "ODPT:京都地下鉄烏丸線・近鉄京都線 (国際会館 =>新田辺)"
+ },
+ "愛知環状鉄道線": {
+  "color": "#2536a1",
+  "source": "ja.wikipedia:愛知環状鉄道線"
+ },
+ "愛知高速交通株式会社 Linimo (藤が丘=>八草)": {
+  "color": "#0067C0",
+  "source": "ODPT:愛知高速交通株式会社 Linimo (藤が丘=>八草)"
  },
  "成田スカイアクセス線": {
   "color": "#ff8620",
@@ -1246,6 +1406,10 @@
  "日比谷線": {
   "color": "#b5b5ac",
   "source": "ja.wikipedia:日比谷線"
+ },
+ "明知鉄道明知線": {
+  "color": "black",
+  "source": "ODPT:明知鉄道明知線"
  },
  "智頭急行智頭線": {
   "color": "#ad2828",
@@ -1499,6 +1663,10 @@
   "color": "#ffa500",
   "source": "ja.wikipedia:東武鬼怒川線"
  },
+ "東海交通事業城北線 (枇杷島=>勝川)": {
+  "color": "#f77321",
+  "source": "ja.wikipedia:東海交通事業城北線"
+ },
  "東海道本線": {
   "color": "#00BFFF",
   "source": "ODPT:北陸本線・湖西線・東海道本線・山陽本線 新快速 (敦賀 => 網干)"
@@ -1574,6 +1742,10 @@
  "横須賀線": {
   "color": "#0067c0",
   "source": "ja.wikipedia:横須賀線"
+ },
+ "樽見鉄道樽見線": {
+  "color": "#00b0f0",
+  "source": "ja.wikipedia:樽見鉄道樽見線"
  },
  "武蔵野線": {
   "color": "#f15a22",
@@ -1851,6 +2023,14 @@
   "color": "#FF6600",
   "source": "ODPT:豊島線"
  },
+ "豊橋鉄道東田本線": {
+  "color": "#008085",
+  "source": "ja.wikipedia:豊橋鉄道東田本線"
+ },
+ "豊橋鉄道渥美線 (三河田原=>新豊橋)": {
+  "color": "#008085",
+  "source": "ja.wikipedia:豊橋鉄道渥美線"
+ },
  "貴志川線": {
   "color": "#DC143C",
   "source": "ODPT:貴志川線"
@@ -1858,6 +2038,10 @@
  "越生線": {
   "color": "#004098",
   "source": "ja.wikipedia:越生線"
+ },
+ "踊り子 (伊豆急下田=>東京)": {
+  "color": "#2890ad",
+  "source": "지어냄"
  },
  "近江鉄道万葉あかね線 (八日市->近江八幡)": {
   "color": "#00B050",
@@ -1912,6 +2096,10 @@
   "source": "ja.wikipedia:近鉄奈良線"
  },
  "近畿日本鉄道山田線": {
+  "color": "#00b3c1",
+  "source": "ja.wikipedia:近鉄山田線"
+ },
+ "近畿日本鉄道山田線 普通 (伊勢中川 => 宇治山田)": {
   "color": "#00b3c1",
   "source": "ja.wikipedia:近鉄山田線"
  },
@@ -1975,6 +2163,10 @@
   "color": "#33C2E4",
   "source": "ODPT:逗子線"
  },
+ "遠州鉄道鉄道線 (新浜松=>西鹿島)": {
+  "color": "red",
+  "source": "ODPT:遠州鉄道鉄道線 (新浜松=>西鹿島)"
+ },
  "都営三田線 : 目黒→西高島平": {
   "color": "#0079c2",
   "source": "ja.wikipedia:都営三田線"
@@ -2018,6 +2210,10 @@
  "銚子電鉄線": {
   "color": "#a52a2a",
   "source": "ja.wikipedia:銚子電鉄線"
+ },
+ "長良川鉄道越美南線": {
+  "color": "#ff1493",
+  "source": "ja.wikipedia:長良川鉄道越美南線"
  },
  "関東鉄道常総線": {
   "color": "#0000ff",
@@ -2107,6 +2303,14 @@
   "color": "#f15a22",
   "source": "ja.wikipedia:青梅線"
  },
+ "静岡鉄道静岡清水線 (新清水=>新静岡)": {
+  "color": "#FF5973",
+  "source": "ODPT:静岡鉄道静岡清水線 (新清水=>新静岡)"
+ },
+ "飯田線": {
+  "color": "#75a2db",
+  "source": "ja.wikipedia:飯田線"
+ },
  "養老鉄道養老線": {
   "color": "#2ca6e0",
   "source": "ja.wikipedia:養老鉄道養老線"
@@ -2118,6 +2322,10 @@
  "高尾線": {
   "color": "#dd0077",
   "source": "ja.wikipedia:高尾線"
+ },
+ "高山本線": {
+  "color": "#9c1618",
+  "source": "ja.wikipedia:高山本線"
  },
  "高崎線": {
   "color": "#f68b1e",

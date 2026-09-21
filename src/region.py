@@ -112,9 +112,9 @@ def load(region_id: str) -> Region:
     #
     #  1. 노선 이름 안에 회사가 들어 있으면 그걸 쓴다. OSM 은 태그를
     #     비워 두고 이름에만 적어 두는 일이 많다(真岡鐵道真岡線).
-    #  2. 이름이 JR 로 시작하면 그 권역에서 가장 흔한 JR 회사로 본다.
-    #  3. 손으로 적어 둔 data/line-operators.json 을 본다. 両毛線 처럼
+    #  2. 손으로 적어 둔 data/line-operators.json 을 본다. 両毛線 처럼
     #     이름에도 회사가 없고 JR 로 시작하지도 않는 것들이다.
+    #  3. 이름이 JR 로 시작하면 그 권역에서 가장 흔한 JR 회사로 본다.
     #  4. 그래도 비면 역을 가장 많이 공유하는 노선의 회사를 물려받는다.
     #     같은 회랑을 달리는 노선은 대개 같은 회사다. 절반 넘게 겹칠 때만
     #     쓴다. 환승역 하나 겹쳤다고 물려받으면 엉뚱한 회사가 붙는다.
@@ -125,6 +125,16 @@ def load(region_id: str) -> Region:
         if (r.get("operator") or "").strip():
             continue
         got = operator_in_name((r.get("title") or {}).get("ja", ""))
+        if got:
+            r["operator"] = got
+
+    # 손으로 적은 것이 짐작(3)보다 먼저다. JR伊東線 은 도카이 권역에서
+    # 흔한 JR도카이로 짐작되지만 JR동일본 노선이다.
+    hand = _line_operators().get(region_id, {})
+    for r in railways.values():
+        if (r.get("operator") or "").strip():
+            continue
+        got = hand.get((r.get("title") or {}).get("ja", ""))
         if got:
             r["operator"] = got
 
@@ -140,14 +150,6 @@ def load(region_id: str) -> Region:
             ja = (r.get("title") or {}).get("ja", "")
             if ja.startswith("JR") and not (r.get("operator") or "").strip():
                 r["operator"] = jr_default
-
-    hand = _line_operators().get(region_id, {})
-    for r in railways.values():
-        if (r.get("operator") or "").strip():
-            continue
-        got = hand.get((r.get("title") or {}).get("ja", ""))
-        if got:
-            r["operator"] = got
 
     have_op = [(r, set(r.get("stations") or [])) for r in railways.values()
                if (r.get("operator") or "").strip()]
@@ -275,6 +277,9 @@ def load(region_id: str) -> Region:
         """
         flat = ko.replace(" ", "")
         for w in _LEAD_WORDS:
+            # 회사 이름 쪽도 공백을 지우고 견준다. "욧카이치 아스나로철도"
+            # 처럼 띄어 적힌 회사가 안 떼어지고 있었다.
+            w = w.replace(" ", "")
             if not flat.startswith(w) or len(flat) == len(w):
                 continue
             n = taken = 0
@@ -286,8 +291,11 @@ def load(region_id: str) -> Region:
             # 떼고 나서 남은 것이 "선" 한 글자거나 "본선" 으로 시작하면
             # 회사 이름이 아니라 노선 이름을 자른 것이다.
             # 芝山鉄道線("시바야마철도선"), 山陽本線("산요 본선")이 그렇다.
+            # "1호선" 처럼 번호만 남아도 되돌린다. 지바 모노레일 1호선이
+            # 그냥 "1호선" 이 됐다.
             if (len(rest) >= 3 and not _lead_bad.match(rest)
-                    and not _re.match(r"(본선|지선|신선)(\s|$|[(（·])", rest)):
+                    and not _re.match(r"(본선|지선|신선)(\s|$|[(（·])", rest)
+                    and not _re.match(r"\d+호선", rest)):
                 return rest
             return ko
         return ko
@@ -719,7 +727,8 @@ _NAMED_TRAIN = _re.compile(
     r"(?<!つくば)エクスプレス|特急|列車|"
     r"^(えのしま|ちちぶ|ひたち|スーパーはこね|こうのとり|はまかぜ|いなば|"
     r"きぬがわ|しおさい|わかしお|さざなみ|あずさ|かいじ|ときわ|"
-    r"サフィール|スワローあかぎ|ラビュー|S-Train|Ｓ－Ｔｒａｉｎ)"
+    r"サフィール|スワローあかぎ|ラビュー|S-Train|Ｓ－Ｔｒａｉｎ|"
+    r"踊り子|ミュースカイ|ひだ|しなの|南紀|ふじかわ|伊那路|しらさぎ|サンダーバード)"
     r"(?=$|[\s(（:：・])")
 
 
@@ -1025,6 +1034,10 @@ def railway_shapes(geometry, railways: dict, stops: dict, coords: np.ndarray,
     """
     row_of = {sid: i for i, sid in enumerate(stops["ids"])}
     lat_scale = float(np.cos(np.radians(float(np.nanmedian(coords[:, 1])))))
+    sb_path = ROOT / "data" / "switchbacks.json"
+    switchbacks = ({k: set(v) for k, v in json.loads(
+        sb_path.read_text(encoding="utf-8")).items() if isinstance(v, list)}
+        if sb_path.exists() else {})
 
     # 애칭이 붙은 열차 계통은 지도에 안 그린다. 다만 제 역이 다른 노선에
     # 다 들어 있을 때만이다. 그 계통만 닿는 역이 있으면 그려야 한다.
@@ -1053,6 +1066,7 @@ def railway_shapes(geometry, railways: dict, stops: dict, coords: np.ndarray,
         if _skip_by_stations(railway.get("title", {}).get("ja", ""),
                              all_st.get(rid) or set()):
             continue
+        title_ja = railway.get("title", {}).get("ja", "")
         order = railway.get("stations") or []
         rows = [row_of[s] for s in order
                 if s in row_of and np.isfinite(coords[row_of[s], 0])]
@@ -1121,7 +1135,14 @@ def railway_shapes(geometry, railways: dict, stops: dict, coords: np.ndarray,
             # 앞 구간이 역을 지나쳐 나갔다가 이 구간이 같은 길을 되짚어
             # 오면 그만큼 걷어낸다. 안 걷어내면 역에서 뾰족하게 찌르고
             # 돌아오는 모양이 된다(긴자선 赤坂見附, 사이쿄선 赤羽).
-            skip = geometry_mod.unwind_retrace(path, arc) if path else 0
+            # 스위치백 역에서는 걷어내지 않는다. 養老線 은 大垣 에서 방향을
+            # 바꿔 西大垣·室 쪽 열차가 같은 선로를 900m 오가는데, 그걸 걷어내
+            # 선이 大垣 에 닿지 않았다. 규칙으로 가르려 하면 역을 지나쳤다
+            # 돌아오는 인공 꼬리까지 되살아나(42~95개 노선) 손으로 적는다.
+            if path and stops["ja"][a] in switchbacks.get(title_ja, ()):
+                skip = 0
+            else:
+                skip = geometry_mod.unwind_retrace(path, arc) if path else 0
             # 두 구간이 역에서 안 만나면 역을 거쳐 잇는다. 곧장 이으면
             # 옆으로 튀어 지그재그가 된다. 도식적인 선형은 역까지 오지
             # 않는 일이 있다(사이쿄선 武蔵浦和 에서 121m 모자랐다).
