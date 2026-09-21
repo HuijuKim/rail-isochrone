@@ -35,10 +35,21 @@ WEB = ROOT / "web"
 ROUTE_HORIZON_SEC = 300 * 60
 # 소요 시간 상한. 이보다 크면 격자가 수천만 칸이 되어 서버가 멎는다.
 MAX_BUDGET_SEC = 300 * 60
+# 한 번에 그릴 수 있는 등시간선 개수. 화면은 세 개를 쓴다. 값마다 등고선을
+# 따로 뽑으므로, thresholds=1,2,3,... 으로 수만 개를 보내면 그만큼 일한다.
+MAX_THRESHOLDS = 12
 
 app = Flask(__name__, static_folder=None)
 
-REGIONS = {rid: region_mod.load(rid) for rid in region_mod.available()}
+# 한 권역이 안 올라와도 나머지는 띄운다. 빌드 도중에는 역 목록만 새로
+# 쓰이고 도보권은 아직 옛것이라 그 권역만 짝이 안 맞는데, 예전에는 그
+# 때문에 서버 전체가 안 떴다. 못 올린 권역은 목록에서 빠진다.
+REGIONS = {}
+for _rid in region_mod.available():
+    try:
+        REGIONS[_rid] = region_mod.load(_rid)
+    except Exception as _err:      # noqa: BLE001 - 어떤 이유든 그 권역만 뺀다
+        print(f"!! 권역 {_rid} 를 못 올렸습니다: {_err}", flush=True)
 if not REGIONS:
     raise SystemExit("권역 데이터가 없습니다. data/regions/<id>/ 를 확인하세요.")
 DEFAULT_REGION = "kanto" if "kanto" in REGIONS else next(iter(REGIONS))
@@ -74,7 +85,16 @@ def unexpected(err):
 
     HTML 오류 쪽을 돌려주면 화면에서 "Unexpected token '<'" 같은 소리가
     나와서 무슨 일인지 알 수 없다. 원인은 서버 로그에 그대로 남긴다.
+
+    404 나 405 처럼 HTTP 가 이미 뜻을 정해 둔 것은 그 코드 그대로
+    내보낸다. 전부 500 으로 뭉뚱그리면 주소를 잘못 친 것과 서버가
+    터진 것을 구별할 수 없다.
     """
+    from werkzeug.exceptions import HTTPException
+
+    if isinstance(err, HTTPException):
+        return jsonify({"error": f"{err.code} {err.name}"}), err.code
+
     import traceback
 
     traceback.print_exc()
@@ -188,10 +208,15 @@ def station_brief(reg, i: int) -> dict:
     return {lang: reg.stops[lang][i] for lang in region_mod.LANGS if lang in reg.stops}
 
 
-def leg_path(reg, indices: list[int]) -> list[list[float]]:
-    """정차역을 실제 선로를 따르는 선으로."""
+def leg_path(reg, indices: list[int], rid: str | None = None) -> list[list[float]]:
+    """정차역을 실제 선로를 따르는 선으로.
+
+    노선을 함께 넘긴다. 그래야 build_track.py 가 남긴 그 노선의
+    구간 선형을 쓴다. 안 넘기던 때는 지도에 그린 노선은 선로를
+    타는데 경로선만 모서리를 질러, 같은 구간에 선이 둘 보였다.
+    """
     usable = [i for i in indices if np.isfinite(reg.coords[i, 0])]
-    return reg.geometry.ride_path(usable) if len(usable) >= 2 else []
+    return reg.geometry.ride_path(usable, rid) if len(usable) >= 2 else []
 
 
 def walk_path(reg, lon: float, lat: float, station: int, limit: float) -> list[list[float]]:
@@ -234,7 +259,8 @@ def describe_journey(reg, legs: list[dict], best: np.ndarray, depart: int,
                 }
             )
         else:
-            rail = reg.railways.get(reg.stops["railway"][leg["from"]], {})
+            rid = reg.stops["railway"][leg["from"]]
+            rail = reg.railways.get(rid, {})
             title = rail.get("title", {})
             out.append(
                 {
@@ -248,9 +274,10 @@ def describe_journey(reg, legs: list[dict], best: np.ndarray, depart: int,
                     "railway": dict(
                         {lang: title.get(lang, "") or title.get("ja", "")
                          for lang in region_mod.LANGS},
-                        color=rail.get("color", "#888888"),
+                        # 지도에 그린 선과 같은 값을 쓴다
+                        color=region_mod.line_color(rail),
                     ),
-                    "path": leg_path(reg, leg["path"]),
+                    "path": leg_path(reg, leg["path"], rid),
                 }
             )
     return out
@@ -272,6 +299,8 @@ def read_query() -> dict:
         thresholds = sorted({int(x) * 60 for x in raw_thresholds.split(",") if x.strip()})
     except ValueError:
         raise BadRequest(f"thresholds 가 숫자 목록이 아닙니다: {raw_thresholds!r}") from None
+    if len(thresholds) > MAX_THRESHOLDS:
+        raise BadRequest(f"thresholds 는 {MAX_THRESHOLDS}개까지입니다")
     if not thresholds or thresholds[0] <= 0:
         raise BadRequest(f"thresholds 는 1분 이상이어야 합니다: {raw_thresholds!r}")
     if thresholds[-1] > MAX_BUDGET_SEC:
@@ -328,6 +357,9 @@ def regions():
                     "names": r.names,
                     "center": r.meta.get("center"),
                     "zoom": r.meta.get("zoom", 11),
+                    # 권역마다 첫 출발지가 다르다. 간사이에서 신주쿠를
+                    # 띄울 수는 없다.
+                    "start": r.meta.get("start"),
                     "stations": int(r.supported.sum()),
                     "note": r.meta.get("note", ""),
                 }
@@ -354,7 +386,9 @@ def railways():
     """지원 노선의 선형. 지도에 겹쳐 보여주는 용도다.
 
     원본 선형은 7만 6천 점이라 1.6 MB 다. 지도에 그리는 데는 그만한
-    해상도가 필요 없으므로 25 m 오차로 줄여 보낸다. 7천 점, 150 KB 다.
+    해상도가 필요 없으므로 region.SHAPE_TOLERANCE_M 만큼 줄여 보낸다.
+    지금 값(3 m)이면 간토가 2만 5천 점, 0.6 MB 다. 한 노선이 여러
+    조각으로 끊겨 오므로 줄 수는 노선 수보다 많다.
     """
     reg = pick_region()
     return jsonify(reg.railway_shapes)

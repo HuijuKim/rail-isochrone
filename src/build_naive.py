@@ -57,14 +57,22 @@ EXP_MULT = 2.0              # 통과 계통은 각역정차보다 드물다
 
 SERVICE_FROM, SERVICE_TO = 5 * 3600, 24 * 3600
 
-# 환승. 같은 역 구내와, 이름이 달라 묶이지 않은 이웃 역.
+# 같은 역 구내 환승(플랫폼 이동). 걸어서 갈아타는 이웃 역의 값은
+# transfers.py 가 거리에서 매긴다.
 TRANSFER_SAME = 180
-TRANSFER_NEAR = 300
-NEAR_M = 400.0
 
 SUBWAY = re.compile(r"地下鉄|Subway|メトロ|市営|Osaka Metro")
 # 이름에 종별이 박힌 노선. 新快速 처럼 통과 계통이 그대로 뼈대가 된 경우다.
-FAST_NAME = re.compile(r"新快速|快速|特急|急行|準急|ライナー")
+# 사업자 이름 안의 글자에 걸리면 안 된다. 北大阪急行電鉄南北線 과
+# 京浜急行電鉄大師線 이 각역정차인데 급행으로 분류돼 배차가 두 배가
+# 됐다. 急行 뒤에 사업자·노선 글자가 오면 넘긴다(富士急行線·伊豆急行線
+# 도 같은 자리다). 快速 은 사업자 이름에 안 들어가므로 그대로 둔다.
+# 総武快速線 처럼 이름이 快速線 으로 끝나는 진짜 쾌속이 있어서다.
+#
+# ライナー 는 뺐다. 세 권역에서 이 글자가 든 노선은 ポートライナー,
+# 六甲ライナー, 日暮里・舎人ライナー 뿐이고 전부 각역정차하는 신교통
+# 노선 이름이다. 진짜 홈라이너 계통은 express.json 이 종별로 들고 온다.
+FAST_NAME = re.compile(r"新快速|快速|特急|急行(?!電鉄|鉄道|線)|準急")
 
 
 def load_raw():
@@ -181,7 +189,8 @@ def track_lengths(rows, row_of, railways, pos, scale, km):
             if key in out:
                 continue
             straight = km(a, b)
-            path = geo.ride_path([row_of[(r["id"], a)], row_of[(r["id"], b)]])
+            path = geo.ride_path([row_of[(r["id"], a)], row_of[(r["id"], b)]],
+                                 r["id"])
             d = straight * DETOUR
             if len(path) >= 2:
                 p = np.asarray(path, dtype=np.float64)
@@ -257,7 +266,15 @@ def build(railways, express, pos, seg_head, seg_km, km, scale):
             lay(f"{r['id']}|{i}", r["id"], cs[i:j + 1], extra, legs[i:j], fast=fast)
 
     # 통과 계통. 같은 역 줄 위를 건너뛰며 달린다.
-    order_of = {r["id"]: {c: k for k, c in enumerate(r["clusters"])} for r in railways}
+    # 한 역이 두 번 실린 관계에서는 첫 자리를 쓴다. 마지막 자리를 쓰면
+    # 쾌속 구간이 노선 절반을 가로지른다. 関西本線 木津->加茂 가 실제
+    # 5.19km 인데 21홉 94km, 4분이 68분으로 잡혔다.
+    order_of = {}
+    for r in railways:
+        first = {}
+        for k, c in enumerate(r["clusters"]):
+            first.setdefault(c, k)
+        order_of[r["id"]] = first
     clusters_of = {r["id"]: r["clusters"] for r in railways}
     n_exp = 0
     for n, e in enumerate(express):
@@ -287,8 +304,12 @@ def build(railways, express, pos, seg_head, seg_km, km, scale):
     return rows, row_of, ev_stop, ev_arr, ev_dep, trip_start, n_exp
 
 
-def transfers(rows, pos, scale):
-    """같은 역 구내와, 이름이 달라 묶이지 않은 이웃 역 사이."""
+def transfers(rows, pos, scale, title):
+    """같은 역 구내와, 걸어서 갈아타는 이웃 역 사이."""
+
+    def title_of(c):
+        return (title.get(c) or {}).get("ja", "")
+
     by_cluster = defaultdict(list)
     for i, (_rid, c) in enumerate(rows):
         by_cluster[c].append(i)
@@ -300,26 +321,24 @@ def transfers(rows, pos, scale):
                 if a != b:
                     edges.append((a, b, TRANSFER_SAME))
 
+    # 이름이 달라 안 묶인 이웃 역은 걸어서 갈아탄다. 거리에 따라 값을
+    # 매긴다. transfers.py 에 규칙을 두어 시각표 권역과 같은 잣대를 쓴다.
+    from router import WALK_SPEED
+    import transfers as xfer
+
     cl = sorted(by_cluster)
-    x = np.array([pos[c][0] for c in cl]) * scale * 111_320.0
-    y = np.array([pos[c][1] for c in cl]) * 111_132.0
-    order = np.argsort(x)
-    xs = x[order]
+    pairs = xfer.near_pairs([pos[c][0] for c in cl], [pos[c][1] for c in cl],
+                            WALK_SPEED)
     near = 0
-    for k in range(len(order)):
-        i = order[k]
-        hi = int(np.searchsorted(xs, xs[k] + NEAR_M, "right"))
-        for m in range(k + 1, hi):
-            j = order[m]
-            if abs(y[i] - y[j]) > NEAR_M:
-                continue
-            if np.hypot(x[i] - x[j], y[i] - y[j]) > NEAR_M:
-                continue
-            near += 1
-            for a in by_cluster[cl[i]]:
-                for b in by_cluster[cl[j]]:
-                    edges.append((a, b, TRANSFER_NEAR))
-                    edges.append((b, a, TRANSFER_NEAR))
+    for i, j, cost in pairs:
+        # 같은 이름이면 위에서 이미 한 묶음이다
+        if title_of(cl[i]) == title_of(cl[j]):
+            continue
+        near += 1
+        for a in by_cluster[cl[i]]:
+            for b in by_cluster[cl[j]]:
+                edges.append((a, b, cost))
+                edges.append((b, a, cost))
     return edges, near
 
 
@@ -342,14 +361,20 @@ def main():
     print(f"  역 줄 {len(rows):,}개, 운행 {len(trip_start) - 1:,}건, "
           f"정차 이벤트 {len(ev_stop):,}개 (통과 계통 {n_exp}개)", flush=True)
 
-    edges, near = transfers(rows, pos, scale)
+    edges, near = transfers(rows, pos, scale, title)
     print(f"  환승 간선 {len(edges):,}개 (이름이 다른 이웃 역 쌍 {near:,}개)", flush=True)
 
     tr = np.array(edges, dtype=np.int64)
     tr = tr[np.lexsort((tr[:, 1], tr[:, 0]))]
     tr_ptr = np.searchsorted(tr[:, 0], np.arange(len(rows) + 1))
 
-    coords = np.array([pos[c] for _rid, c in rows], dtype=np.float64)
+    # 지도에 찍는 자리는 노선마다 제 승강장이다. 묶음 좌표를 쓰면
+    # 이름만 같고 승강장이 다른 역에서 선이 남의 자리로 끌려간다.
+    # 묶음은 그대로 두어 검색과 세는 단위는 한 역로 남긴다.
+    at = {(st["railway"], st["cluster"]): st["coord"] for st in stations
+          if "railway" in st and "cluster" in st}
+    coords = np.array([at.get((rid, c)) or pos[c] for rid, c in rows],
+                      dtype=np.float64)
     ids = [f"{rid}.{c}" for rid, c in rows]
 
     BASE.mkdir(parents=True, exist_ok=True)
@@ -358,6 +383,8 @@ def main():
         "coords": coords.tolist(),
         **{g: [title[c].get(g, "") for _rid, c in rows] for g in LANGS},
         "railway": [rid for rid, _c in rows],
+        # 검색과 세기는 이 묶음 번호로 합친다
+        "cluster": [int(c) for _rid, c in rows],
     }, ensure_ascii=False), encoding="utf-8")
 
     # 평일과 휴일을 가를 근거가 없다. 같은 것을 두 벌 쓴다.

@@ -145,7 +145,13 @@ def test_through_service_merge_handles_cycles():
 
 
 def test_built_graph_trip_count():
-    """빌드 산출물의 운행 수. 병합이 바뀌면 여기가 먼저 움직인다."""
+    """빌드 산출물의 운행 수. 병합이 바뀌면 여기가 먼저 움직인다.
+
+    2026-09-20 에 34,243 -> 34,245, 30,035 -> 30,037 로 올렸다. 직통
+    병합에서 시각이 뒤로 가면 사슬을 끊도록 바꾼 결과다(닛포리에서
+    가시와로 -1,560초 가는 사슬이 있었다). 달력마다 사슬 둘이 끊겨
+    운행이 둘씩 늘었다.
+    """
     from conftest import REGION
 
     counts = {}
@@ -153,9 +159,9 @@ def test_built_graph_trip_count():
         z = np.load(REGION / f"graph-{calendar}.npz")
         counts[calendar] = len(z["trip_start"]) - 1
 
-    assert counts["Weekday"] == 34243, f"평일 운행 {counts['Weekday']:,}편 (기준 34,243)"
-    assert counts["SaturdayHoliday"] == 30035, (
-        f"토휴일 운행 {counts['SaturdayHoliday']:,}편 (기준 30,035)"
+    assert counts["Weekday"] == 34245, f"평일 운행 {counts['Weekday']:,}편 (기준 34,245)"
+    assert counts["SaturdayHoliday"] == 30037, (
+        f"토휴일 운행 {counts['SaturdayHoliday']:,}편 (기준 30,037)"
     )
 
 

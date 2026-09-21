@@ -32,14 +32,17 @@ import urllib.request
 from collections import defaultdict
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from build_rail import kind_of  # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent
 REGION = os.environ.get("REGION", "kansai")
 RAW = ROOT / "data" / "regions" / REGION / "raw"
 CACHE = RAW / "wiki-stops.json"
 OUT = RAW / "express-wiki.json"
 
-UA = ("tokyo-isochrone/0.1 (rail research; "
-      "https://github.com/HuijuKim/tokyo-isochrone)")
+UA = ("rail-isochrone/0.1 (rail research; "
+      "https://github.com/HuijuKim/rail-isochrone)")
 
 # 표에서 찾을 종별. 긴 것부터 봐야 '通勤快急' 이 '快急' 으로 잘리지 않는다.
 TYPES = ["快速特急", "通勤快急", "通勤特快", "通勤快速", "通勤急行", "通勤準急",
@@ -126,7 +129,10 @@ def parse(title: str) -> dict | None:
     if not types:
         return None
 
-    stops = {t: [] for t in types}
+    # 열마다 따로 담는다. 딕셔너리로 담으면 같은 종별 이름으로 시작하는
+    # 열이 둘 있을 때(特急 와 特急〈ひたち〉 처럼) 한 칸으로 합쳐져,
+    # 한쪽의 통과역이 다른 쪽의 정차역으로 기록된다.
+    stops = [[] for _ in types]
     order = []
     for row in rows:
         cs = cells(row)
@@ -149,9 +155,9 @@ def parse(title: str) -> dict | None:
         if len(window) < width:
             continue
         order.append(name)
-        for t, mark in zip(types, window):
+        for k, mark in enumerate(window):
             if mark in STOP_MARKS:
-                stops[t].append(name)
+                stops[k].append(name)
     return {"title": title, "types": types, "all_stations": order, "stops": stops}
 
 
@@ -164,6 +170,37 @@ def norm(name: str) -> str:
 def keys(name: str) -> set[str]:
     a = norm(name)
     return {a, PREFIX.sub("", a)} - {""}
+
+
+def line_key(name: str) -> tuple[str, str]:
+    """노선 이름을 견주기 좋게. (다듬은 것, 회사까지 뗀 것)"""
+    from operators import strip_operator_head
+
+    s = re.sub(r"[（(].*?[）)]", "", name or "")
+    s = s.split(":")[0].split("：")[0]
+    s = re.sub(r"[\s・･>=→\-–—]", "", s)
+    return s, strip_operator_head(s)
+
+
+def name_score(wiki_title: str, osm_ja: str) -> int:
+    """이름이 얼마나 같은가. 3 이 가장 같다.
+
+    위키 표가 노선 일부만 들고 있으면 역 겹침으로는 진짜 노선과 그
+    노선을 품은 직통 계통이 완전히 동점이 된다. 위키 相鉄本線 표는
+    西谷 이후 11개뿐이라 相鉄本線 과 "新宿 => 海老名" 이 둘 다 겹침
+    100%, 자카드 61% 였다. 그때는 이름으로 가른다.
+    """
+    a, sa = line_key(wiki_title)
+    b, sb = line_key(osm_ja)
+    if not a or not b:
+        return 0
+    if a == b:
+        return 3
+    if sa and sa == sb:
+        return 2
+    if a in b or (sa and sa in sb):
+        return 1
+    return 0
 
 
 def merge(wiki: dict) -> list[dict]:
@@ -186,19 +223,32 @@ def merge(wiki: dict) -> list[dict]:
         want = set()
         for n in data["all_stations"]:
             want |= keys(n)
-        best, best_score = None, 0.0
+        # 겹침만 보면 그 노선을 통째로 품은 직통 계통이 진짜 노선과 똑같이
+        # 1.0 이 되고, 먼저 만난 쪽이 이긴다. 相鉄本線 의 표가
+        # "新宿 => 海老名" 에, 東急東横線 의 표가 "東京地下鉄の直通運転 -
+        # 東急東横線" 에, 近鉄京都線 의 표가 "近畿日本鉄道京都線 普通" 에
+        # 붙었다. 그러면 진짜 노선은 통과 계통을 못 받아 각역정차만 깔린다.
+        # 여분 역이 적은 쪽을 고르도록 자카드로 동점을 가른다.
+        best, best_score = None, (0.0, 0, 0.0)
         for r, names in index:
-            score = sum(1 for k in want if k in names) / max(len(want), 1)
-            if score > best_score:
-                best_score, best = score, (r, names)
-        if best is None or best_score < MATCH_MIN:
-            report.append((title, None, best_score, 0, len(data["types"])))
+            hit = sum(1 for k in want if k in names)
+            cover = hit / max(len(want), 1)
+            tight = hit / max(len(want) + len(names) - hit, 1)
+            key = (cover, name_score(title, r["title"].get("ja", "")), tight)
+            if key > best_score:
+                best_score, best = key, (r, names)
+        if best is None or best_score[0] < MATCH_MIN:
+            report.append((title, None, best_score[0], 0, len(data["types"])))
             continue
         r, names = best
 
         n_added = 0
-        for kind in data["types"]:
-            stop_list = data["stops"][kind]
+        # 받아 둔 캐시는 stops 를 종별 이름 딕셔너리로 담고 있다. 열
+        # 순서 목록으로 펴서 새 꼴과 같이 다룬다.
+        by_col = data["stops"]
+        if isinstance(by_col, dict):
+            by_col = [by_col.get(t, []) for t in data["types"]]
+        for kind, stop_list in zip(data["types"], by_col):
             if len(stop_list) < 2 or len(stop_list) >= len(data["all_stations"]):
                 continue
             seq, miss = [], 0
@@ -212,11 +262,16 @@ def merge(wiki: dict) -> list[dict]:
                 # 뼈대 노선 순서대로 세운다. 위키 표와 방향이 다를 수 있다.
                 pos = {c: i for i, c in enumerate(r["clusters"])}
                 seq.sort(key=lambda c: pos.get(c, 10 ** 6))
-                added.append({"railway": r["id"], "kind": kind,
+                # 종별 이름은 build_rail 과 같은 말을 쓴다. 여기서
+                # 表 머리글(特急)을 그대로 두면 build_naive 의 중복
+                # 제거 키 (railway, kind) 가 OSM 쪽(특급)과 영영 안
+                # 맞아, 이미 있는 통과 계통 위에 한 벌이 더 깔린다.
+                added.append({"railway": r["id"],
+                              "kind": kind_of(kind) or kind,
                               "name": title + " " + kind, "clusters": seq,
                               "source": "ja.wikipedia"})
                 n_added += 1
-        report.append((title, r["title"].get("ja", ""), best_score, n_added,
+        report.append((title, r["title"].get("ja", ""), best_score[0], n_added,
                        len(data["types"])))
 
     print(f"{'위키 노선':<16}{'붙인 OSM 노선':<32}{'겹침':>6}{'추가':>6}{'종별':>5}")
@@ -240,8 +295,10 @@ def main() -> None:
             print(f"{title}: 駅一覧 표를 못 읽음", flush=True)
             continue
         wiki[title] = r
+        # stops 는 종별 이름이 아니라 열 번호로 찾는 목록이다.
         print(f"{title}: 역 {len(r['all_stations'])}개, 종별 "
-              + ", ".join(f"{t} {len(r['stops'][t])}" for t in r["types"]), flush=True)
+              + ", ".join(f"{t} {len(c)}"
+                          for t, c in zip(r["types"], r["stops"])), flush=True)
         time.sleep(0.5)
 
     if titles:

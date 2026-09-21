@@ -163,6 +163,35 @@ def build_station_index(by_id: dict) -> tuple[list[str], dict[str, int], np.ndar
     return ids, index, coords
 
 
+def walk_transfers(ids, coords, index) -> list[tuple[int, int, int]]:
+    """걸어서 갈아타는 이웃 역. 역 그룹 파일에 없는 쌍만 잇는다.
+
+    ODPT 의 역 그룹은 같은 역 구내만 묶는다. 그래서 高槻市(한큐)와
+    高槻(JR) 처럼 520m 떨어져 실제로 걸어서 갈아타는 쌍이 통째로
+    빠져 있었고, 라우터가 한참 돌아가는 길을 골랐다. 구글 지도는 그
+    환승을 내놓는다. 값은 transfers.py 가 거리에서 매긴다.
+    """
+    import transfers as xfer
+    from router import WALK_SPEED
+
+    groups = json.loads((RAW / "station-groups.json").read_text(encoding="utf-8"))
+    where = {}
+    for gi, group in enumerate(groups):
+        for sub in group:
+            for sid in sub:
+                where[sid] = gi
+
+    edges = []
+    for i, j, cost in xfer.near_pairs(coords[:, 0], coords[:, 1], WALK_SPEED):
+        gi, gj = where.get(ids[i]), where.get(ids[j])
+        if gi is not None and gi == gj:
+            continue            # 같은 역 구내는 위에서 이미 이었다
+        a, b = index[ids[i]], index[ids[j]]
+        edges.append((a, b, cost))
+        edges.append((b, a, cost))
+    return edges
+
+
 def build_transfers(index: dict[str, int]) -> list[tuple[int, int, int]]:
     """역 그룹 정보로 환승 간선을 만든다.
 
@@ -233,7 +262,10 @@ def build(calendar: str = "Weekday") -> dict:
     print(f"  정차 이벤트 {len(ev_stop):,}개 (제외 {skipped:,}건)", flush=True)
 
     transfers = build_transfers(index)
-    print(f"  환승 간선 {len(transfers):,}개", flush=True)
+    walk = walk_transfers(ids, coords, index)
+    transfers += walk
+    print(f"  환승 간선 {len(transfers):,}개 "
+          f"(그중 걸어서 갈아타는 이웃 역 {len(walk):,}개)", flush=True)
 
     tr = np.array(transfers, dtype=np.int32) if transfers else np.zeros((0, 3), np.int32)
     order = np.lexsort((tr[:, 1], tr[:, 0])) if len(tr) else np.array([], dtype=int)

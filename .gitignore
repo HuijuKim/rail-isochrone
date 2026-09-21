@@ -19,3 +19,18 @@ REQUESTS.md
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# 빌드·서버 로그. 돌릴 때마다 새로 쌓인다.
+*.log
+
+# 빌드를 지켜보는 도우미. 손에 맞게 고쳐 쓰는 것이라 안 올린다.
+watch-build.ps1
+
+# 위키백과에서 받아 둔 원문 캐시(29 MB). build_colors.py 가 다시 받는다.
+# 거기서 뽑아낸 data/line-colors.json 만 올린다.
+data/line-colors-wiki.json
+
+# 무엇이 빠졌나 재어 본 것. 그때그때 다시 뽑으면 된다.
+station_tags_*.json
+missing_*.json
+data/line-audit.txt

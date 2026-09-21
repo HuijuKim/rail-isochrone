@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>수도권 도달권역</title>
+<title>철도 등시선</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -175,6 +175,12 @@ input[type="time"] { font-family: var(--mono); }
   background: none; border: 0; padding: 0;
   color: var(--accent); cursor: pointer; text-decoration: underline;
 }
+/* 지도 바꾸기 버튼은 제 줄에 둔다. 글이 흐르는 문단 안에 인라인으로
+   두면 "OpenStreetMap 으로 보기" 와 "Google Maps 로 보기" 의 길이가
+   달라, 누를 때마다 버튼이 있던 자리가 밀린다. */
+/* 버튼은 제 줄에 두고, 줄 높이를 고정해 글이 바뀌어도 안 움직인다. */
+.swap-row { min-block-size: 1.7em; margin-block: 6px 2px; }
+#map-swap { display: block; text-align: start; }
 kbd {
   font-family: var(--mono); font-size: var(--step-2); line-height: 1;
   color: var(--muted); background: var(--surface-2);
@@ -429,7 +435,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 .pref-menu {
   position: absolute; z-index: 570;
   inset-inline-start: 0; bottom: calc(100% + 6px);
-  min-width: 190px; max-height: 320px; overflow-y: auto;
+  min-width: 190px; max-height: 320px; overflow-y: auto; overflow-x: hidden;
   background: var(--surface); border: 1px solid var(--line);
   border-radius: var(--radius); box-shadow: 0 10px 28px rgb(0 0 0 / .18);
   padding: 4px;
@@ -450,6 +456,96 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 }
 .pref-menu .on { color: var(--accent); }
 .pref-menu hr { border: 0; border-top: 1px solid var(--line-soft); margin: 4px 2px; }
+
+/* 노선 하나씩 켜고 끄는 디버그 패널. 현별 메뉴와 같은 모양을 쓰되,
+   노선 이름이 길어 더 넓고, 색을 눈으로 맞출 수 있게 색칠을 앞에 둔다. */
+.map-actions.right .pref-menu { inset-inline-start: auto; inset-inline-end: 0; }
+/* 폭과 높이를 둘 다 고정한다. 내용에 따라 늘었다 줄었다 하면 누를
+   때마다 줄이 움직여 쓰기 나쁘다. 검색으로 걸러 줄이 몇 개만 남아도
+   창 높이는 그대로 둔다. */
+.pref-menu.wide {
+  inline-size: min(340px, 78vw); min-width: 0; max-width: none;
+  block-size: min(60vh, 420px); max-height: none;
+}
+.pref-menu .row-name {
+  display: flex; align-items: center; gap: 8px; min-width: 0;
+}
+.pref-menu .swatch {
+  inline-size: 10px; block-size: 10px; border-radius: 2px; flex: none;
+  border: 1px solid rgb(0 0 0 / .25);
+}
+.pref-menu .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pref-menu button[aria-pressed="false"] .label {
+  color: var(--muted); text-decoration: line-through;
+}
+.pref-menu button.group .label { font-weight: 600; }
+.pref-menu button.group { margin-top: 2px; }
+/* 한꺼번에 펴고 접는 줄. 켜고 끄는 줄과 구별되게 작게 둔다 */
+.pref-menu .foldall {
+  display: block; width: 100%; text-align: start;
+  font: inherit; font-size: var(--step-2); color: var(--muted);
+  background: none; border: 0; border-radius: 6px; box-shadow: none;
+  padding: 4px 8px; cursor: pointer;
+}
+.pref-menu .foldall:hover { background: var(--surface-2); color: var(--ink); }
+/* 접힌 회사의 줄은 만들어 두고 감추기만 한다. 그래야 찾을 때 걸린다. */
+.pref-menu .groupbody[hidden] { display: none; }
+/* 지도에서 선 위에 1초 머물렀을 때 뜨는 이름표 */
+.line-tip {
+  position: absolute; z-index: 580; pointer-events: none;
+  max-inline-size: 60%; padding: 4px 8px;
+  font-size: var(--step-1); line-height: 1.3;
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 6px;
+  box-shadow: 0 6px 18px rgb(0 0 0 / .18);
+}
+/* 호버로 짚은 줄 */
+.pref-menu button.lit { background: var(--surface-2); outline: 2px solid var(--accent); }
+/* 호버 켜고 끄는 체크박스 줄 */
+.pref-menu .hoverbox {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 8px; font-size: var(--step-2); color: var(--muted);
+  cursor: pointer;
+}
+.pref-menu .hoverbox:hover { color: var(--ink); }
+.pref-menu button.child { padding-inline-start: 22px; }
+.pref-menu button.piece { padding-inline-start: 42px; font-size: var(--step-2); }
+/* 노선 하나뿐인 회사는 "그 밖" 으로 모으고 이름 옆에 회사를 작게 적는다 */
+.pref-menu .tag {
+  font-size: var(--step-2); color: var(--muted); flex: none;
+  white-space: nowrap; opacity: .85;
+}
+.pref-menu button.piece .label { color: var(--muted); }
+.pref-menu button.piece[aria-pressed="true"] .label { color: var(--ink-2); }
+/* 회사 줄은 두 가지를 한줄에 둔다. 이름을 누르면 접히고,
+   오른쪽 숫자를 누르면 그 회사 노선이 통째로 켜지고 꺼진다. */
+.pref-menu .grouprow { display: flex; align-items: stretch; gap: 2px; }
+/* .pref-menu button 이 width:100% 라, 한 줄에 버튼을 둘 두면 둘 다
+   100% 를 먹어 줄이 두 배로 늘어난다. 회사 이름이 오른쪽 밖으로
+   밀려나 숫자만 보였다. 이 줄 안에서는 폭을 제 내용에 맡긴다. */
+.pref-menu .grouprow .group {
+  flex: 1 1 auto; min-width: 0; width: auto;
+  justify-content: flex-start; gap: 6px;
+}
+.pref-menu .grouprow .group .label { font-weight: 600; flex: 1 1 auto; }
+.pref-menu .caret-mark {
+  inline-size: 12px; flex: none; color: var(--muted);
+  font-size: var(--step-2); line-height: 1;
+}
+.pref-menu .groupeye {
+  flex: none; width: auto; font: inherit; font-family: var(--mono);
+  font-size: var(--step-2); font-variant-numeric: tabular-nums;
+  background: none; border: 0; border-radius: 6px; box-shadow: none;
+  padding: 6px 8px; cursor: pointer; color: var(--muted);
+}
+.pref-menu .groupeye:hover { background: var(--surface-2); }
+.pref-menu .groupeye[aria-pressed="false"] { text-decoration: line-through; }
+.pref-menu .search {
+  width: 100%; font: inherit; font-size: var(--step-1);
+  padding: 6px 8px; margin: 2px 0 4px; box-sizing: border-box;
+  border: 1px solid var(--line); border-radius: 6px;
+  background: var(--surface-2); color: var(--ink);
+}
 
 .notice {
   position: absolute; z-index: 560;
@@ -488,8 +584,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 <div class="app">
   <aside class="panel">
     <header class="masthead">
-      <p class="eyebrow">Greater Tokyo · Transit Isochrone</p>
-      <h1 data-i18n="title">수도권 도달권역</h1>
+      <p class="eyebrow" data-i18n="eyebrow">전철 + 도보 · 도달 범위</p>
+      <h1 data-i18n="title">철도 등시선</h1>
       <p class="lede" data-i18n="lede">출발지와 출발 시각을 정하면, 그 시각에 집을 나서서 전철과 도보만으로 갈 수 있는 범위를 그립니다.</p>
     </header>
 
@@ -619,6 +715,16 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>
       <span data-i18n="srcContributors">기여자 (ODbL).</span>
       <span data-i18n="transferNote">환승은 구내 3분 · 개찰 밖 5분.</span>
+    </p>
+
+    <!-- 지도 바꾸기 버튼은 글이 흐르는 문단 밖에 둔다. 문단 안에 두면
+         그 위의 walk-note·map-note 길이가 달라질 때마다 줄이 다시 흐르고
+         버튼이 위아래로 움직인다. 버튼 아래에 바뀌는 글을 둔다. -->
+    <p class="sources swap-row">
+      <button type="button" id="map-swap" class="linkish" hidden
+              data-i18n="mapSwap">지도 바꾸기</button>
+    </p>
+    <p class="sources">
       <span id="walk-note"></span>
       <span id="map-note"></span>
     </p>
@@ -631,6 +737,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 
   <div class="map-wrap">
     <div id="map"></div>
+    <div class="line-tip" id="line-tip" hidden></div>
     <div class="map-badge" id="badge" hidden></div>
     <div class="busy" id="busy" data-i18n="busy" hidden>계산 중</div>
     <div class="notice" id="notice" role="status" hidden></div>
@@ -650,6 +757,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       </div>
     </div>
     <div class="map-actions right">
+      <div class="pref-wrap">
+        <button type="button" id="debug-toggle" aria-expanded="false" data-i18n="debug"
+                data-i18n-title="debugTitle" title="노선을 하나씩 켜고 끕니다">노선 디버그</button>
+        <div class="pref-menu wide" id="debug-menu" hidden></div>
+      </div>
       <button type="button" id="toggle-coverage" aria-pressed="true" data-i18n="coverage">경계선</button>
     </div>
   </div>
@@ -678,14 +790,15 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 
   var STRINGS = {
     ko: {
-      title: "수도권 도달권역",
+      title: "철도 등시선",
+      eyebrow: "전철 + 도보 · 도달 범위",
       lede: "출발지와 출발 시각을 정하면, 그 시각에 집을 나서서 전철과 도보만으로 갈 수 있는 범위를 그립니다.",
       region: "권역", origin: "출발지", dest: "도착지",
       mapClick: "지도 클릭", here: "현위치", snap: "가까운 역으로",
       hereTitle: "브라우저 위치로 출발지를 잡습니다",
       snapOriginTitle: "출발지를 가까운 역으로 (단축키 D)",
       snapDestTitle: "도착지를 가까운 역으로 (단축키 F)",
-      originPlaceholder: "역 이름 (新宿 / Shinjuku / 신주쿠)",
+      originPlaceholder: "역 이름",
       destPlaceholder: "선택 사항 — 역 검색하거나 지도에서 고르기",
       swapTitle: "출발지와 도착지를 맞바꿉니다", swapAria: "출발지와 도착지 맞바꾸기",
       clearTitle: "도착지를 지웁니다", clearAria: "도착지 지우기",
@@ -705,6 +818,14 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       srcContributors: "기여자 (ODbL).", transferNote: "환승은 구내 3분 · 개찰 밖 5분.",
       fit: "권역에 맞추기", showLines: "지원 노선 표시", showStations: "지원 역 표시",
       coverage: "경계선",
+      debug: "노선 디버그", debugTitle: "노선을 하나씩 켜고 끕니다",
+      debugSearch: "노선 이름으로 찾기", debugAll: "모두 켜기", debugNone: "모두 끄기",
+      debugOther: "그 밖",
+      debugMain: "본선",
+      debugHover: "지도에서 선에 머물면 이름 보기",
+      debugOpenAll: "모두 펼치기", debugFoldAll: "모두 접기",
+      debugToggleOperator: "이 회사 노선을 통째로", debugNoMatch: "찾는 노선이 없습니다",
+      debugPieces: "조각",
       lineCaretTitle: "노선을 현별로 골라 봅니다", lineCaretAria: "노선 현별 고르기",
       stationCaretTitle: "역을 현별로 골라 봅니다", stationCaretAria: "역 현별 고르기",
       language: "언어",
@@ -745,8 +866,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       walkHint: "분속 {n} m 기준. 역에서 이 시간 넘게는 걷지 않는다고 봅니다.",
       walkNetOn: "도보는 실제 보행로를 따라 계산합니다.",
       walkNetOff: "보행망이 없어 도보는 직선거리에 1.3배 우회 보정으로 근사합니다.",
-      mapGoogle: "지도는 Google Maps.",
-      mapOsm: "지도는 OpenStreetMap. 구글 지도를 쓰려면 config.json 에 키를 넣으세요.",
+      mapGoogle: "지도는 Google Maps.", mapSwap: "OpenStreetMap 으로 보기",
+      mapOsm: "지도는 OpenStreetMap. 구글 지도를 쓰려면 config.json 에 키를 넣으세요.", mapSwapBack: "Google Maps 로 보기",
       mapFellBack: "구글 지도를 불러오지 못해 OpenStreetMap 으로 표시합니다.",
       keyRejected: "구글 지도가 API 키를 거부해 OpenStreetMap 으로 표시합니다.",
       keyHintReferrer: "키의 HTTP 리퍼러 제한에 http://127.0.0.1:5173/* 가 있는지 확인하세요.",
@@ -756,14 +877,15 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       stationCount: "(역 {n})"
     },
     ja: {
-      title: "首都圏 到達圏",
+      title: "鉄道等時線",
+      eyebrow: "電車 + 徒歩 · 到達範囲",
       lede: "出発地と出発時刻を決めると、その時刻に家を出て電車と徒歩だけで行ける範囲を描きます。",
       region: "エリア", origin: "出発地", dest: "目的地",
       mapClick: "地図クリック", here: "現在地", snap: "最寄り駅へ",
       hereTitle: "ブラウザの位置情報で出発地を決めます",
       snapOriginTitle: "出発地を最寄り駅へ (ショートカット D)",
       snapDestTitle: "目的地を最寄り駅へ (ショートカット F)",
-      originPlaceholder: "駅名 (新宿 / Shinjuku / 신주쿠)",
+      originPlaceholder: "駅名",
       destPlaceholder: "任意 — 駅を検索するか地図で選ぶ",
       swapTitle: "出発地と目的地を入れ替えます", swapAria: "出発地と目的地を入れ替え",
       clearTitle: "目的地を消します", clearAria: "目的地を消す",
@@ -783,6 +905,14 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       srcContributors: "コントリビューター (ODbL)。", transferNote: "乗換は構内3分・改札外5分。",
       fit: "到達圏に合わせる", showLines: "対応路線を表示", showStations: "対応駅を表示",
       coverage: "境界線",
+      debug: "路線デバッグ", debugTitle: "路線を一つずつ表示・非表示",
+      debugSearch: "路線名で絞り込み", debugAll: "すべて表示", debugNone: "すべて非表示",
+      debugOther: "その他",
+      debugMain: "本線",
+      debugHover: "地図で線にホバーして名前を表示",
+      debugOpenAll: "すべて開く", debugFoldAll: "すべて閉じる",
+      debugToggleOperator: "この会社の路線を一括", debugNoMatch: "該当する路線がありません",
+      debugPieces: "本",
       lineCaretTitle: "路線を都県別に選びます", lineCaretAria: "路線を都県別に選ぶ",
       stationCaretTitle: "駅を都県別に選びます", stationCaretAria: "駅を都県別に選ぶ",
       language: "言語",
@@ -823,8 +953,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       walkHint: "分速 {n} m で計算。駅からこれ以上は歩かないものとします。",
       walkNetOn: "徒歩は実際の歩道を辿って計算します。",
       walkNetOff: "歩行ネットワークがないため、徒歩は直線距離の1.3倍で近似します。",
-      mapGoogle: "地図は Google Maps。",
-      mapOsm: "地図は OpenStreetMap。Google マップを使うには config.json に鍵を入れてください。",
+      mapGoogle: "地図は Google Maps。", mapSwap: "OpenStreetMap で見る",
+      mapOsm: "地図は OpenStreetMap。Google マップを使うには config.json に鍵を入れてください。", mapSwapBack: "Google Maps で見る",
       mapFellBack: "Google マップを読み込めず OpenStreetMap で表示しています。",
       keyRejected: "Google マップが API キーを拒否したため OpenStreetMap で表示します。",
       keyHintReferrer: "キーの HTTP リファラ制限に http://127.0.0.1:5173/* があるか確認してください。",
@@ -834,14 +964,15 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       stationCount: "(駅 {n})"
     },
     en: {
-      title: "Greater Tokyo Reach",
+      title: "Rail Isochrone",
+      eyebrow: "Rail + Walking · Reachable Area",
       lede: "Pick a starting point and a departure time. The map shows how far you can get by train and on foot.",
       region: "Region", origin: "Origin", dest: "Destination",
       mapClick: "map click", here: "My location", snap: "Nearest station",
       hereTitle: "Use your browser location as the origin",
       snapOriginTitle: "Snap origin to the nearest station (shortcut D)",
       snapDestTitle: "Snap destination to the nearest station (shortcut F)",
-      originPlaceholder: "Station name (新宿 / Shinjuku / 신주쿠)",
+      originPlaceholder: "Station name",
       destPlaceholder: "Optional — search a station or pick on the map",
       swapTitle: "Swap origin and destination", swapAria: "Swap origin and destination",
       clearTitle: "Clear the destination", clearAria: "Clear destination",
@@ -861,6 +992,14 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       srcContributors: "contributors (ODbL).", transferNote: "Transfers: 3 min inside a station, 5 min outside the gates.",
       fit: "Fit to region", showLines: "Show lines", showStations: "Show stations",
       coverage: "Boundary",
+      debug: "Line debug", debugTitle: "Show or hide lines one by one",
+      debugSearch: "Filter by line name", debugAll: "Show all", debugNone: "Hide all",
+      debugOther: "Other",
+      debugMain: "Main",
+      debugHover: "Show name on hover",
+      debugOpenAll: "Expand all", debugFoldAll: "Collapse all",
+      debugToggleOperator: "Toggle all lines of this operator", debugNoMatch: "No matching line",
+      debugPieces: "pieces",
       lineCaretTitle: "Filter lines by prefecture", lineCaretAria: "Filter lines by prefecture",
       stationCaretTitle: "Filter stations by prefecture", stationCaretAria: "Filter stations by prefecture",
       language: "Language",
@@ -901,8 +1040,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       walkHint: "At {n} m per minute. You are assumed not to walk longer than this from a station.",
       walkNetOn: "Walking follows the real pedestrian network.",
       walkNetOff: "No pedestrian network, so walking is approximated as straight-line distance x 1.3.",
-      mapGoogle: "Map by Google Maps.",
-      mapOsm: "Map by OpenStreetMap. Put a key in config.json to use Google Maps.",
+      mapGoogle: "Map by Google Maps.", mapSwap: "View on OpenStreetMap",
+      mapOsm: "Map by OpenStreetMap. Put a key in config.json to use Google Maps.", mapSwapBack: "View on Google Maps",
       mapFellBack: "Google Maps failed to load, showing OpenStreetMap.",
       keyRejected: "Google Maps rejected the API key, showing OpenStreetMap.",
       keyHintReferrer: "Check that the key allows the HTTP referrer http://127.0.0.1:5173/*.",
@@ -912,14 +1051,15 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       stationCount: "({n} stations)"
     },
     "zh-Hans": {
-      title: "首都圈可达范围",
+      title: "铁路等时线",
+      eyebrow: "铁路 + 步行 · 可达范围",
       lede: "选择出发地和出发时间，地图会画出仅用电车和步行所能到达的范围。",
       region: "区域", origin: "出发地", dest: "目的地",
       mapClick: "点击地图", here: "当前位置", snap: "最近车站",
       hereTitle: "用浏览器定位设定出发地",
       snapOriginTitle: "把出发地移到最近车站 (快捷键 D)",
       snapDestTitle: "把目的地移到最近车站 (快捷键 F)",
-      originPlaceholder: "车站名 (新宿 / Shinjuku / 신주쿠)",
+      originPlaceholder: "车站名",
       destPlaceholder: "可选 — 搜索车站或在地图上选择",
       swapTitle: "交换出发地和目的地", swapAria: "交换出发地和目的地",
       clearTitle: "清除目的地", clearAria: "清除目的地",
@@ -939,6 +1079,14 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       srcContributors: "贡献者 (ODbL)。", transferNote: "换乘：站内3分、出闸5分。",
       fit: "适应范围", showLines: "显示支持线路", showStations: "显示支持车站",
       coverage: "边界线",
+      debug: "线路调试", debugTitle: "逐条显示或隐藏线路",
+      debugSearch: "按线路名筛选", debugAll: "全部显示", debugNone: "全部隐藏",
+      debugOther: "其他",
+      debugMain: "本线",
+      debugHover: "悬停时显示线路名",
+      debugOpenAll: "全部展开", debugFoldAll: "全部收起",
+      debugToggleOperator: "切换该公司全部线路", debugNoMatch: "没有匹配的线路",
+      debugPieces: "段",
       lineCaretTitle: "按都县筛选线路", lineCaretAria: "按都县筛选线路",
       stationCaretTitle: "按都县筛选车站", stationCaretAria: "按都县筛选车站",
       language: "语言",
@@ -980,7 +1128,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       walkNetOn: "步行按实际人行道路计算。",
       walkNetOff: "没有步行网络，步行以直线距离的 1.3 倍近似。",
       mapGoogle: "地图来自 Google Maps。",
-      mapOsm: "地图来自 OpenStreetMap。要使用 Google 地图请在 config.json 中填入密钥。",
+      mapOsm: "地图来自 OpenStreetMap。要使用 Google 地图请在 config.json 中填入密钥。", mapSwapBack: "用 Google Maps 查看", mapSwap: "用 OpenStreetMap 查看",
       mapFellBack: "无法载入 Google 地图，改用 OpenStreetMap。",
       keyRejected: "Google 地图拒绝了 API 密钥，改用 OpenStreetMap。",
       keyHintReferrer: "请确认密钥的 HTTP 来源限制中包含 http://127.0.0.1:5173/*。",
@@ -990,14 +1138,15 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       stationCount: "({n} 站)"
     },
     "zh-Hant": {
-      title: "首都圈可達範圍",
+      title: "鐵路等時線",
+      eyebrow: "鐵路 + 步行 · 可達範圍",
       lede: "選擇出發地和出發時間，地圖會畫出僅用電車和步行所能到達的範圍。",
       region: "區域", origin: "出發地", dest: "目的地",
       mapClick: "點擊地圖", here: "目前位置", snap: "最近車站",
       hereTitle: "用瀏覽器定位設定出發地",
       snapOriginTitle: "把出發地移到最近車站 (快捷鍵 D)",
       snapDestTitle: "把目的地移到最近車站 (快捷鍵 F)",
-      originPlaceholder: "車站名 (新宿 / Shinjuku / 신주쿠)",
+      originPlaceholder: "車站名",
       destPlaceholder: "選填 — 搜尋車站或在地圖上選擇",
       swapTitle: "交換出發地和目的地", swapAria: "交換出發地和目的地",
       clearTitle: "清除目的地", clearAria: "清除目的地",
@@ -1017,6 +1166,14 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       srcContributors: "貢獻者 (ODbL)。", transferNote: "換乘：站內3分、出閘5分。",
       fit: "適應範圍", showLines: "顯示支援路線", showStations: "顯示支援車站",
       coverage: "邊界線",
+      debug: "路線偵錯", debugTitle: "逐條顯示或隱藏路線",
+      debugSearch: "依路線名篩選", debugAll: "全部顯示", debugNone: "全部隱藏",
+      debugOther: "其他",
+      debugMain: "本線",
+      debugHover: "懸停時顯示路線名",
+      debugOpenAll: "全部展開", debugFoldAll: "全部收起",
+      debugToggleOperator: "切換該公司全部路線", debugNoMatch: "沒有符合的路線",
+      debugPieces: "段",
       lineCaretTitle: "按都縣篩選路線", lineCaretAria: "按都縣篩選路線",
       stationCaretTitle: "按都縣篩選車站", stationCaretAria: "按都縣篩選車站",
       language: "語言",
@@ -1058,7 +1215,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       walkNetOn: "步行按實際人行道路計算。",
       walkNetOff: "沒有步行網路，步行以直線距離的 1.3 倍近似。",
       mapGoogle: "地圖來自 Google Maps。",
-      mapOsm: "地圖來自 OpenStreetMap。要使用 Google 地圖請在 config.json 中填入金鑰。",
+      mapOsm: "地圖來自 OpenStreetMap。要使用 Google 地圖請在 config.json 中填入金鑰。", mapSwapBack: "用 Google Maps 檢視", mapSwap: "用 OpenStreetMap 檢視",
       mapFellBack: "無法載入 Google 地圖，改用 OpenStreetMap。",
       keyRejected: "Google 地圖拒絕了 API 金鑰，改用 OpenStreetMap。",
       keyHintReferrer: "請確認金鑰的 HTTP 來源限制中包含 http://127.0.0.1:5173/*。",
@@ -1122,6 +1279,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   /* 표시된 문자열을 지금 언어로 다시 칠한다. data-i18n 이 붙은 것만 본다. */
   function applyLanguage() {
     document.documentElement.lang = LANG;
+    // 브라우저 탭도 같이 바꿈다. <title> 은 data-i18n 으로 못 바꾸어
+    // 언어를 고쳐도 한국어로 남아 있었다.
+    document.title = t("title");
+    // 열어 둔 노선 디버그 패널도 새 언어로 다시 그린다
+    if (el("debug-menu") && !el("debug-menu").hidden) buildDebugMenu();
     var nodes = document.querySelectorAll("[data-i18n]");
     for (var i = 0; i < nodes.length; i++) {
       nodes[i].textContent = t(nodes[i].getAttribute("data-i18n"));
@@ -1134,6 +1296,13 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       for (var j = 0; j < marked.length; j++) {
         marked[j].setAttribute(pairs[k][1], t(marked[j].getAttribute(pairs[k][0])));
       }
+    }
+    // 출발지 예시는 권역마다 다르다. 간사이에서 신주쿠를 예로 들 수는 없다.
+    var q = el("q");
+    if (q) {
+      var ex = regionStart(regionInfo).names;
+      q.setAttribute("placeholder", t("originPlaceholder")
+        + " (" + ex.ja + " / " + ex.en + " / " + ex.ko + ")");
     }
   }
 
@@ -1195,10 +1364,52 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     applyLanguage();
     redrawAfterLanguage();
   }
-  // 첫 출발지. 이름표는 언어에 맞춰 붙인다.
+  // 첫 출발지. 이름표는 언어에 맞춰 붙인다. 권역마다 다르므로
+  // region.json 에 적어 두고 서버가 /api/regions 로 보내 준다.
+  // 지도를 처음 띄울 때는 아직 권역 정보가 없어 이 값으로 시작한다.
   var START = { lat: 35.68962, lon: 139.70025, zoom: 11,
                 names: { ja: "新宿", en: "Shinjuku", ko: "신주쿠",
                          "zh-Hans": "新宿", "zh-Hant": "新宿" } };
+
+  // 지금 권역의 첫 출발지. 권역을 고를 때마다 갈아 끼운다.
+  // 지금 권역 안의 좌표인가. 경계를 아직 못 받았으면 넉넉히 통과시킨다.
+  function inRegion(lon, lat) {
+    if (!coverageGeo) return true;
+    // 경계는 Feature 하나로 오기도 하고 FeatureCollection 으로 오기도 한다
+    var feats = coverageGeo.features
+      || (coverageGeo.geometry ? [coverageGeo] : []);
+    // 경계는 닫힌 고리를 MultiLineString 으로 내보낸다(coverage.py). 면으로
+    // 올 때도 있어 둘 다 받는다. 어느 쪽이든 고리 목록으로 펴서 홀짝으로
+    // 센다. 구멍도 섬도 홀짝이면 저절로 맞는다.
+    var rings = [];
+    feats.forEach(function (f) {
+      var g = f.geometry;
+      if (!g) return;
+      if (g.type === "Polygon") rings = rings.concat(g.coordinates);
+      else if (g.type === "MultiPolygon") {
+        g.coordinates.forEach(function (poly) { rings = rings.concat(poly); });
+      } else if (g.type === "LineString") rings.push(g.coordinates);
+      else if (g.type === "MultiLineString") rings = rings.concat(g.coordinates);
+    });
+    if (!rings.length) return true;
+    var inside = false;
+    rings.forEach(function (ring) {
+      for (var i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        var xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
+        if ((yi > lat) !== (yj > lat)
+            && lon < (xj - xi) * (lat - yi) / (yj - yi) + xi) inside = !inside;
+      }
+    });
+    return inside;
+  }
+
+  function regionStart(meta) {
+    if (meta && meta.start && meta.start.names) {
+      return { lat: meta.start.lat, lon: meta.start.lon,
+               zoom: meta.zoom || START.zoom, names: meta.start.names };
+    }
+    return START;
+  }
 
   var el = function (id) { return document.getElementById(id); };
   var css = function (name) {
@@ -1344,12 +1555,31 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
         dotWorld = null;
         if (dotCanvas) paintLeafletDots();
       },
-      drawLines: function (shapes) {
+      drawLines: function (shapes, onHover) {
         lines.clearLayers();
         shapes.forEach(function (r) {
-          L.polyline(r.path.map(function (c) { return [c[1], c[0]]; }), {
-            color: r.color, weight: 3.5, opacity: 0.7, interactive: false
+          var line = L.polyline(r.path.map(function (c) { return [c[1], c[0]]; }), {
+            color: r.color, weight: 3.5, opacity: 0.7,
+            interactive: !!onHover
           }).addTo(lines);
+          if (!onHover) return;
+          // 1초를 머물러야 뜬다. 지나가기만 해도 뜨면 지도가 시끄럽다.
+          var timer = null;
+          line.on("mouseover", function (e) {
+            clearTimeout(timer);
+            timer = setTimeout(function () {
+              onHover(r, e.originalEvent);
+            }, HOVER_DELAY_MS);
+          });
+          line.on("mouseout", function () {
+            clearTimeout(timer);
+            onHover(null);
+          });
+          line.on("click", function (e) {
+            // 지도 클릭으로 번지면 출발지가 찍힌다
+            if (L.DomEvent) L.DomEvent.stopPropagation(e);
+            pickLine(r);
+          });
         });
       },
       clearLines: function () { lines.clearLayers(); },
@@ -1393,7 +1623,22 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       clearIsochrone: function () { iso.clearLayers(); },
       fitBounds: function (b) {
         map.fitBounds([[b.south, b.west], [b.north, b.east]], { padding: [30, 30] });
-      }
+      },
+      getView: function () {
+        var c = map.getCenter();
+        return { lat: c.lat, lon: c.lng, zoom: map.getZoom() };
+      },
+      setView: function (v) { map.setView([v.lat, v.lon], v.zoom); },
+      // 컨테이너를 갈아끼운 직후에는 크기를 0 으로 알고 있어 화면이 빈다
+      refresh: function () {
+        map.invalidateSize();
+        // 레이아웃이 잡히기 전에 부르면 크기를 0 으로 재고, 그러면
+        // 클릭 좌표 변환이 통째로 어긋난다. 한 프레임 뒤에 한 번 더.
+        requestAnimationFrame(function () { map.invalidateSize(); });
+      },
+      // 리플릿은 컨테이너에 초기화 표시를 남긴다. 지우지 않고 다시
+      // 만들면 "이미 초기화됨" 으로 막혀 지도가 안 뜬다.
+      destroy: function () { map.remove(); }
     };
   }
 
@@ -1526,14 +1771,30 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       clearStations: function () {
         if (stationLayer) stationLayer.setPoints(null);
       },
-      drawLines: function (shapes) {
+      drawLines: function (shapes, onHover) {
         lineLayer.forEach(function (p) { p.setMap(null); });
         lineLayer = shapes.map(function (r) {
-          return new google.maps.Polyline({
-            map: map, clickable: false,
+          var line = new google.maps.Polyline({
+            map: map, clickable: !!onHover,
             path: r.path.map(function (c) { return { lat: c[1], lng: c[0] }; }),
             strokeColor: r.color, strokeWeight: 3.5, strokeOpacity: 0.7
           });
+          if (onHover) {
+            // 1초를 머물러야 뜬다. 지나가기만 해도 뜨면 지도가 시끄럽다.
+            var timer = null;
+            line.addListener("mouseover", function (e) {
+              clearTimeout(timer);
+              timer = setTimeout(function () {
+                onHover(r, e && e.domEvent);
+              }, HOVER_DELAY_MS);
+            });
+            line.addListener("mouseout", function () {
+              clearTimeout(timer);
+              onHover(null);
+            });
+            line.addListener("click", function () { pickLine(r); });
+          }
+          return line;
         });
       },
       clearLines: function () {
@@ -1601,7 +1862,17 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
           ),
           40
         );
-      }
+      },
+      getView: function () {
+        var c = map.getCenter();
+        return c ? { lat: c.lat(), lon: c.lng(), zoom: map.getZoom() } : null;
+      },
+      setView: function (v) {
+        map.setCenter({ lat: v.lat, lng: v.lon });
+        map.setZoom(v.zoom);
+      },
+      refresh: function () { google.maps.event.trigger(map, "resize"); },
+      destroy: function () { google.maps.event.clearInstanceListeners(map); }
     };
   }
 
@@ -1638,6 +1909,9 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
      그 현들만 보여준다. 두 목록은 세는 대상도 다르다 — 역은 역 수를,
      노선은 그 현을 지나는 노선 수를 센다. */
   var prefPick = { stations: null, lines: null };
+  /* 노선 디버그 패널에서 꺼 둔 노선 id. null 이면 전부 켠 것이다.
+     "끈 것" 을 들고 있어야 새로 생긴 노선이 기본으로 보인다. */
+  var lineHide = null;
   // 현 이름의 언어별 표기. 서버가 OSM 행정경계에서 받아 둔 것.
   var prefNames = {};
 
@@ -1661,9 +1935,18 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       mapView.clearStations();
       return;
     }
-    mapView.drawStations(visibleStations().map(function (s) {
-      return [s.lon, s.lat];
-    }));
+    // 승강장이 갈린 역은 자리마다 찍는다. 豊島園 처럼 이름만 같고
+    // 승강장이 따로인 역을 한 점으로 묶으면 지도가 거짓말을 한다.
+    // 검색 목록은 여전히 한 줄이다.
+    var dots = [];
+    visibleStations().forEach(function (s) {
+      if (s.spots && s.spots.length) {
+        for (var i = 0; i < s.spots.length; i++) dots.push(s.spots[i]);
+      } else {
+        dots.push([s.lon, s.lat]);
+      }
+    });
+    mapView.drawStations(dots);
   }
 
   /* 노선은 여러 현에 걸친다. 고른 현을 하나라도 지나면 보여준다. */
@@ -1674,10 +1957,441 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     }
     var on = prefPick.lines;
     mapView.drawLines(railwayShapes.filter(function (r) {
+      if (lineHide && lineHide.has(r.id)) return false;
       if (!on) return true;
       return (r.prefs || []).some(function (p) { return on.has(p); });
-    }));
+    }), debugHoverOn ? showLineHover : null);
   }
+
+  /* 지도에서 선 위에 1초 머물면 이름을 띄우고, 디버그 패널이 열려 있으면
+     그 노선 줄까지 스크롤해 짚어 준다. 선이 촘촘한 도심에서 "이게 무슨
+     노선인가" 를 알아보려고 켜는 기능이다. */
+  var HOVER_DELAY_MS = 1000;
+  var debugHoverOn = false;
+  var hoverRows = {};          // 노선 조각 id -> 패널의 그 줄
+
+  /* 지도에서 선 위에 1초 머물면 이름만 띄운다. 이름은 노선 디버그 목록에
+     적힌 것과 같은 것을 쓴다. 지도에서는 "JR成田線 (成田空港 → 千葉)" 인데
+     목록에서는 "나리타선" 이면 같은 줄을 찾을 수가 없다. */
+  function showLineHover(shape, ev) {
+    var tip = el("line-tip");
+    if (!shape) { tip.hidden = true; return; }
+    tip.textContent = hoverName[shape.id]
+                      || shape[LANG] || shape.ja || shape.id;
+    tip.hidden = false;
+    if (ev) {
+      var box = el("map").getBoundingClientRect();
+      tip.style.left = Math.round(ev.clientX - box.left + 14) + "px";
+      tip.style.top = Math.round(ev.clientY - box.top + 14) + "px";
+    }
+  }
+
+  /* 이름이 떠 있을 때 누르면 목록에서 그 줄까지 찾아간다. 켜 두지 않았을
+     때는 아무 일도 하지 않는다. 선을 눌러 지도가 움직이면 곤란하다. */
+  function pickLine(shape) {
+    if (!debugHoverOn) return;
+    if (el("debug-menu").hidden) {
+      // 토글 버튼을 누르면 노선을 받아오는 비동기 길로 갈 수 있다.
+      // 여기서는 이미 선이 그려져 있으므로 바로 펴고 그린다.
+      el("debug-menu").hidden = false;
+      el("debug-toggle").setAttribute("aria-expanded", "true");
+      buildDebugMenu();
+    }
+    // 접힌 묶음도 줄은 만들어 두므로 hoverRows 에는 있다. 다만 감춰져
+    // 있어서 스크롤해도 안 보인다. 그 회사를 펴고 다시 그린 뒤에 짚는다.
+    var op = hoverGroupOf[lineKey(shape)];
+    if (op && !debugOpen[op]) {
+      debugOpen[op] = true;
+      buildDebugMenu();
+    }
+    var row = hoverRows[shape.id];
+    if (!row) return;
+    Object.keys(hoverRows).forEach(function (k) {
+      hoverRows[k].classList.remove("lit");
+    });
+    row.classList.add("lit");
+    if (row.scrollIntoView) row.scrollIntoView({ block: "center" });
+  }
+
+  var hoverName = {};          // 노선 조각 id -> 목록에 적힌 이름
+  var hoverGroupOf = {};       // 노선 뿌리 id -> 그 노선이 담긴 회사 묶음
+
+  /* 한 노선이 여러 조각(id~1)으로 나뉘어 오므로 뿌리 id 로 묶는다. */
+  function lineKey(shape) {
+    return String(shape.id || "").split("~")[0];
+  }
+
+  /* 노선 하나씩 켜고 끄는 디버그 패널.
+
+     줄은 한 번만 만든다. 찾기는 만들어 둔 줄을 보이고 숨길 뿐이라
+     다시 그리지 않는다. 예전에는 한 글자 칠 때마다 메뉴를 통째로 다시
+     그려서 입력칸이 DOM 에서 떨어져 나갔고, 그래서 한 글자만 입력됐다.
+
+     운영사로 묶고 기본은 접어 둔다. 한 권역에 회사가 마흔 곳 넘어서
+     다 펴 두면 스크롤만 길어진다. 접은 묶음도 줄은 만들어 두고 감추기만
+     하므로, 찾을 때 접혀 있어도 걸린다. */
+  function buildDebugMenu() {
+    var menu = el("debug-menu");
+    var at = menu.scrollTop;
+    menu.textContent = "";
+
+    if (!railwayShapes || !railwayShapes.length) {
+      var empty = document.createElement("p");
+      empty.className = "hint";
+      empty.style.padding = "6px 8px";
+      empty.textContent = t("linesFirst");
+      menu.appendChild(empty);
+      return;
+    }
+
+    /* 이름 끝의 (출발 => 도착) 꼬리표는 떼고 보여 준다. 어느 구간인지는
+       조각 줄에 따로 나온다. */
+    var TAIL = /\s*[(（][^)）]*(=>|→|->|＞)[^)）]*[)）]\s*$/;
+    function shortName(full) {
+      return full.replace(TAIL, "").trim() || full;
+    }
+
+    // 한 노선이 조각 여럿으로 온다. 뿌리 id 로 묶고 조각을 들고 있는다.
+    var byKey = {};
+    var order = [];
+    railwayShapes.forEach(function (r) {
+      var k = lineKey(r);
+      if (!byKey[k]) {
+        var op = r.operator;
+        if (op && typeof op === "object") op = op[LANG] || op.ja || "";
+        byKey[k] = { key: k, full: r[LANG] || r.ja || k,
+                     name: r[LANG] || r.ja || k, color: r.color,
+                     op: op || "", parts: [] };
+        order.push(byKey[k]);
+      }
+      byKey[k].parts.push({ id: r.id, span: (r.span && r.span[LANG]) || "" });
+    });
+
+    /* 지선은 본선 밑으로 접어 넣는다. 成田線 과 成田線我孫子支線 이 따로
+       서 있으면 같은 노선의 갈래인 줄 모른다. */
+    /* "지선" 앞에 띄어쓰기를 요구한다. 안 그러면 御堂筋線(미도스지선),
+       宇治線(우지선), 道明寺線(도묘지선) 처럼 이름 끝이 우연히 "지선" 인
+       것까지 지선으로 잡는다. */
+    var BRANCH = /(支線|\s지선|\sBranch)\s*$/i;
+    order.sort(function (a, b) { return a.name.length - b.name.length; });
+    var kept = [];
+    order.forEach(function (r) {
+      var parent = null;
+      for (var i = 0; i < kept.length; i++) {
+        var p = kept[i];
+        if (r.name.length > p.name.length && r.name.indexOf(p.name) === 0
+            && BRANCH.test(r.name)) { parent = p; break; }
+      }
+      if (!parent) { kept.push(r); return; }
+      // 지선을 붙이는 순간 본선도 갈래 하나가 된다. 제 조각에도 이름을 단다.
+      parent.parts.forEach(function (q) {
+        if (!q.tag) q.tag = t("debugMain");
+      });
+      var tail = r.name.slice(parent.name.length).trim() || r.name;
+      r.parts.forEach(function (q) {
+        parent.parts.push({ id: q.id, span: q.span, tag: tail });
+      });
+    });
+    order = kept;
+
+    /* 꼬리표를 뗀 이름이 같으면 한 줄로 묶고 구간으로 편다. 회사가 다르면
+       묶지 않는다(都営新宿線과 西武新宿線은 다른 노선이다). */
+    var sameName = {};
+    order.forEach(function (r) {
+      r.short = shortName(r.full);
+      var key = (r.op || "") + "|" + r.short;
+      (sameName[key] = sameName[key] || []).push(r);
+    });
+    var merged = [];
+    order.forEach(function (r) {
+      var mates = sameName[(r.op || "") + "|" + r.short];
+      if (!mates || mates[0] !== r) return;      // 무리의 대표만 남긴다
+      r.name = r.short;
+      if (mates.length > 1) {
+        mates.forEach(function (m) {
+          // 이름이 완전히 같으면 꼬리표가 없다. 그때는 구간으로 적는다.
+          // 武蔵野線 이 여럿인데 전부 "무사시노선" 이면 가릴 수가 없다.
+          var tail = m.full.slice(m.short.length).trim();
+          // 꼬리표가 경로 설명이면 버린다. 옆에 적는 구간과 겹쳐 두 번
+          // 적힌 꼴이 된다. 湘南新宿ライン(宇都宮=>大宮=>逗子) 가
+          // "우쓰노미야 → 오미야 → 즈시 (우쓰노미야–즈시)" 로 나왔다.
+          if (/[→⇒]|=>|->/.test(tail)) tail = "";
+          m.parts.forEach(function (q) {
+            if (m !== r) r.parts.push(q);
+            if (!q.tag && tail) q.tag = tail;
+          });
+        });
+      }
+      merged.push(r);
+    });
+    order = merged;
+
+    /* 회사로 묶되, 노선이 하나뿐인 회사는 "그 밖" 으로 모은다. 한 줄짜리
+       묶음이 줄줄이 쌓이면 접었다 펴 보람이 없다. */
+    var counts = {};
+    order.forEach(function (r) {
+      if (r.op) counts[r.op] = (counts[r.op] || 0) + 1;
+    });
+    var OTHER = t("debugOther");
+    var groups = {};
+    var opNames = [];
+    order.forEach(function (r) {
+      var op = (r.op && counts[r.op] > 1) ? r.op : OTHER;
+      r.tag = (op === OTHER) ? (r.op || "") : "";
+      if (!groups[op]) { groups[op] = []; opNames.push(op); }
+      groups[op].push(r);
+    });
+    opNames.sort(function (a, b) {
+      if (a === OTHER) return 1;          // "그 밖" 은 늘 맨 끝
+      if (b === OTHER) return -1;
+      return groups[b].length - groups[a].length || a.localeCompare(b);
+    });
+    opNames.forEach(function (op) {
+      groups[op].sort(function (a, b) {
+        return (a.tag || "").localeCompare(b.tag || "")
+               || a.name.localeCompare(b.name);
+      });
+    });
+
+    var blocks = [];             // 찾을 때 보이고 숨길 대상
+    hoverRows = {};
+    hoverGroupOf = {};
+    hoverName = {};
+
+    function hidden(id) { return !!(lineHide && lineHide.has(id)); }
+    function anyOn(line) {
+      return line.parts.some(function (p) { return !hidden(p.id); });
+    }
+    function setOff(ids, off) {
+      if (!lineHide) lineHide = new Set();
+      ids.forEach(function (id) {
+        if (off) lineHide.add(id); else lineHide.delete(id);
+      });
+      if (!lineHide.size) lineHide = null;
+    }
+    function apply() {
+      el("toggle-lines").setAttribute("aria-pressed", "true");
+      refreshLines();
+      buildDebugMenu();
+    }
+
+    function addRow(label, count, on, cls, fn) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = cls;
+      b.setAttribute("aria-pressed", String(on));
+      var left = document.createElement("span");
+      left.className = "row-name";
+      var name = document.createElement("span");
+      name.className = "label";
+      name.textContent = label;
+      left.appendChild(name);
+      b.appendChild(left);
+      if (count !== null) {
+        var num = document.createElement("span");
+        num.className = "count";
+        num.textContent = count;
+        b.appendChild(num);
+      }
+      // 메뉴를 다시 그리면 눌린 버튼이 DOM 에서 떨어져 나간다. 그러면
+      // 바깥 클릭 판정이 "바깥" 으로 읽혀 메뉴가 닫힌다. 여기서 막는다.
+      b.addEventListener("click", function (e) {
+        e.stopPropagation();
+        fn();
+        apply();
+      });
+      return { button: b, left: left };
+    }
+
+    var search = document.createElement("input");
+    search.type = "search";
+    search.className = "search";
+    search.placeholder = t("debugSearch");
+    search.value = debugQuery;
+    search.addEventListener("click", function (e) { e.stopPropagation(); });
+    search.addEventListener("input", function () {
+      debugQuery = this.value;
+      filter();
+    });
+    menu.appendChild(search);
+
+    var allIds = [];
+    order.forEach(function (r) {
+      r.parts.forEach(function (p) { allIds.push(p.id); });
+    });
+    var liveLines = order.filter(anyOn).length;
+    menu.appendChild(addRow(t("debugAll"), order.length,
+                            liveLines === order.length, "",
+                            function () { lineHide = null; }).button);
+    menu.appendChild(addRow(t("debugNone"), 0, liveLines === 0, "",
+                            function () { setOff(allIds, true); }).button);
+
+    // 지도에서 선에 머물면 이름을 띄울지
+    var hoverRow = document.createElement("label");
+    hoverRow.className = "hoverbox";
+    var box = document.createElement("input");
+    box.type = "checkbox";
+    box.checked = debugHoverOn;
+    box.addEventListener("click", function (e) { e.stopPropagation(); });
+    box.addEventListener("change", function () {
+      debugHoverOn = this.checked;
+      if (!debugHoverOn) showLineHover(null);
+      refreshLines();
+    });
+    hoverRow.appendChild(box);
+    var hoverText = document.createElement("span");
+    hoverText.textContent = t("debugHover");
+    hoverRow.appendChild(hoverText);
+    menu.appendChild(hoverRow);
+
+    // 회사 묶음을 한꺼번에 펴고 접는다
+    var anyOpen = opNames.some(function (op) { return debugOpen[op]; });
+    var foldAll = document.createElement("button");
+    foldAll.type = "button";
+    foldAll.className = "foldall";
+    foldAll.textContent = t(anyOpen ? "debugFoldAll" : "debugOpenAll");
+    foldAll.addEventListener("click", function (e) {
+      e.stopPropagation();
+      if (anyOpen) {
+        debugOpen = {};
+      } else {
+        opNames.forEach(function (op) { debugOpen[op] = true; });
+      }
+      buildDebugMenu();
+    });
+    menu.appendChild(foldAll);
+    menu.appendChild(document.createElement("hr"));
+
+    opNames.forEach(function (op) {
+      var kids = groups[op];
+      kids.forEach(function (r) {
+        hoverGroupOf[r.key] = op;
+        // 본선 밑으로 접힌 지선과 한 줄로 묶은 동명 노선은 맨 위 줄
+        // 목록에 없다. 그 조각들도 같은 회사 묶음에 있다고 적어 둬야
+        // 호버링 후 클릭했을 때 묶음을 펴고 그 줄까지 찾아갈 수 있다.
+        r.parts.forEach(function (p) {
+          hoverGroupOf[String(p.id).split("~")[0]] = op;
+        });
+      });
+      var live = kids.filter(anyOn).length;
+      var open = !!debugOpen[op];
+
+      var head = document.createElement("div");
+      head.className = "grouprow";
+
+      var fold = document.createElement("button");
+      fold.type = "button";
+      fold.className = "group";
+      fold.setAttribute("aria-expanded", String(open));
+      var caret = document.createElement("span");
+      caret.className = "caret-mark";
+      caret.textContent = open ? "▾" : "▸";
+      var opName = document.createElement("span");
+      opName.className = "label";
+      opName.textContent = op;
+      fold.appendChild(caret);
+      fold.appendChild(opName);
+      fold.addEventListener("click", function (e) {
+        e.stopPropagation();
+        debugOpen[op] = !debugOpen[op];
+        buildDebugMenu();
+      });
+
+      var eye = document.createElement("button");
+      eye.type = "button";
+      eye.className = "groupeye count";
+      eye.setAttribute("aria-pressed", String(live > 0));
+      eye.textContent = live + " / " + kids.length;
+      eye.title = t("debugToggleOperator");
+      eye.addEventListener("click", function (e) {
+        e.stopPropagation();
+        var ids = [];
+        kids.forEach(function (r) {
+          r.parts.forEach(function (p) { ids.push(p.id); });
+        });
+        setOff(ids, live > 0);
+        apply();
+      });
+
+      head.appendChild(fold);
+      head.appendChild(eye);
+      menu.appendChild(head);
+
+      // 접힌 묶음도 줄은 만들어 두고 감춘다. 그래야 찾을 때 걸린다.
+      var body = document.createElement("div");
+      body.className = "groupbody";
+      body.hidden = !open;
+      menu.appendChild(body);
+
+      var block = { head: head, body: body, open: open, kids: [] };
+      blocks.push(block);
+
+      kids.forEach(function (r) {
+        var ids = r.parts.map(function (p) { return p.id; });
+        var on = anyOn(r);
+        var made = addRow(r.name, null, on, "child", function () {
+          setOff(ids, on);
+        });
+        var dot = document.createElement("span");
+        dot.className = "swatch";
+        dot.style.background = r.color || "#888888";
+        made.left.insertBefore(dot, made.left.firstChild);
+        if (r.tag) {
+          var who = document.createElement("span");
+          who.className = "tag";
+          who.textContent = r.tag;
+          made.left.appendChild(who);
+        }
+        body.appendChild(made.button);
+        ids.forEach(function (id) {
+          hoverRows[id] = made.button;
+          hoverName[id] = r.name;
+        });
+        var text = (r.name + " " + r.full + " " + op + " "
+                    + (r.tag || "")).toLowerCase();
+        block.kids.push({ el: made.button, text: text });
+
+        if (r.parts.length < 2) return;
+        r.parts.forEach(function (p, i) {
+          /* 양식을 하나로. "지선 이름 (기점–종점)" 이다. 지선 이름이
+             없을 때만 "(기점–종점)" 으로 구간만 적는다. */
+          var tag = (p.tag || "").replace(/^[(（]|[)）]$/g, "").trim();
+          var span = p.span || (t("debugPieces") + " " + (i + 1));
+          var label = tag ? tag + " (" + span + ")" : "(" + span + ")";
+          var sub = addRow(label, null, !hidden(p.id), "piece", function () {
+            setOff([p.id], !hidden(p.id));
+          });
+          body.appendChild(sub.button);
+          hoverRows[p.id] = sub.button;
+          hoverName[p.id] = r.name + " · " + label;
+          block.kids.push({ el: sub.button,
+                            text: text + " " + label.toLowerCase() });
+        });
+      });
+    });
+
+    /* 찾기는 만들어 둔 줄을 보이고 숨길 뿐이다. 걸린 줄이 있는 묶음은
+       접혀 있어도 펴서 보여 준다. */
+    function filter() {
+      var q = debugQuery.trim().toLowerCase();
+      blocks.forEach(function (block) {
+        var seen = 0;
+        block.kids.forEach(function (kid) {
+          var show = !q || matchAt(kid.text, q) >= 0;
+          kid.el.hidden = !show;
+          if (show) seen += 1;
+        });
+        block.head.hidden = !!q && seen === 0;
+        block.body.hidden = q ? seen === 0 : !block.open;
+      });
+    }
+    filter();
+    menu.scrollTop = at;
+  }
+
+  var debugQuery = "";
+  /* 펜 운영사. 다시 그려도 유지한다. */
+  var debugOpen = {};
 
   /* 현별 메뉴. 역과 노선이 같은 모양을 쓰되 세는 대상과 고른 상태가 다르다. */
   var MENU = {
@@ -1692,7 +2406,12 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
         if (s.supported && s.pref) counts[s.pref] = (counts[s.pref] || 0) + 1;
       });
     } else {
+      // 한 노선이 여러 조각으로 나뉘어 오므로 노선 id 로 한 번만 센다.
+      // 조각마다 세면 선로를 못 이어 끊은 자리 수만큼 부풀려진다.
+      var seen = {};
       (railwayShapes || []).forEach(function (r) {
+        if (seen[r.id]) return;
+        seen[r.id] = true;
         (r.prefs || []).forEach(function (p) { counts[p] = (counts[p] || 0) + 1; });
       });
     }
@@ -1766,6 +2485,66 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 
   /* ---------- 역 검색 (출발지·도착지가 함께 쓴다) ---------- */
 
+  /* ---------- 한글 검색 ----------
+     "야마노테선" 을 찾는데 "야" 는 되고 "ㅇ" 도 "얌" 도 안 되면 불편하다.
+     음절을 자모로 풀어 두고 친 것이 그 안에 드는지 본다.
+
+       얌        -> ㅇㅑㅁ        야마노테선 -> ㅇㅑㅁㅏㄴㅗ...  앞에 붙는다
+       ㅇㅁㄴ     -> 초성만 친 것. 초성 줄(ㅇㅁㄴㅌㅅ)에서 찾는다
+
+     받침 ㅁ 과 초성 ㅁ 은 같은 글자라 "얌" 이 "야마" 의 앞이 된다.
+     글자 그대로 찾아서 나오면 그걸 쓰고, 없을 때만 자모로 본다. */
+  var CHO = ["ㄱ","ㄲ","ㄴ","ㄷ","ㄸ","ㄹ","ㅁ","ㅂ","ㅃ","ㅅ","ㅆ","ㅇ",
+             "ㅈ","ㅉ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"];
+  var JUNG = ["ㅏ","ㅐ","ㅑ","ㅒ","ㅓ","ㅔ","ㅕ","ㅖ","ㅗ","ㅘ","ㅙ","ㅚ","ㅛ",
+              "ㅜ","ㅝ","ㅞ","ㅟ","ㅠ","ㅡ","ㅢ","ㅣ"];
+  var JONG = ["","ㄱ","ㄲ","ㄳ","ㄴ","ㄵ","ㄶ","ㄷ","ㄹ","ㄺ","ㄻ","ㄼ","ㄽ",
+              "ㄾ","ㄿ","ㅀ","ㅁ","ㅂ","ㅄ","ㅅ","ㅆ","ㅇ","ㅈ","ㅊ","ㅋ",
+              "ㅌ","ㅍ","ㅎ"];
+  var HANGUL = /[가-힣ㄱ-ㆎ]/;
+  var JAMO_ONLY = /^[ㄱ-ㆎ\s]+$/;
+  var _jamoMemo = {}, _choMemo = {};
+
+  function jamo(s) {
+    if (_jamoMemo[s] !== undefined) return _jamoMemo[s];
+    var out = "";
+    for (var i = 0; i < s.length; i++) {
+      var c = s.charCodeAt(i) - 0xac00;
+      if (c >= 0 && c < 11172) {
+        out += CHO[(c / 588) | 0] + JUNG[((c % 588) / 28) | 0] + JONG[c % 28];
+      } else out += s.charAt(i);
+    }
+    if (Object.keys(_jamoMemo).length > 20000) _jamoMemo = {};
+    return (_jamoMemo[s] = out);
+  }
+
+  function chosung(s) {
+    if (_choMemo[s] !== undefined) return _choMemo[s];
+    var out = "";
+    for (var i = 0; i < s.length; i++) {
+      var c = s.charCodeAt(i) - 0xac00;
+      if (c >= 0 && c < 11172) out += CHO[(c / 588) | 0];
+      else out += s.charAt(i);
+    }
+    if (Object.keys(_choMemo).length > 20000) _choMemo = {};
+    return (_choMemo[s] = out);
+  }
+
+  /* 찾은 자리. 못 찾으면 -1. 0 이면 맨 앞이라 위로 올린다. */
+  function matchAt(hay, q) {
+    if (!q) return -1;
+    var at = hay.indexOf(q);
+    if (at >= 0) return at;
+    if (!HANGUL.test(q)) return -1;
+    at = jamo(hay).indexOf(jamo(q));
+    if (at >= 0) return at === 0 ? 0 : 1;
+    if (JAMO_ONLY.test(q)) {
+      at = chosung(hay).indexOf(q.replace(/\s+/g, ""));
+      if (at >= 0) return at === 0 ? 0 : 1;
+    }
+    return -1;
+  }
+
   function norm(s) { return (s || "").toLowerCase(); }
 
   function stationLabel(s) {
@@ -1781,7 +2560,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       // 어느 언어로 치든 찾히게 한다. 화면 언어와 상관없이 전부 본다.
       var best = -1;
       for (var k = 0; k < LANGS.length; k++) {
-        var at = norm(s[LANGS[k]] || "").indexOf(q);
+        var at = matchAt(norm(s[LANGS[k]] || ""), q);
         if (at === 0) { best = 0; break; }
         if (at > 0 && best !== 0) best = at;
       }
@@ -1790,6 +2569,52 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       if (head.length >= 20) break;
     }
     return head.concat(tail).slice(0, 20);
+  }
+
+  /* ---------- 다른 권역에서도 찾기 ----------
+     권역은 손으로 고르게 돼 있는데, 간토를 보는 중에 "오사카" 를 치면
+     아무것도 안 나와 검색이 고장 난 것처럼 보인다. 지금 권역에서 못
+     찾으면 다른 권역도 뒤지고, 거기 것을 고르면 권역을 바꾼다.
+     역 목록은 한 권역에 2~3천 개라 한 번 받아 두고 쓴다. */
+  var otherStations = {};      // 권역 id -> 역 목록
+  var otherPending = null;
+
+  function loadOtherRegions() {
+    if (otherPending) return otherPending;
+    var want = regionList
+      .map(function (r) { return r.id; })
+      .filter(function (id) { return id !== (el("region").value || "kanto"); });
+    otherPending = Promise.all(want.map(function (id) {
+      return getJSON("/api/stations?region=" + encodeURIComponent(id))
+        .then(function (v) { otherStations[id] = v; })
+        .catch(function () { otherStations[id] = []; });
+    }));
+    return otherPending;
+  }
+
+  function searchOther(term) {
+    var q = norm(term);
+    if (!q) return [];
+    var out = [];
+    Object.keys(otherStations).forEach(function (id) {
+      var meta = null;
+      for (var i = 0; i < regionList.length; i++) {
+        if (regionList[i].id === id) meta = regionList[i];
+      }
+      var list = otherStations[id] || [];
+      for (var k = 0; k < list.length && out.length < 20; k++) {
+        var st = list[k];
+        for (var j = 0; j < LANGS.length; j++) {
+          if (matchAt(norm(st[LANGS[j]] || ""), q) >= 0) {
+            out.push({ st: st, region: id,
+                       label: (meta && meta.names && (meta.names[LANG]
+                               || meta.names.ja)) || id });
+            break;
+          }
+        }
+      }
+    });
+    return out;
   }
 
   function attachSearch(input, box, onPick) {
@@ -1829,7 +2654,55 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       });
       box.hidden = false;
     }
-    input.addEventListener("input", function () { render(search(input.value)); });
+    function renderOther(list, term) {
+      list.forEach(function (row) {
+        var b = document.createElement("button");
+        b.type = "button";
+        var name = document.createElement("span");
+        name.className = "name";
+        var ja = document.createElement("span");
+        ja.className = "ja";
+        ja.textContent = row.st.ja;
+        var ko = document.createElement("span");
+        ko.className = "ko";
+        ko.textContent = row.st.ko || row.st.en;
+        name.appendChild(ja);
+        name.appendChild(ko);
+        b.appendChild(name);
+        var tag = document.createElement("span");
+        tag.className = "ops";
+        tag.textContent = row.label;
+        b.appendChild(tag);
+        b.addEventListener("click", function () {
+          input.value = row.st.ja;
+          box.hidden = true;
+          var sel = el("region");
+          sel.value = row.region;
+          try { localStorage.setItem("region", row.region); } catch (e) { /* 무시 */ }
+          // 권역을 바꾸면 역 목록이 통째로 갈리므로, 다 올라온 뒤에 고른다.
+          loadRegion(row.region).then(function () {
+            var pick = null;
+            for (var i = 0; i < stations.length; i++) {
+              if (stations[i].id === row.st.id) { pick = stations[i]; break; }
+            }
+            onPick(pick || row.st);
+          });
+        });
+        box.appendChild(b);
+      });
+      if (list.length) box.hidden = false;
+    }
+
+    input.addEventListener("input", function () {
+      var term = input.value;
+      var here = search(term);
+      render(here);
+      if (here.length || !norm(term)) return;
+      loadOtherRegions().then(function () {
+        if (input.value !== term) return;      // 그새 더 쳤으면 버린다
+        renderOther(searchOther(term), term);
+      });
+    });
     input.addEventListener("keydown", function (e) { if (e.key === "Escape") box.hidden = true; });
     document.addEventListener("click", function (e) {
       if (!box.contains(e.target) && e.target !== input) box.hidden = true;
@@ -2340,6 +3213,13 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   /* 찍기 전에 쓸 수 있는 지점인지 먼저 확인한다. 바다나 권역 밖을 찍어두고
      빈 결과를 보는 것보다, 찍히지 않는 편이 낫다. */
   function handleMapClick(lat, lon, forced) {
+    // 지도를 갈아낀 직후에는 좌표 변환이 어긋나 엉뚱한 값이 온다.
+    // 지구 밖 좌표로 서버를 부르면 "범위를 벗어났습니다" 만 뜬다.
+    if (!isFinite(lat) || !isFinite(lon)
+        || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+      if (mapView && mapView.refresh) mapView.refresh();
+      return;
+    }
     var target = forced || clickMode;
     getJSON("/api/reachable?" + new URLSearchParams(
       walkUnlimited.checked
@@ -2376,6 +3256,10 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   function wirePanel() {
     attachSearch(el("q"), el("results"), function (s) {
       setOrigin(s.lon, s.lat, stationLabel(s), s);
+      // 검색으로 출발역을 고른 것은 "여기로 가자" 는 뜻이다. 화면을
+      // 새 도달권역에 맞춘다. 시간 기준만 바꿀 때는 맞추지 않는다.
+      // 보던 자리가 튀면 성가시다.
+      fitNext = true;
       run();
     });
     attachSearch(el("dq"), el("dest-results"), function (s) {
@@ -2548,18 +3432,42 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       this.setAttribute("aria-pressed", String(on));
       if (!on) { mapView.clearLines(); return; }
       if (railwayShapes) { refreshLines(); return; }
-      if (railwayShapes) { refreshLines(); return; }
       busy(true);
       getJSON("/api/railways?region=" + encodeURIComponent(el("region").value || "kanto"))
         .then(function (list) {
           railwayShapes = list;
           refreshLines();
           if (!el("line-menu").hidden) buildPrefMenu("lines");
+          if (!el("debug-menu").hidden) buildDebugMenu();
         })
         .catch(function (err) {
           notice(t("linesFailed"), err.message);
           el("toggle-lines").setAttribute("aria-pressed", "false");
         })
+        .then(function () { busy(false); });
+    });
+
+    /* 디버그 패널은 바깥을 눌러도 닫지 않는다. 노선을 걷어내며 지도를
+       끌고 다니는 것이 이 패널을 쓰는 방식이라, 지도를 만질 때마다
+       닫히면 쓸 수가 없다. 제 버튼을 다시 누를 때만 닫는다. */
+    el("debug-toggle").addEventListener("click", function () {
+      var open = this.getAttribute("aria-expanded") !== "true";
+      this.setAttribute("aria-expanded", String(open));
+      el("debug-menu").hidden = !open;
+      if (!open) return;
+      if (railwayShapes) { buildDebugMenu(); return; }
+      // 노선을 아직 안 받아 왔으면 여기서 받는다. "지원 노선 표시" 를
+      // 먼저 눌러야만 쓸 수 있으면 디버그용으로 번거롭다.
+      busy(true);
+      buildDebugMenu();
+      getJSON("/api/railways?region=" + encodeURIComponent(el("region").value || "kanto"))
+        .then(function (list) {
+          railwayShapes = list;
+          el("toggle-lines").setAttribute("aria-pressed", "true");
+          refreshLines();
+          if (!el("debug-menu").hidden) buildDebugMenu();
+        })
+        .catch(function (err) { notice(t("linesFailed"), err.message); })
         .then(function () { busy(false); });
     });
 
@@ -2651,23 +3559,35 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       panelWired = true;
     }
 
-    if (origin) {
+    var st = regionStart(regionInfo);
+    var keep = origin && inRegion(origin.lon, origin.lat);
+    if (keep) {
       mapView.setPin("origin", origin.lat, origin.lon);
     } else {
-      setOrigin(START.lon, START.lat, name(START.names), START.names);
-      el("q").value = "新宿";
+      // 권역을 옮기면 이전 권역의 핀은 버린다. 그대로 두면 권역 밖 좌표로
+      // 조회하게 되고, 화면은 빈 결과만 보여준다.
+      clearDestination();
+      setOrigin(st.lon, st.lat, name(st.names), st.names);
+      el("q").value = st.names.ja;
     }
     if (destination) mapView.setPin("dest", destination.lat, destination.lon);
     showCoverage();
-    railwayShapes = null;
-    if (el("toggle-lines").getAttribute("aria-pressed") === "true") {
-      mapView.clearLines();
-      el("toggle-lines").setAttribute("aria-pressed", "false");
-    }
-    prefPick = { stations: null, lines: null };
+    // 바탕 지도만 갈아낀 것이라 권역은 그대로다. 받아 둔 선형도 고른
+    // 현도 그대로 쓰고, 켜 둔 표시는 켜진 채로 다시 그린다. 노선과 역이
+    // 따로 놀지 않도록 둘을 같은 자리에서 함께 다룬다.
     refreshStations();
+    refreshLines();
 
-    fitNext = true;
+    // 지도를 갈아낀 직후에는 컨테이너 크기를 0 으로 알고 있어 화면이 빈다.
+    // 크기를 다시 재고, 보던 자리가 있으면 그대로 이어받는다.
+    if (mapView.refresh) mapView.refresh();
+    if (keepView && mapView.setView) {
+      mapView.setView(keepView);
+      keepView = null;
+      fitNext = false;
+    } else {
+      fitNext = true;
+    }
     run();
   }
 
@@ -2689,12 +3609,55 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   }
 
   var swapped = false;
+  var keepView = null;   // 지도를 갈아낄 때 이어받을 보기 상태
+  var googleReady = false;      // 구글 지도 스크립트를 받아 뒀는가
+  var usingGoogle = false;
+
+  /* 바탕 지도를 바꾼다. 우리가 그리는 선은 OSM 선로에서 뽑은 것이라,
+     구글 지도 위에서는 구글 쪽 철도 그림과 어긋나 보인다. 선이 제대로
+     인지 보려면 같은 출처인 OpenStreetMap 위에서 봐야 한다. */
+  function swapMap(toGoogle) {
+    if (toGoogle && !googleReady) return;
+    // 보던 자리를 그대로 이어받는다. 갈아끼울 때마다 처음으로 돌아가면
+    // 무엇이 달라졌는지 견줄 수가 없다.
+    var view = null;
+    try { view = mapView && mapView.getView ? mapView.getView() : null; }
+    catch (e) { view = null; }
+    try {
+      if (mapView && mapView.destroy) mapView.destroy();
+    } catch (e) { /* 이미 사라졌으면 그만이다 */ }
+    el("map").textContent = "";
+    usingGoogle = !!toGoogle;
+    try { localStorage.setItem("basemap", toGoogle ? "google" : "osm"); }
+    catch (e) { /* 무시 */ }
+    keepView = view;
+    attachMap(toGoogle ? guarded(GoogleMap(el("map"))) : LeafletMap(el("map")),
+              toGoogle ? "mapGoogle" : "mapOsm");
+    syncMapSwap();
+  }
+
+  function syncMapSwap() {
+    var b = el("map-swap");
+    if (!b) return;
+    b.hidden = !googleReady;
+    b.setAttribute("data-i18n", usingGoogle ? "mapSwap" : "mapSwapBack");
+    b.textContent = t(usingGoogle ? "mapSwap" : "mapSwapBack");
+  }
 
   function fallbackToLeaflet(noteKey) {
     if (swapped) return;
     swapped = true;
+    try {
+      if (mapView && mapView.destroy) mapView.destroy();
+    } catch (e) { /* 이미 망가진 지도다 */ }
     el("map").textContent = "";   // 구글 지도가 남긴 DOM 을 치운다
+    usingGoogle = false;
+    // 키가 거부됐으면 다시 구글로 갈 길이 없다. 버튼을 남겨 두면 눌러서
+    // 멀쩡한 Leaflet 을 버리고 빈 지도로 가는데, fallbackToLeaflet 은
+    // swapped 래치에 막혀 되돌려 주지 못한다.
+    googleReady = false;
     attachMap(LeafletMap(el("map")), noteKey);
+    syncMapSwap();
   }
 
   /* 구글 지도는 스크립트가 받아진 뒤에야 키를 검증한다. 거부되면 이 훅이
@@ -2727,6 +3690,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 
   var coverageGeo = null;
   var regionList = [];
+  var regionInfo = null;   // 지금 고른 권역의 정보
 
   /* 경계선은 끄고 켤 수 있다. 지도를 볼 때 선이 방해되는 경우가 있다. */
   function showCoverage() {
@@ -2740,10 +3704,17 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 
   /* 권역이 바뀌면 그 권역의 역 목록과 범위를 새로 받아 처음부터 다시 그린다 */
   function loadRegion(id) {
+    // 권역이 바뀌면 "다른 권역" 목록도 다시 짜야 한다. 안 그러면 지금
+    // 권역의 역이 남의 권역인 척 나온다.
+    otherStations = {};
+    otherPending = null;
     var info = null;
     for (var i = 0; i < regionList.length; i++) {
       if (regionList[i].id === id) info = regionList[i];
     }
+    regionInfo = info;
+    // 출발지 예시는 권역을 따른다. 간사이로 옮겼는데 신주쿠를 예로 들 수는 없다.
+    applyLanguage();
     busy(true);
     return Promise.all([
       getJSON("/api/stations?region=" + encodeURIComponent(id)),
@@ -2755,17 +3726,47 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       stations = res[0];
       coverageGeo = res[1];
       prefNames = res[2] || {};
+      // 이전 권역의 역·노선은 버린다. 남겨 두면 다른 지방의 선이 그대로
+      // 겹쳐 보이고, 새 권역 것은 안 올라온다.
+      railwayShapes = null;
+      prefPick = { stations: null, lines: null };
+      // 권역이 다르면 노선 id 도 다르다. 꺼 둔 목록을 들고 있으면 새
+      // 권역의 엉뚱한 노선이 꺼진다.
+      lineHide = null;
+      var lines = Promise.resolve();
       if (mapView) {
         showCoverage();
+        // 켜 둔 표시는 권역을 옮겨도 켜진 채로 둔다. 이전 권역의 점과 선만
+        // 걷어내고 새 권역 것으로 다시 그린다. 노선과 역이 따로 놀지
+        // 않도록 둘을 같은 자리에서 함께 다룬다.
         mapView.clearStations();
-        el("toggle-stations").setAttribute("aria-pressed", "false");
+        mapView.clearLines();
+        refreshStations();
+        if (el("toggle-lines").getAttribute("aria-pressed") === "true") {
+          // 이 요청도 바깥 체인이 기다리게 돌려준다. 안 그러면 권역을
+          // 빠르게 두 번 바꿨을 때 늦게 온 이전 권역 노선이 새 지도 위에
+          // 얹힌다. 도착한 응답이 지금 권역 것인지도 다시 본다.
+          lines = getJSON("/api/railways?region=" + encodeURIComponent(id))
+            .then(function (list) {
+              if (el("region").value !== id) return;
+              railwayShapes = list;
+              refreshLines();
+            })
+            .catch(function (err) { notice(t("linesFailed"), err.message); });
+        }
       }
-      if (info && info.center) {
-        clearDestination();
-        setOrigin(info.center[0], info.center[1], localName(info.names), info.names);
-        el("q").value = "";
-        fitNext = true;
-      }
+      // 열어 둔 현 메뉴는 이전 권역 목록 그대로다. 그대로 두면 새 권역에
+      // 없는 현을 고르게 되어, 토글은 켜졌는데 아무것도 안 그려진다.
+      Object.keys(MENU).forEach(function (k) {
+        if (!el(MENU[k].menu).hidden) buildPrefMenu(k);
+      });
+      if (!el("debug-menu").hidden) lines = lines.then(buildDebugMenu);
+      var st = regionStart(info);
+      clearDestination();
+      setOrigin(st.lon, st.lat, name(st.names), st.names);
+      el("q").value = st.names.ja;
+      fitNext = true;
+      return lines;
     }).catch(function (err) {
       notice(t("regionFailed"), err.message);
     }).then(function () { busy(false); });
@@ -2779,13 +3780,22 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       regionList = data.regions;
       var sel = el("region");
       buildRegionOptions();
-      sel.value = data.default;
+      // 새로고침해도 보던 권역에 머문다. 저장이 막힌 브라우저면 기본값.
+      var want = data.default;
+      try {
+        var saved = localStorage.getItem("region");
+        if (saved && regionList.some(function (r) { return r.id === saved; })) {
+          want = saved;
+        }
+      } catch (e) { /* 사생활 보호 창 등 */ }
+      sel.value = want;
       // 권역이 하나뿐이면 고를 것이 없으니 숨긴다
       el("field-region").hidden = regionList.length < 2;
       sel.addEventListener("change", function () {
+        try { localStorage.setItem("region", sel.value); } catch (e) { /* 무시 */ }
         loadRegion(sel.value).then(run);
       });
-      return loadRegion(data.default);
+      return loadRegion(want);
     })
     .catch(function (err) { notice(t("regionListFailed"), err.message); });
 
@@ -2794,7 +3804,18 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       applyServerDefaults(cfg);
       if (!cfg.google_maps_key) throw new Error("no-key");
       return loadGoogleMaps(cfg.google_maps_key).then(function () {
-        attachMap(guarded(GoogleMap(el("map"))), "mapGoogle");
+        googleReady = true;
+        var want = "google";
+        try { want = localStorage.getItem("basemap") || "google"; }
+        catch (e) { /* 무시 */ }
+        usingGoogle = want !== "osm";
+        attachMap(usingGoogle ? guarded(GoogleMap(el("map")))
+                              : LeafletMap(el("map")),
+                  usingGoogle ? "mapGoogle" : "mapOsm");
+        syncMapSwap();
+        el("map-swap").addEventListener("click", function () {
+          swapMap(!usingGoogle);
+        });
       });
     })
     .catch(function (err) {

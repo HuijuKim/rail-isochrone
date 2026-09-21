@@ -31,7 +31,7 @@ REFERENCE_FILES = [
 
 
 def _get(url: str) -> bytes:
-    req = urllib.request.Request(url, headers={"User-Agent": "tokyo-isochrone/0.1"})
+    req = urllib.request.Request(url, headers={"User-Agent": "rail-isochrone/0.1"})
     with urllib.request.urlopen(req, timeout=120) as resp:
         return resp.read()
 
@@ -52,7 +52,17 @@ def main() -> None:
         print(f"ref  {n:24} {size:>10,} B", flush=True)
 
     listing = json.loads(_get(INDEX))
-    names = [x["name"] for x in listing if x["name"].endswith(".json")]
+    # 파일 이름은 남의 서버가 정해 준다. 그대로 경로에 붙이면
+    # "../" 나 절대경로 하나로 받을 폴더 밖에 파일을 쓸 수 있다.
+    # 한 칸짜리 이름만 받는다.
+    def _safe(name: str) -> bool:
+        return (name.endswith(".json") and name == Path(name).name
+                and name not in (".", "..") and not Path(name).is_absolute())
+
+    names = [x["name"] for x in listing if _safe(str(x.get("name", "")))]
+    dropped = len(listing) - len(names)
+    if dropped:
+        print(f"  이름이 수상해 건너넘긴 항목 {dropped}개", flush=True)
     print(f"\n시각표 {len(names)}개 수집 시작", flush=True)
 
     done = 0

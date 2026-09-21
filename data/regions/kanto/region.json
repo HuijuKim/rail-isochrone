@@ -1,29 +1,40 @@
 {
-  "id": "kanto",
-  "center": [
-    139.70025,
-    35.68962
-  ],
-  "zoom": 11,
-  "timetable": {
-    "source": "mini-tokyo-3d",
-    "license": "MIT",
-    "origin": "公共交通オープンデータセンター"
-  },
-  "osm_extracts": [
-    "kanto",
-    "chubu"
-  ],
-  "note": "간토 1도 6현에 더해 야마나시·이즈·시즈오카 동부. 이 지역 노선(주오선 고후까지, 후지큐, 이즈큐, 이즈하코네, 고텐바선)은 시각표가 이미 있는데 보행망만 없었다. Geofabrik 이 주부로 분류해서다.",
-  "osm_files": [
-    "kanto-latest.osm.pbf",
-    "chubu-latest.osm.pbf"
-  ],
+ "id": "kanto",
+ "center": [
+  139.70025,
+  35.68962
+ ],
+ "zoom": 11,
+ "timetable": {
+  "source": "mini-tokyo-3d",
+  "license": "MIT",
+  "origin": "公共交通オープンデータセンター"
+ },
+ "osm_extracts": [
+  "kanto",
+  "chubu"
+ ],
+ "note": "간토 1도 6현에 더해 야마나시·이즈·시즈오카 동부. 이 지역 노선(주오선 고후까지, 후지큐, 이즈큐, 이즈하코네, 고텐바선)은 시각표가 이미 있는데 보행망만 없었다. Geofabrik 이 주부로 분류해서다.",
+ "osm_files": [
+  "kanto-latest.osm.pbf",
+  "chubu-latest.osm.pbf"
+ ],
+ "names": {
+  "ja": "関東",
+  "en": "Kanto",
+  "ko": "간토",
+  "zh-Hans": "关东",
+  "zh-Hant": "關東"
+ },
+ "start": {
+  "lon": 139.76704,
+  "lat": 35.6813,
   "names": {
-    "ja": "首都圏",
-    "en": "Greater Tokyo",
-    "ko": "수도권",
-    "zh-Hans": "首都圈",
-    "zh-Hant": "首都圈"
+   "ja": "東京",
+   "en": "Tokyo",
+   "ko": "도쿄",
+   "zh-Hans": "东京",
+   "zh-Hant": "東京"
   }
+ }
 }

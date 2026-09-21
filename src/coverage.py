@@ -64,6 +64,57 @@ MIN_RING_KM = 5.0
 CATCHMENT_SEC = None
 
 
+# 다리나 방파제로 이어진 땅을 함께 받아들이는 거리. 에노시마(벤텐바시
+# 약 330m), 조가시마(조가시마오하시 약 80m), 중앙방파제가 이 안에 든다.
+BRIDGE_M = 1000.0
+
+
+def _pieces_in_region(rings, pts):
+    """역이 든 땅과, 거기서 다리로 건너갈 만큼 가까운 땅을 고른다.
+
+    역만으로 거르면 에노시마·조가시마·중앙방파제처럼 역은 없지만 걸어
+    들어갈 수 있는 땅이 통째로 빠진다. 반대로 거리만 보면 이즈 제도와
+    오가사와라가 딸려 온다. 역이 든 땅에서 시작해 가까운 것만 늘린다.
+    """
+    from matplotlib.path import Path as MplPath
+    from scipy.spatial import cKDTree
+
+    keep = [False] * len(rings)
+    usable = [np.asarray(r, dtype=np.float64) for r in rings]
+    for i, r in enumerate(usable):
+        if len(r) < 4:
+            continue
+        box = ((r[:, 0].min() <= pts[:, 0]) & (pts[:, 0] <= r[:, 0].max())
+               & (r[:, 1].min() <= pts[:, 1]) & (pts[:, 1] <= r[:, 1].max()))
+        keep[i] = bool(box.any() and MplPath(r).contains_points(pts[box]).any())
+    if not any(keep):
+        return keep
+
+    scale = float(np.cos(np.radians(float(np.median(pts[:, 1])))))
+
+    def metric(a):
+        return np.stack([a[:, 0] * scale * 111_320.0, a[:, 1] * 111_132.0],
+                        axis=1)
+
+    # 다리를 두 번 건너는 경우까지 본다(육지 -> 매립지 -> 그 앞 섬).
+    for _ in range(2):
+        seed = [usable[i] for i, ok in enumerate(keep) if ok]
+        if not seed:
+            break
+        tree = cKDTree(metric(np.concatenate(seed)))
+        grown = False
+        for i, ok in enumerate(keep):
+            if ok or len(usable[i]) < 2:
+                continue
+            d, _ = tree.query(metric(usable[i]), k=1)
+            if float(d.min()) <= BRIDGE_M:
+                keep[i] = True
+                grown = True
+        if not grown:
+            break
+    return keep
+
+
 def _perimeter_km(ring: np.ndarray) -> float:
     lat = np.radians(ring[:-1, 1])
     dx = (ring[1:, 0] - ring[:-1, 0]) * np.cos(lat) * 111.320
@@ -153,11 +204,122 @@ class Coverage:
         # 지도에 그릴 선은 육지 마스크 해상도에서 따로 만든다 (아래 참조).
         self.region = region & (self._land_mask_on(region.shape) | mask)
         self._coarse = region
+        self._ring_paths = None     # 행정경계로 자른 권역만 채운다
+        self._outline = None
         # 판정과 표시가 같은 선을 쓰도록, 해안선 해상도 마스크를 한 번 만들어 둔다
         self._fine, self._fine_grid = self._fine_region()
 
         dist_cells = ndimage.distance_transform_edt(~self.region)
         self.envelope = dist_cells <= (ENVELOPE_M / CELL_M)
+
+    def clip_to_rings(self, rings, stations=None, outline=None) -> None:
+        """권역을 행정경계 안쪽으로 삼는다.
+
+        판정은 다각형으로 한다. 격자로 근사하면 칸 크기가 그대로 오차가
+        되어 경계가 뭉개진다. 다각형은 이미 바다 쪽이 해안선으로 잘려
+        있다(build_admin.py 가 해준다).
+
+        그리는 선은 따로 받는다. 현을 하나씩 그리면 권역 안에 경계선이
+        그물처럼 깔리는데, 여기서 보여줄 것은 "고를 수 있는 곳" 하나다.
+        """
+        from matplotlib.path import Path as MplPath
+
+        kept = [np.asarray(r, dtype=np.float64) for r in rings if len(r) >= 4]
+        if stations is not None and len(stations):
+            keep = _pieces_in_region(kept, np.asarray(stations, dtype=np.float64))
+            if any(keep):
+                kept = [r for r, ok in zip(kept, keep) if ok]
+        if not kept:
+            return
+
+        self._ring_paths = [MplPath(r) for r in kept]
+        self._ring_box = np.array([[r[:, 0].min(), r[:, 0].max(),
+                                    r[:, 1].min(), r[:, 1].max()] for r in kept])
+
+        lines = [np.asarray(l, dtype=np.float64)
+                 for l in (outline or []) if len(l) >= 2]
+        if lines and stations is not None and len(stations):
+            # 그리는 선과 클릭 판정이 같은 땅을 봐야 한다. 위에서 판정용
+            # 고리를 고른 것과 같은 잣대로 거른다. 바운딩박스로 걸렀더니
+            # 역이 하나도 없는 아와지시마가 그려지면서, 선 안인데 클릭이
+            # 안 되는 곳이 됐다.
+            pts = np.asarray(stations, dtype=np.float64)
+            keep = _pieces_in_region(lines, pts)
+            # 안쪽 구멍(호수나 만)은 역이 없지만, 품은 고리를 그리면
+            # 같이 그려야 테두리가 맞는다.
+            paths = [MplPath(l) if len(l) >= 4 else None for l in lines]
+            for i, line in enumerate(lines):
+                if keep[i]:
+                    continue
+                head = line[0]
+                keep[i] = any(keep[j] and paths[j] is not None
+                              and paths[j].contains_point(head)
+                              for j in range(len(lines)) if j != i)
+            near = [l for l, ok in zip(lines, keep) if ok]
+            if near:
+                lines = near
+        if lines:
+            # build_admin.py 가 이미 해안선으로 잘라 닫힌 고리로 내보낸다.
+            # 여기서 또 격자로 손대면 250m 칸이 그대로 오차가 되어
+            # 애써 벡터로 자른 해안이 다시 뭉개진다.
+            self._outline = lines
+            return
+        # 경계를 못 받았으면 현 고리를 그대로 그린다. 그 고리는 영해까지
+        # 뻗어 있어 바다 위를 지나므로, 그 부분만 잘라 낸다.
+        self._outline = [seg for line in kept
+                         for seg in self._split_at_sea(line)] or kept
+
+    def _split_at_sea(self, line: np.ndarray) -> list:
+        """선에서 바다 위 구간을 잘라내고 남은 토막들을 돌려준다.
+
+        꼭짓점만 보면 모자란다. 육지 점 두 개가 멀리 떨어져 있으면 그
+        사이를 잇는 직선이 바다를 건넌다. 도쿄만 아쿠아라인을 따라가는
+        현 경계가 그렇다. 걸음 사이도 같이 본다.
+        """
+        if self.land is None:
+            return [line]
+        lon0, lat0, cell, w, h, m_lon, m_lat = self.land_grid
+
+        def on_land(pts):
+            cx = np.floor((pts[:, 0] - lon0) * m_lon / cell).astype(np.int64)
+            cy = np.floor((pts[:, 1] - lat0) * m_lat / cell).astype(np.int64)
+            ok = (cx >= 0) & (cx < int(w)) & (cy >= 0) & (cy < int(h))
+            out = np.zeros(len(pts), dtype=bool)
+            out[ok] = self.land[cy[ok], cx[ok]]
+            return out
+
+        vert = on_land(line)
+        out, run = [], []
+        for k in range(len(line)):
+            if not vert[k]:
+                if len(run) >= 2:
+                    out.append(np.asarray(run))
+                run = []
+                continue
+            if run:
+                # 앞 점과의 사이가 바다를 건너면 거기서 끊는다
+                a, b = np.asarray(run[-1]), line[k]
+                d = float(np.hypot((b[0] - a[0]) * m_lon, (b[1] - a[1]) * m_lat))
+                if d > float(cell):
+                    n = int(d // float(cell)) + 1
+                    t = np.linspace(0.0, 1.0, n + 1)[1:-1]
+                    if len(t) and not on_land(a + (b - a) * t[:, None]).all():
+                        if len(run) >= 2:
+                            out.append(np.asarray(run))
+                        run = []
+            run.append(line[k])
+        if len(run) >= 2:
+            out.append(np.asarray(run))
+        return out
+
+    def _in_rings(self, lon: float, lat: float) -> bool:
+        box = self._ring_box
+        near = np.flatnonzero((box[:, 0] <= lon) & (lon <= box[:, 1])
+                              & (box[:, 2] <= lat) & (lat <= box[:, 3]))
+        for k in near:
+            if self._ring_paths[k].contains_point((lon, lat)):
+                return True
+        return False
 
     def _cell(self, lon: float, lat: float) -> tuple[int, int] | None:
         j = int(np.floor((lon - self.lon0) * self.m_lon / self.cell)) - self.x0
@@ -168,6 +330,11 @@ class Coverage:
 
     def contains(self, lon: float, lat: float) -> bool:
         """앱이 동작하는 범위 안인가. 지도에 그리는 선과 같은 기준이다."""
+        if self._ring_paths is not None:
+            # 고리는 해안선으로 잘려 있으므로 안이면 그것으로 끝이다.
+            # 여기서 육지 마스크를 한 번 더 걸면, 칸 하나가 250m 인 탓에
+            # 간사이공항이나 매립지의 역이 바다로 판정되어 빠진다.
+            return self._in_rings(lon, lat)
         if self._fine is not None:
             lon0, lat0, cell, m_lon, m_lat = self._fine_grid
             j = int(np.floor((lon - lon0) * m_lon / cell))
@@ -340,7 +507,16 @@ class Coverage:
         return fine, (lon0, lat0, cell, m_lon, m_lat)
 
     def boundary_geojson(self) -> dict:
-        """마스크의 경계선. 지도에 권역 윤곽으로 그린다."""
+        """권역 윤곽. 행정경계를 쓰는 권역은 그 선을 그대로 내보낸다."""
+        if self._outline is not None:
+            return {
+                "type": "Feature",
+                "properties": {},
+                "geometry": {
+                    "type": "MultiLineString",
+                    "coordinates": [l.round(6).tolist() for l in self._outline],
+                },
+            }
         import matplotlib
 
         matplotlib.use("Agg")

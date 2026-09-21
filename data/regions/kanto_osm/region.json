@@ -1,0 +1,57 @@
+{
+ "id": "kanto_osm",
+ "center": [
+  139.70025,
+  35.68962
+ ],
+ "zoom": 11,
+ "names": {
+  "ja": "関東（時刻表なし）",
+  "en": "Kanto (no timetable)",
+  "ko": "간토 (시각표 없음)",
+  "zh-Hans": "关东（无时刻表）",
+  "zh-Hant": "關東（無時刻表）"
+ },
+ "model": "naive",
+ "timetable": null,
+ "rail": {
+  "source": "OpenStreetMap",
+  "license": "ODbL 1.0"
+ },
+ "osm_extracts": [
+  "kanto",
+  "chubu"
+ ],
+ "osm_files": [
+  "kanto-latest.osm.pbf",
+  "chubu-latest.osm.pbf"
+ ],
+ "grid": {
+  "lon0": 138.38,
+  "lat0": 34.53,
+  "lat_ref": 35.7,
+  "span_x": 440000.0,
+  "span_y": 330000.0
+ },
+ "note": "간토를 시각표 없이 OSM 만으로 만든 것. 같은 지역을 시각표판(kanto)과 나란히 두고 나이브 모델이 얼마나 맞는지 화면에서 바로 보려고 둔다. 격자와 추출본은 시각표판과 같은 값이라 보행망을 그대로 나눠 쓴다.",
+ "start": {
+  "lon": 139.7656,
+  "lat": 35.68181,
+  "names": {
+   "ja": "東京",
+   "en": "Tokyo",
+   "ko": "도쿄",
+   "zh-Hans": "东京",
+   "zh-Hant": "東京"
+  }
+ },
+ "prefectures": [
+  "東京都",
+  "神奈川県",
+  "埼玉県",
+  "千葉県",
+  "茨城県",
+  "栃木県",
+  "群馬県"
+ ]
+}

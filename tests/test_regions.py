@@ -1,0 +1,366 @@
+"""권역 데이터를 매번 같은 잣대로 재는 검사.
+
+고칠 때마다 손으로 재던 것들이다. 수치는 tests/baseline.json 에 적어
+두고, 나빠지면 실패한다. 좋아졌으면 기준선을 새로 적으면 된다.
+
+    python -m pytest tests/test_regions.py
+    UPDATE_BASELINE=1 python -m pytest tests/test_regions.py   # 기준선 갱신
+
+검사는 셋으로 나뉜다.
+
+  경계   그린 선이 닫혀 있는가, 그 선 안이 곧 클릭 가능한 곳인가,
+         알고 있는 지점이 안팎에 제대로 놓이는가
+  노선   이웃 역 사이가 터무니없이 벌어진 노선이 몇 개인가,
+         지도에 그릴 때 끊기는 자리가 몇 곳인가
+  역     지원으로 표시한 역에 도보권이 있는가
+
+전부 실제로 틀렸던 자리다. 간토 해안선이 육지와 바다를 통째로 뒤바꿔
+역이 25개만 남은 적이 있고, 도부 도조선의 역 차례가 뒤섞여 지도에
+46 km 짜리 직선이 그어진 적이 있다.
+"""
+import json
+import os
+from pathlib import Path
+
+import numpy as np
+import pytest
+
+BASELINE = Path(__file__).resolve().parent / "baseline.json"
+UPDATE = os.environ.get("UPDATE_BASELINE") == "1"
+
+# 안팎을 알고 있는 지점. (이름, 경도, 위도, 안이어야 하는가)
+PROBES = {
+    "kanto": [
+        ("도쿄역", 139.767, 35.681, True),
+        ("요코하마", 139.628, 35.466, True),
+        ("도쿄만 한가운데", 139.80, 35.50, False),
+        ("나고야", 136.882, 35.171, False),
+    ],
+    "kanto_osm": [
+        ("도쿄역", 139.767, 35.681, True),
+        ("마에바시", 139.064, 36.383, True),
+        ("우쓰노미야", 139.898, 36.559, True),
+        ("미토", 140.476, 36.371, True),
+        ("요코하마", 139.628, 35.466, True),
+        ("지바", 140.123, 35.605, True),
+        ("도쿄만 한가운데", 139.80, 35.50, False),
+        ("나고야", 136.882, 35.171, False),
+    ],
+    "kansai": [
+        ("오사카", 135.500, 34.702, True),
+        ("고베 산노미야", 135.1955, 34.6918, True),
+        ("간사이공항", 135.244, 34.432, True),
+        ("교토", 135.759, 34.985, True),
+        ("마이즈루", 135.3335, 35.4497, True),
+        ("아마노하시다테", 135.1885, 35.5647, True),
+        ("오사카만 한가운데", 135.25, 34.50, False),
+        ("와카사만", 135.50, 35.65, False),
+        ("나고야", 136.882, 35.171, False),
+    ],
+}
+
+# 이웃 역 사이가 이보다 벌어지면 순서가 틀렸을 만하다고 본다.
+# 특급은 원래 멀어서 0 이 될 수는 없다.
+FAR_NEIGHBOUR_KM = 20.0
+
+
+def _regions():
+    import region as region_mod
+
+    return region_mod.available()
+
+
+@pytest.fixture(scope="session")
+def loaded():
+    """권역 하나를 올리는 데 시간이 걸린다. 한 번만 올려 나눠 쓴다."""
+    cache = {}
+
+    def get(region_id):
+        if region_id not in cache:
+            import region as region_mod
+
+            cache[region_id] = region_mod.load(region_id)
+        return cache[region_id]
+
+    return get
+
+
+@pytest.fixture(scope="session")
+def measured():
+    """측정값을 모아 두었다가 UPDATE_BASELINE=1 이면 파일로 적는다."""
+    got = {}
+    yield got
+    if UPDATE and got:
+        old = json.loads(BASELINE.read_text(encoding="utf-8")) if BASELINE.exists() else {}
+        for rid, vals in got.items():
+            old.setdefault(rid, {}).update(vals)
+        BASELINE.write_text(json.dumps(old, ensure_ascii=False, indent=1),
+                            encoding="utf-8")
+
+
+def check(measured, region_id, key, value, limit_is_max=True, slack=0.0):
+    """기준선과 견준다. 기준선이 없으면 건너뛴다."""
+    measured.setdefault(region_id, {})[key] = value
+    base = json.loads(BASELINE.read_text(encoding="utf-8")) if BASELINE.exists() else {}
+    want = base.get(region_id, {}).get(key)
+    if UPDATE:
+        return
+    if want is None:
+        pytest.skip(f"{region_id}/{key} 기준선이 없습니다. "
+                    f"측정값 {value}. UPDATE_BASELINE=1 로 적어 두세요.")
+    if limit_is_max:
+        assert value <= want + slack, (
+            f"{key} 가 {want} 에서 {value} 로 나빠졌습니다")
+    else:
+        assert value >= want - slack, (
+            f"{key} 가 {want} 에서 {value} 로 나빠졌습니다")
+
+
+def rings_of(geo):
+    """경계 GeoJSON 에서 고리 목록을 꺼낸다. 선으로도 면으로도 온다."""
+    out = []
+    for feature in geo.get("features", [geo]):
+        g = feature.get("geometry", feature)
+        kind, co = g.get("type"), g.get("coordinates", [])
+        if kind == "Polygon":
+            out += co
+        elif kind == "MultiPolygon":
+            for poly in co:
+                out += poly
+        elif kind == "LineString":
+            out.append(co)
+        elif kind == "MultiLineString":
+            out += co
+    return [np.asarray(r, dtype=np.float64) for r in out if len(r) >= 4]
+
+
+# --------------------------------------------------------------------------
+# 경계
+# --------------------------------------------------------------------------
+
+@pytest.mark.parametrize("region_id", _regions())
+def test_boundary_rings_are_closed(loaded, region_id):
+    """행정경계로 자른 권역의 경계선은 닫힌 고리여야 한다.
+
+    예전에는 고리를 토막 내어 내보냈고, 토막 사이가 몇십 km 벌어져도
+    아무도 몰랐다. 간사이 경계에 54 km 짜리 걸음이 있었다.
+    """
+    reg = loaded(region_id)
+    if not (reg.meta.get("prefectures") or []):
+        pytest.skip("행정경계로 자르는 권역이 아닙니다")
+    if reg.coverage_geojson is None:
+        pytest.skip("보행망이 없습니다 (build_walk.py 미실행)")
+
+    rings = rings_of(reg.coverage_geojson)
+    assert rings, "경계선이 비어 있습니다"
+    open_rings = [r for r in rings if not np.allclose(r[0], r[-1])]
+    assert not open_rings, f"닫히지 않은 고리가 {len(open_rings)}개 있습니다"
+
+
+@pytest.mark.parametrize("region_id", _regions())
+def test_boundary_line_matches_click_gate(loaded, region_id, measured):
+    """그린 선 안쪽이 곧 클릭 가능한 곳이어야 한다.
+
+    선은 boundary_geojson 이, 판정은 contains 가 낸다. 둘이 다른 것을
+    보면 "선 안인데 클릭이 안 되는" 상태가 된다. 세 번 재발했고 매번
+    사용자가 먼저 발견했다. 행정경계로 자르는 권역에서는 이 검사가
+    아예 안 돌고 있었다.
+    """
+    reg = loaded(region_id)
+    if reg.coverage is None or reg.coverage_geojson is None:
+        pytest.skip("보행망이 없습니다 (build_walk.py 미실행)")
+    from matplotlib.path import Path as MplPath
+
+    rings = [MplPath(r) for r in rings_of(reg.coverage_geojson)]
+    assert rings, "경계선이 비어 있습니다"
+
+    lons = np.concatenate([r.vertices[:, 0] for r in rings])
+    lats = np.concatenate([r.vertices[:, 1] for r in rings])
+    rng = np.random.default_rng(20260920)
+    pts = np.stack([rng.uniform(lons.min(), lons.max(), 4000),
+                    rng.uniform(lats.min(), lats.max(), 4000)], axis=1)
+
+    depth = np.zeros(len(pts), dtype=np.int32)
+    for ring in rings:
+        depth += ring.contains_points(pts).astype(np.int32)
+    inside_line = (depth % 2) == 1
+    gate = np.array([reg.coverage.contains(float(x), float(y)) for x, y in pts])
+
+    disagree = float((inside_line != gate).mean())
+    check(measured, region_id, "boundary_disagree", round(disagree, 4),
+          slack=0.005)
+
+
+@pytest.mark.parametrize("region_id", _regions())
+def test_known_points_land_on_the_right_side(loaded, region_id):
+    """안팎을 알고 있는 지점이 제대로 갈려야 한다.
+
+    간토 경계가 육지와 바다를 통째로 뒤바꿔 마에바시와 우쓰노미야가
+    권역 밖이 된 적이 있다. 그때 역이 2,742개에서 25개로 줄었다.
+    """
+    reg = loaded(region_id)
+    if reg.coverage is None:
+        pytest.skip("보행망이 없습니다 (build_walk.py 미실행)")
+    probes = PROBES.get(region_id)
+    if not probes:
+        pytest.skip(f"{region_id} 의 확인 지점을 정해 두지 않았습니다")
+
+    wrong = [name for name, lon, lat, want in probes
+             if reg.coverage.contains(lon, lat) is not want]
+    assert not wrong, f"안팎이 뒤바뀐 지점: {wrong}"
+
+
+# --------------------------------------------------------------------------
+# 노선
+# --------------------------------------------------------------------------
+
+@pytest.mark.parametrize("region_id", _regions())
+def test_neighbour_gaps_do_not_grow(loaded, region_id, measured):
+    """이웃 역 사이가 터무니없이 벌어진 노선이 늘면 안 된다.
+
+    벌어졌다는 것은 대개 역 차례가 틀렸다는 뜻이다. 도부 도조선은
+    나리마스가 세 번 나와 46 km 가, 료모선은 뒤쪽 토막이 뒤집혀 42 km 가
+    나왔다. 특급은 원래 멀어서 0 이 될 수는 없다.
+    """
+    reg = loaded(region_id)
+    row = {sid: i for i, sid in enumerate(reg.stops["ids"])}
+    coords = reg.coords
+    scale = float(np.cos(np.radians(float(np.nanmedian(coords[:, 1])))))
+
+    far = []
+    for rid, railway in reg.railways.items():
+        rows = [row[s] for s in (railway.get("stations") or [])
+                if s in row and np.isfinite(coords[row[s], 0])]
+        if len(rows) < 3:
+            continue
+        P = coords[rows]
+        d = np.hypot(np.diff(P[:, 0]) * scale * 111.320,
+                     np.diff(P[:, 1]) * 111.132)
+        if len(d) and d.max() > FAR_NEIGHBOUR_KM:
+            far.append(railway.get("title", {}).get("ja", rid))
+    check(measured, region_id, "far_neighbour_lines", len(far))
+
+
+@pytest.mark.parametrize("region_id", _regions())
+def test_drawn_lines_do_not_break_more(loaded, region_id, measured):
+    """지도에 그릴 때 끊기는 자리가 늘면 안 된다.
+
+    한 노선이 여러 조각으로 나오면 그 사이가 끊겨 보인다. 선형이 없거나,
+    크게 돌아가거나, 이음매가 어긋나거나, 선형 안에 구멍이 있을 때다.
+    """
+    reg = loaded(region_id)
+    shapes = reg.railway_shapes
+    if not shapes:
+        pytest.skip("그릴 노선이 없습니다")
+    pieces = len(shapes)
+    lines = len({r["id"] for r in shapes})
+    # 노선 하나가 몇 조각으로 나뉘는가. 1.0 이면 하나도 안 끊긴 것이다.
+    check(measured, region_id, "pieces_per_line",
+          round(pieces / max(lines, 1), 3), slack=0.05)
+
+
+# --------------------------------------------------------------------------
+# 역
+# --------------------------------------------------------------------------
+
+@pytest.mark.parametrize("region_id", _regions())
+def test_supported_stations_have_walksheds(loaded, region_id):
+    """지원으로 표시한 역은 반드시 도보권이 있어야 한다.
+
+    도보권이 없으면 권역에 아무것도 칠하지 못하고 출발지로도 쓸 수 없다.
+    그런 역에 점을 찍으면 지도가 거짓말을 한다.
+    """
+    reg = loaded(region_id)
+    if reg.walk is None:
+        pytest.skip("보행망이 없습니다 (build_walk.py 미실행)")
+
+    groups = {int(g) for g in reg.station_group
+              if g >= 0 and reg.supported[int(g)]}
+    assert groups, "지원으로 표시된 역이 하나도 없습니다"
+    bad = []
+    for g in groups:
+        rows = np.flatnonzero(reg.station_group == g)
+        if not any(len(reg.walk.shed(int(i))[0]) > 0 for i in rows):
+            bad.append(g)
+    assert not bad, f"도보권이 없는데 지원으로 표시된 묶음 {len(bad)}개"
+
+
+@pytest.mark.parametrize("region_id", _regions())
+def test_station_count_does_not_drop(loaded, region_id, measured):
+    """역 수가 줄면 안 된다.
+
+    현 경계가 잘못되면 역이 통째로 걸러진다. 간토가 2,742개에서 25개로
+    줄어든 적이 있는데, 그때 빌드는 아무 오류 없이 끝났다.
+    """
+    reg = loaded(region_id)
+    n = int(np.isfinite(reg.coords[:, 0]).sum())
+    check(measured, region_id, "stations", n, limit_is_max=False, slack=5)
+
+
+# --------------------------------------------------------------------------
+# 노선 색
+#
+# 같은 노선인데 권역마다 색이 갈리는 일이 거듭 났다. 원인은 늘 같았다.
+# 이름을 다듬어 노선을 맞추는데, 다듬으면 사업자가 떨어져 나가 이름만
+# 같은 남의 노선과 한 열쇠가 된다. 江ノ島電鉄線 이 小田急江ノ島線 의
+# 파랑을, 北大阪急行電鉄南北線 이 東京メトロ南北線 의 에메랄드색을 받았다.
+# 반대로 같은 노선을 다르게 부르면 못 맞춰 색이 갈렸다.
+# --------------------------------------------------------------------------
+
+def test_same_line_has_one_color_across_regions():
+    """역 목록이 거의 같은 노선은 권역이 달라도 색이 같아야 한다."""
+    import region as region_mod
+
+    rows = []
+    for rid in _regions():
+        base = region_mod.REGIONS_DIR / rid
+        rp = base / "raw" / "railways.json"
+        sp = base / "raw" / "stations.json"
+        if not (rp.exists() and sp.exists()):
+            continue
+        st = {x["id"]: x["title"].get("ja", "")
+              for x in json.loads(sp.read_text(encoding="utf-8"))}
+        for r in json.loads(rp.read_text(encoding="utf-8")):
+            names = {st[x] for x in (r.get("stations") or []) if st.get(x)}
+            if len(names) >= 3:
+                rows.append((rid, r.get("title", {}).get("ja", "") or r["id"],
+                             names, region_mod.line_color(r)))
+
+    bad = []
+    for i in range(len(rows)):
+        for j in range(i + 1, len(rows)):
+            if rows[i][0] == rows[j][0]:
+                continue
+            a, b = rows[i][2], rows[j][2]
+            share = len(a & b)
+            if share < 3 or share < 0.70 * len(a | b):
+                continue
+            if rows[i][3].lower() != rows[j][3].lower():
+                bad.append(f"{rows[i][1]}({rows[i][3]}) != "
+                           f"{rows[j][1]}({rows[j][3]})")
+    assert not bad, "역 목록이 같은데 색이 다른 노선 " + str(len(bad)) + "개: " + str(bad[:5])
+
+
+def test_different_operators_do_not_share_a_color_key():
+    """회사가 다른데 이름이 비슷한 노선이 같은 색을 받으면 안 된다."""
+    import region as region_mod
+    from build_colors import operator_of, same_operator
+
+    seen = {}
+    bad = []
+    for rid in _regions():
+        path = region_mod.REGIONS_DIR / rid / "raw" / "railways.json"
+        if not path.exists():
+            continue
+        for r in json.loads(path.read_text(encoding="utf-8")):
+            ja = r.get("title", {}).get("ja", "") or r["id"]
+            key = region_mod._norm_name(ja)
+            op = operator_of(ja)
+            if not key or not op:
+                continue
+            color = region_mod.line_color(r).lower()
+            if (key in seen and not same_operator(seen[key][0], op)
+                    and seen[key][1] == color):
+                bad.append(f"{key}: {seen[key][0]} 와 {op} 가 {color}")
+            seen.setdefault(key, (op, color))
+    assert not bad, "회사가 다른데 같은 색을 받은 노선: " + str(bad[:5])

@@ -535,36 +535,52 @@ def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     import json
 
-    print("1) 보행로 추출", flush=True)
-    points, steps = extract_ways()
+    # 역 목록에 걸리는 것은 3단계뿐이다. 1·2·4 단계는 PBF 와 격자만
+    # 보므로 같은 추출본이면 결과가 같다. build_rail 을 다시 돌려 역
+    # 번호가 밀렸을 때는 3단계만 다시 하면 된다. 간사이 기준 5분 34초가
+    # 1분으로 줄어든다. 기본은 전부 다시 한다. 켤 때만 아껴 쓴다.
+    #
+    #     REGION=<권역> WALK_REUSE=1 python src/build_walk.py
+    reuse = os.environ.get("WALK_REUSE") == "1" and (OUT / "graph.npz").exists()
+    if reuse:
+        print("1~2) 저장해 둔 보행망을 다시 쓴다 (graph.npz)", flush=True)
+        g = np.load(OUT / "graph.npz")
+        graph = {"node_cell": g["node_cell"], "node_lon": g["node_lon"],
+                 "node_lat": g["node_lat"], "n_nodes": len(g["node_cell"])}
+        indptr, indices, data = g["indptr"], g["indices"], g["data"]
+        node_shed = g["node_shed"]
+    else:
+        print("1) 보행로 추출", flush=True)
+        points, steps = extract_ways()
 
-    print("2) 그래프 구축", flush=True)
-    graph = build_graph(points, steps)
-    graph = prune_small_components(graph)
-    indptr, indices, data = to_csr(graph)
+        print("2) 그래프 구축", flush=True)
+        graph = build_graph(points, steps)
+        graph = prune_small_components(graph)
+        indptr, indices, data = to_csr(graph)
 
-    # 노드마다 저장용 격자의 어느 칸에 떨어지는지 미리 구해 둔다
-    nlon, nlat = cell_center(graph["node_cell"])
-    node_shed = shed_cell_index(nlon, nlat).astype(np.int32)
+        # 노드마다 저장용 격자의 어느 칸에 떨어지는지 미리 구해 둔다
+        nlon, nlat = cell_center(graph["node_cell"])
+        node_shed = shed_cell_index(nlon, nlat).astype(np.int32)
 
-    np.savez_compressed(
-        OUT / "graph.npz",
-        node_cell=graph["node_cell"],
-        node_lon=graph["node_lon"],
-        node_lat=graph["node_lat"],
-        node_shed=node_shed,
-        indptr=indptr,
-        indices=indices,
-        data=data,
-        grid=np.array([GRID_LON0, GRID_LAT0, CELL_M, GRID_W, GRID_H,
-                       M_PER_DEG_LON, M_PER_DEG_LAT]),
-        shed_grid=np.array([GRID_LON0, GRID_LAT0, SHED_CELL_M, SHED_W, SHED_H,
-                            M_PER_DEG_LON, M_PER_DEG_LAT]),
-    )
-    print(f"  graph.npz {(OUT / 'graph.npz').stat().st_size / 1e6:.0f} MB", flush=True)
+        np.savez_compressed(
+            OUT / "graph.npz",
+            node_cell=graph["node_cell"],
+            node_lon=graph["node_lon"],
+            node_lat=graph["node_lat"],
+            node_shed=node_shed,
+            indptr=indptr,
+            indices=indices,
+            data=data,
+            grid=np.array([GRID_LON0, GRID_LAT0, CELL_M, GRID_W, GRID_H,
+                           M_PER_DEG_LON, M_PER_DEG_LAT]),
+            shed_grid=np.array([GRID_LON0, GRID_LAT0, SHED_CELL_M, SHED_W,
+                                SHED_H, M_PER_DEG_LON, M_PER_DEG_LAT]),
+        )
+        print(f"  graph.npz {(OUT / 'graph.npz').stat().st_size / 1e6:.0f} MB",
+              flush=True)
 
-    print("2-1) 그리기 전용 원본 기하", flush=True)
-    save_fine_geometry(points)
+        print("2-1) 그리기 전용 원본 기하", flush=True)
+        save_fine_geometry(points)
 
     print("3) 역별 도보권", flush=True)
     stops = json.loads((BASE / "stops.json").read_text(encoding="utf-8"))
@@ -579,10 +595,14 @@ def main() -> None:
         shed_sec=sheds["shed_sec"],
         shed_ptr=sheds["shed_ptr"],
     )
-    print("4) 육지 마스크", flush=True)
-    land = build_land_mask()
-    np.savez_compressed(OUT / "land.npz", land=land["land"], grid=land["grid"])
-    print(f"  land.npz {(OUT / 'land.npz').stat().st_size / 1e6:.1f} MB", flush=True)
+    if reuse and (OUT / "land.npz").exists():
+        print("4) 육지 마스크는 그대로 쓴다", flush=True)
+    else:
+        print("4) 육지 마스크", flush=True)
+        land = build_land_mask()
+        np.savez_compressed(OUT / "land.npz", land=land["land"], grid=land["grid"])
+        print(f"  land.npz {(OUT / 'land.npz').stat().st_size / 1e6:.1f} MB",
+              flush=True)
 
     size = (OUT / "sheds.npz").stat().st_size / 1e6
     total = len(sheds["shed_cell"])
@@ -601,6 +621,58 @@ def main() -> None:
 # 해안선은 지도에서 그대로 눈에 띄므로 촘촘해야 한다. 1 km 로 구우면
 # 만을 가로질러 잘리고 반도 끝이 뭉개진다.
 LAND_CELL_M = 250.0
+
+
+def _save_coast_chains(lon: np.ndarray, lat: np.ndarray, bounds: list) -> None:
+    """해안선 way 를 끝점끼리 이어 사슬로 만들어 walk/coast.npz 에 담는다."""
+    ways = [(bounds[k], bounds[k + 1]) for k in range(len(bounds) - 1)]
+    ends = {}
+    for wi, (i0, i1) in enumerate(ways):
+        for end, idx in ((0, i0), (1, i1 - 1)):
+            key = (round(float(lon[idx]), 7), round(float(lat[idx]), 7))
+            ends.setdefault(key, []).append((wi, end))
+
+    used = set()
+    chains = []
+
+    def walk_from(wi, end):
+        i0, i1 = ways[wi]
+        seq = list(range(i0, i1)) if end == 0 else list(range(i1 - 1, i0 - 1, -1))
+        used.add(wi)
+        while True:
+            tip = (round(float(lon[seq[-1]]), 7), round(float(lat[seq[-1]]), 7))
+            nxt = next((w for w, _e in ends.get(tip, ()) if w not in used), None)
+            if nxt is None:
+                break
+            used.add(nxt)
+            j0, j1 = ways[nxt]
+            fwd = (round(float(lon[j0]), 7), round(float(lat[j0]), 7)) == tip
+            part = list(range(j0, j1)) if fwd else list(range(j1 - 1, j0 - 1, -1))
+            seq.extend(part[1:])
+        return seq
+
+    # 끝이 하나뿐인 way 에서 시작해야 중간부터 뻗어 나가지 않는다
+    for wi, (i0, i1) in enumerate(ways):
+        if wi in used:
+            continue
+        for end, idx in ((0, i0), (1, i1 - 1)):
+            key = (round(float(lon[idx]), 7), round(float(lat[idx]), 7))
+            if len(ends.get(key, ())) == 1:
+                chains.append(walk_from(wi, end))
+                break
+    for wi in range(len(ways)):
+        if wi not in used:
+            chains.append(walk_from(wi, 0))
+
+    chains = [c for c in chains if len(c) >= 2]
+    if not chains:
+        return
+    pts = np.concatenate([np.stack([lon[c], lat[c]], axis=1) for c in chains])
+    ptr = np.cumsum([0] + [len(c) for c in chains])
+    np.savez_compressed(OUT / "coast.npz", pts=pts.astype(np.float64),
+                        ptr=ptr.astype(np.int64))
+    print(f"  해안선 사슬 {len(chains):,}개, 점 {len(pts):,}개 -> coast.npz",
+          flush=True)
 
 
 def build_land_mask() -> dict:
@@ -642,6 +714,11 @@ def build_land_mask() -> dict:
     lon = np.array(h.lon)
     lat = np.array(h.lat)
     print(f"  해안선 점 {len(lon):,}개", flush=True)
+
+    # 해안선을 끝점끼리 이어 사슬로 만들어 저장한다. 권역 경계를 바다에서
+    # 자를 때, 격자로 깎는 대신 이 좌표를 그대로 쓴다. 최단경로로 잇지
+    # 않고 사슬을 따라가야 만 안쪽까지 제대로 돈다.
+    _save_coast_chains(lon, lat, h.bounds)
 
     m_lon = 111_320.0 * np.cos(np.radians(GRID_LAT_REF))
     lon0, lat0 = float(lon.min()) - 0.3, float(lat.min()) - 0.3

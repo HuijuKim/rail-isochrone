@@ -1,0 +1,1884 @@
+{
+ "note": "노선 이름을 손으로 적어 두는 곳. 일본어 이름을 열쇠로 쓴다. OSM 관계에는 name:ko 가 거의 없고, 시각표 권역(ODPT)에서 빌려와도 짝이 없는 노선이 남는다. 그런 것만 여기 적는다. region.py 가 올릴 때 비어 있는 언어만 채운다. 이름이 정확히 같아야 걸린다.",
+ "JRおおさか東線 (久宝寺 => 大阪)": {
+  "ko": "JR 오사카히가시선 (규호지 → 오사카)",
+  "en": "JR Osaka Higashi Line (Kyuhoji => Osaka)"
+ },
+ "JR京都線・JR宝塚線": {
+  "en": "Kyoto / Takarazuka Line",
+  "ko": "교토선·다카라즈카선",
+  "zh-Hans": "京都线·宝冢线",
+  "zh-Hant": "京都線·寶塚線"
+ },
+ "JR加古川線": {
+  "ko": "JR 가코가와선",
+  "en": "JR Kakogawa Line"
+ },
+ "JR北陸本線 (米原 => 敦賀)": {
+  "ko": "JR 호쿠리쿠 본선 (마이바라 → 쓰루가)",
+  "en": "JR Hokuriku Main Line (Maibara => Tsuruga)"
+ },
+ "JR参宮線": {
+  "ko": "JR 산구선",
+  "en": "JR Sangū Line"
+ },
+ "JR名松線": {
+  "ko": "JR 메이쇼선",
+  "en": "JR Meishō Line"
+ },
+ "JR和歌山線": {
+  "ko": "JR 와카야마선",
+  "en": "JR Wakayama Line"
+ },
+ "JR姫新線": {
+  "ko": "JR 기신선",
+  "en": "JR Kishin Line"
+ },
+ "JR宝塚線・福知山線 普通 (大阪 => 福知山)": {
+  "ko": "JR 다카라즈카선·후쿠치야마선 보통 (오사카 → 후쿠치야마)",
+  "en": "JR Fukuchiyama Line Local (Osaka => Fukuchiyama)"
+ },
+ "JR小浜線 (敦賀 => 西舞鶴)": {
+  "ko": "JR 오바마선 (쓰루가 → 니시마이즈루)",
+  "en": "JR Obama Line (Tsuruga => Nishi-Maizuru)"
+ },
+ "JR御殿場線 (沼津->国府津)": {
+  "ko": "JR 고템바선 (누마즈→고즈)",
+  "en": "JR Gotemba Line (Numazu-Kozu)"
+ },
+ "JR成田エクスプレス (大船 → 成田空港)": {
+  "ko": "나리타 익스프레스 (오후나 → 나리타공항)",
+  "en": "Narita Express (Ofuna-Narita Airport)"
+ },
+ "JR成田線 (成田空港 → 千葉)": {
+  "ko": "JR 나리타선 (나리타공항 → 지바)",
+  "en": "JR Narita Line (Narita Airport-Chiba)"
+ },
+ "JR播但線": {
+  "ko": "JR 반탄선",
+  "en": "JR Bantan Line"
+ },
+ "JR東西線": {
+  "ko": "JR 도자이선",
+  "en": "JR Tōzai Line",
+  "zh-Hans": "JR东西线",
+  "zh-Hant": "JR東西線"
+ },
+ "JR桜井線": {
+  "ko": "JR 사쿠라이선",
+  "en": "JR Sakurai Line"
+ },
+ "JR桜島線 (桜島=>西九条)": {
+  "ko": "JR 사쿠라지마선 (사쿠라지마 → 니시쿠조)",
+  "en": "JR Sakurajima Line"
+ },
+ "JR湖西線 普通 (敦賀 => 京都)": {
+  "ko": "JR 고세이선 보통 (쓰루가 → 교토)",
+  "en": "JR Kosei Line Local (Tsuruga => Kyoto)"
+ },
+ "JR片町線 普通 (京橋 => 木津)": {
+  "ko": "JR 가타마치선 보통 (교바시 → 기즈)",
+  "en": "JR Katamachi Line Local (Kyobashi => Kizu)"
+ },
+ "JR神戸線 (加古川 => 大阪)": {
+  "ko": "JR 고베선 (가코가와 → 오사카)",
+  "en": "JR Kobe Line Local (Kakogawa => Osaka)"
+ },
+ "JR舞鶴線 (東舞鶴 => 綾部)": {
+  "ko": "JR 마이즈루선 (히가시마이즈루 → 아야베)",
+  "en": "JR Maizuru Line (Higashi-Maizuru => Ayabe)"
+ },
+ "JR草津線": {
+  "ko": "JR 구사쓰선",
+  "en": "JR Kusatsu Line"
+ },
+ "JR赤穂線 (岡山=>東岡山->播州赤穂": {
+  "ko": "JR 아코선 (오카야마 → 반슈아코)",
+  "en": "JR Akō Line (N)"
+ },
+ "JR赤穂線 (播州赤穂->相生)": {
+  "ko": "JR 아코선 (반슈아코 → 아이오이)",
+  "en": "JR Akō Line (A)"
+ },
+ "JR関西本線": {
+  "ko": "JR 간사이 본선",
+  "en": "JR Kansai Main Line"
+ },
+ "JR阪和線": {
+  "ko": "JR 한와선",
+  "en": "JR Hanwa Line"
+ },
+ "JR阪和線東羽衣支線": {
+  "ko": "JR 한와선 히가시하고로모 지선"
+ },
+ "Osaka Metor谷町線 (大日=>八尾南)": {
+  "ko": "오사카메트로 다니마치선 (다이니치 → 야오미나미)",
+  "en": "Osaka Metro Tanimachi Line (Yao-Minami --> Dainichi)"
+ },
+ "Osaka Metro中央線 (夢洲 => 長田)": {
+  "ko": "오사카메트로 주오선 (유메시마 → 나가타)",
+  "en": "Osaka Municipal Subway Chūō Line (Yumeshima => Nagata)"
+ },
+ "Osaka Metro今里筋線": {
+  "ko": "오사카메트로 이마자토스지선",
+  "en": "Osaka Metro Imazatosuji Line"
+ },
+ "Osaka Metro千日前線 (南巽 => 野田阪神)": {
+  "ko": "오사카메트로 센니치마에선 (미나미타쓰미 → 노다한신)",
+  "en": "Osaka Metro Sennichimae Line (Minami-Tatsumi => Nodahanshin)"
+ },
+ "Osaka Metro南港ポートタウン線 (コスモスクエア=>住之江公園)": {
+  "ko": "오사카메트로 난코포트타운선 (코스모스퀘어 → 스미노에코엔)",
+  "en": "Nankō Port Town Line"
+ },
+ "Osaka Metro四つ橋線 (=>西梅田)": {
+  "ko": "오사카메트로 요쓰바시선 (→ 니시우메다)",
+  "en": "Osaka Municipal Subway Yotsubashi Line (Suminoekoen --> Nishi-Umeda)"
+ },
+ "Osaka Metro堺筋線 (天神橋筋六丁目=>天下茶屋)": {
+  "ko": "오사카메트로 사카이스지선 (덴진바시스지로쿠초메 → 덴가차야)",
+  "en": "Osaka Municipal Subway Sakaisuji Line (Tenjinbashisuji 6-chome --> Tengachaya)"
+ },
+ "Osaka Metro長堀鶴見緑地線 (大正=>門真南)": {
+  "ko": "오사카메트로 나가호리쓰루미료쿠치선 (다이쇼 → 가도마미나미)",
+  "en": "Nagahori Tsurumi-Ryokuchi (Taisho --> Kadoma-Minami)"
+ },
+ "Subway 神戸市営地下鉄海岸線 (新長田=>三宮・花時計前)": {
+  "ko": "고베 시영지하철 가이간선 (신나가타 → 산노미야하나도케이마에)",
+  "en": "Kaigan Line (For Sannomiya-Hanadokeimae)"
+ },
+ "いすみ線": {
+  "en": "Isumi Line",
+  "ko": "이스미선",
+  "zh-Hans": "夷隅线",
+  "zh-Hant": "夷隅線"
+ },
+ "いずみ野線": {
+  "en": "Izumino Line",
+  "ko": "이즈미노선",
+  "zh-Hans": "泉野线",
+  "zh-Hant": "泉野線"
+ },
+ "いなば": {
+  "ko": "이나바",
+  "en": "Super Inaba"
+ },
+ "えのしま (新宿 => 片瀬江ノ島)": {
+  "ko": "에노시마 (신주쿠 → 가타세에노시마)",
+  "en": "Enoshima (Shinjuku-Katase-Enoshima)"
+ },
+ "こうのとり (新大阪 => 城崎温泉)": {
+  "ko": "고노토리 (신오사카 → 기노사키온센)",
+  "en": "Kounotori (Shin-Osaka => Kinosaki-Onsen)"
+ },
+ "こどもの国線": {
+  "en": "Kodomonokuni Line",
+  "ko": "고도모노쿠니선",
+  "zh-Hans": "儿童之国线",
+  "zh-Hant": "兒童之國線"
+ },
+ "ちちぶ (西武秩父=>飯能)": {
+  "ko": "지치부 (세이부치치부 → 한노)",
+  "en": "Chichibu (Seibu-Chichibu-Hanno)"
+ },
+ "つくばエクスプレス": {
+  "en": "Tsukuba Express Line",
+  "ko": "츠쿠바 익스프레스선",
+  "zh-Hans": "筑波特快线",
+  "zh-Hant": "筑波快線"
+ },
+ "はまかぜ (鳥取=>大阪)": {
+  "ko": "하마카제 (돗토리 → 오사카)",
+  "en": "Hamakaze"
+ },
+ "ひたち": {
+  "ko": "히타치",
+  "en": "Hitachi"
+ },
+ "みなとみらい線": {
+  "en": "Minatomirai Line",
+  "ko": "미나토미라이선",
+  "zh-Hans": "港未来线",
+  "zh-Hant": "港未來線"
+ },
+ "ゆりかもめ": {
+  "en": "Yurikamome line",
+  "ko": "유리카모메선",
+  "zh-Hans": "百合鸥线",
+  "zh-Hant": "百合鷗線"
+ },
+ "りんかい線": {
+  "en": "Rinkai Line",
+  "ko": "린카이선",
+  "zh-Hans": "临海线",
+  "zh-Hant": "臨海線"
+ },
+ "わたらせ渓谷線": {
+  "en": "Watarase Keikoku Line",
+  "ko": "와타라세 계곡선",
+  "zh-Hans": "渡良濑溪谷线",
+  "zh-Hant": "渡良瀨溪谷線"
+ },
+ "グリーンライン": {
+  "en": "Green Line",
+  "ko": "그린 라인",
+  "zh-Hans": "绿线",
+  "zh-Hant": "綠線"
+ },
+ "スーパーはこね": {
+  "ko": "슈퍼 하코네",
+  "en": "Super Hakone"
+ },
+ "ディズニーリゾートライン": {
+  "ko": "디즈니 리조트 라인",
+  "en": "Disney Resort Line"
+ },
+ "ニューシャトル": {
+  "en": "New Shuttle",
+  "ko": "뉴셔틀",
+  "zh-Hans": "New Shuttle",
+  "zh-Hant": "New Shuttle"
+ },
+ "ブルーライン": {
+  "en": "Blue Line",
+  "ko": "블루 라인",
+  "zh-Hans": "蓝线",
+  "zh-Hant": "藍線"
+ },
+ "ポートライナー (三宮=>北埠頭=>三宮)": {
+  "ko": "포트라이너 (산노미야 → 기타후토 → 산노미야)",
+  "en": "Port Liner (Sannomiya => Kita Futo => Sannomiya)"
+ },
+ "ポートライナー (三宮=>神戸空港)": {
+  "ko": "포트라이너 (산노미야 → 고베공항)",
+  "en": "Port Liner (Sannomiya => Kobe Airport)"
+ },
+ "ユーカリが丘線": {
+  "en": "Yukarigaoka Line",
+  "ko": "유카리가오카선",
+  "zh-Hans": "有加利丘线",
+  "zh-Hant": "有加利丘線"
+ },
+ "三岐鉄道三岐線 (近鉄富田->西藤原)": {
+  "ko": "산기철도 산기선 (긴테쓰도미다 → 니시후지와라)",
+  "en": "Sangi Railway Sangi Line"
+ },
+ "三岐鉄道北勢線 (西桑名->阿下喜)": {
+  "ko": "산기철도 호쿠세이선 (니시쿠와나 → 아게키)",
+  "en": "Sangi Railway Hokusei Line"
+ },
+ "三田線": {
+  "en": "Mita Line",
+  "ko": "도에이 미타선",
+  "zh-Hans": "三田线",
+  "zh-Hant": "三田線"
+ },
+ "上信線": {
+  "en": "Joshin line",
+  "ko": "조신선",
+  "zh-Hans": "上信线",
+  "zh-Hant": "上信線"
+ },
+ "上毛線": {
+  "en": "Jomo Line",
+  "ko": "조모선",
+  "zh-Hans": "上毛线",
+  "zh-Hant": "上毛線"
+ },
+ "上越線": {
+  "en": "Joetsu Line",
+  "ko": "조에쓰선",
+  "zh-Hans": "上越线",
+  "zh-Hant": "上越線"
+ },
+ "世田谷線": {
+  "en": "Setagaya Line",
+  "ko": "세타가야선",
+  "zh-Hans": "世田谷线",
+  "zh-Hant": "世田谷線"
+ },
+ "両毛線": {
+  "en": "Ryomo Line",
+  "ko": "료모선",
+  "zh-Hans": "两毛线",
+  "zh-Hant": "兩毛線"
+ },
+ "中央・総武各駅停車": {
+  "en": "Chuo Sobu Local Line",
+  "ko": "주오·소부 각역정차",
+  "zh-Hans": "中央·总武各站停车",
+  "zh-Hant": "中央·總武各站停車"
+ },
+ "中央本線": {
+  "en": "Chuo Line",
+  "ko": "주오 본선",
+  "zh-Hans": "中央本线",
+  "zh-Hant": "中央本線"
+ },
+ "中央線快速": {
+  "en": "Chuo Rapid Line",
+  "ko": "주오선 쾌속",
+  "zh-Hans": "中央线快速",
+  "zh-Hant": "中央線快速"
+ },
+ "丸ノ内線": {
+  "en": "Marunouchi Line",
+  "ko": "마루노우치선",
+  "zh-Hans": "丸之内线",
+  "zh-Hant": "丸之內線"
+ },
+ "丸ノ内線支線": {
+  "en": "Marunouchi Line Branch",
+  "ko": "마루노우치선 지선",
+  "zh-Hans": "丸之内线支线",
+  "zh-Hant": "丸之內線支線"
+ },
+ "久留里線": {
+  "en": "Kururi Line",
+  "ko": "구루리선",
+  "zh-Hans": "久留里线",
+  "zh-Hant": "久留里線"
+ },
+ "久里浜線": {
+  "en": "Kurihama Line",
+  "ko": "구리하마선",
+  "zh-Hans": "久里滨线",
+  "zh-Hant": "久里濱線"
+ },
+ "亀戸線": {
+  "en": "Kameido Line",
+  "ko": "가메이도선",
+  "zh-Hans": "龟户线",
+  "zh-Hant": "龜戶線"
+ },
+ "五日市線": {
+  "en": "Itsukaichi Line",
+  "ko": "이쓰카이치선",
+  "zh-Hans": "五日市线",
+  "zh-Hant": "五日市線"
+ },
+ "井の頭線": {
+  "en": "Inokashira Line",
+  "ko": "이노카시라선",
+  "zh-Hans": "井之头线",
+  "zh-Hant": "井之頭線"
+ },
+ "京急本線": {
+  "en": "Keikyū Main Line",
+  "ko": "게이큐 본선",
+  "zh-Hans": "京急本线",
+  "zh-Hant": "京急本線"
+ },
+ "京急空港線•本線•逗子線": {
+  "ko": "게이큐 공항선·본선·즈시선",
+  "en": "Keikyu Airport/Main/Zushi Line"
+ },
+ "京成本線": {
+  "en": "Keisei Main Line",
+  "ko": "게이세이 본선",
+  "zh-Hans": "京成本线",
+  "zh-Hant": "京成本線"
+ },
+ "京浜東北線・根岸線": {
+  "en": "Keihin-Tohoku-Negishi Line",
+  "ko": "게이힌 도호쿠선·네기시선",
+  "zh-Hans": "京滨东北线·根岸线",
+  "zh-Hant": "京濱東北線·根岸線"
+ },
+ "京王新線": {
+  "en": "Keiō New Line",
+  "ko": "게이오신선",
+  "zh-Hans": "京王新线",
+  "zh-Hant": "京王新線",
+  "keep": true
+ },
+ "京王線": {
+  "en": "Keiō Line",
+  "ko": "게이오선",
+  "zh-Hans": "京王线",
+  "zh-Hant": "京王線",
+  "keep": true
+ },
+ "京福電気鉄道北野線 (北野白梅町=>帷子ノ辻)": {
+  "ko": "게이후쿠전철 기타노선 (기타노하쿠바이초 → 가타비라노쓰지)",
+  "en": "Keifuku Kitano Line"
+ },
+ "京福電気鉄道嵐山本線 (四条大宮 => 嵐山)": {
+  "ko": "게이후쿠전철 아라시야마 본선 (시조오미야 → 아라시야마)",
+  "en": "Keifuku Arashiyama Line (Shijo-Omiya => Arashiyama)"
+ },
+ "京葉線": {
+  "en": "Keiyo Line",
+  "ko": "게이요선",
+  "zh-Hans": "京叶线",
+  "zh-Hant": "京葉線"
+ },
+ "京葉線 (南船橋->西船橋)": {
+  "ko": "게이요선 (미나미후나바시→니시후나바시)",
+  "en": "Keiyo Line (Minami-Funabashi-Nishi-Funabashi)"
+ },
+ "京都丹後鉄道宮福線": {
+  "ko": "교토 단고철도 미야후쿠선",
+  "en": "Kyoto Tango Railway Miyafuku Line"
+ },
+ "京都丹後鉄道宮豊線": {
+  "ko": "교토 단고철도 미야토요선",
+  "en": "Kyoto Tango Railway Miyatoyo Line"
+ },
+ "京都地下鉄烏丸線・近鉄京都線 (国際会館 =>新田辺)": {
+  "ko": "교토 지하철 가라스마선·긴테쓰 교토선 (고쿠사이카이칸 → 신타나베)",
+  "en": "Kyoto Subway - Kintetsu Kyoto Line (Kokusaikaikan => Shin-Tanabe)"
+ },
+ "京都市営地下鉄東西線 : 六地蔵→太秦天神川": {
+  "ko": "교토 시영지하철 도자이선 (로쿠지조 → 우즈마사텐진가와)",
+  "en": "Tōzai Line (Rokujizo → Uzumasa-Tenjingawa)"
+ },
+ "京阪宇治線 (中書島=>宇治)": {
+  "ko": "게이한 우지선 (주쇼지마 → 우지)",
+  "en": "Keihan Uji Line (Chushojima => Uji)"
+ },
+ "京阪電気鉄道中之島線": {
+  "ko": "게이한 나카노시마선",
+  "en": "Keihan Nakanoshima Line"
+ },
+ "京阪電気鉄道交野線": {
+  "ko": "게이한 가타노선",
+  "en": "Keihan Katano Line"
+ },
+ "京阪電気鉄道京津線": {
+  "ko": "게이한 게이신선",
+  "en": "Keihan Electoric Railway Keishin line"
+ },
+ "京阪電気鉄道京阪本線・鴨東線": {
+  "ko": "게이한 본선·오토선",
+  "en": "Keihan Main Line・Ōto Line"
+ },
+ "京阪電気鉄道石山坂本線": {
+  "ko": "게이한 이시야마사카모토선",
+  "en": "Keihan Electoric Railway Ishiyama-sakamoto line"
+ },
+ "伊勢崎線": {
+  "en": "Isesaki Line",
+  "ko": "이세사키선",
+  "zh-Hans": "伊势崎线",
+  "zh-Hant": "伊勢崎線"
+ },
+ "伊勢鉄道伊勢線": {
+  "ko": "이세철도 이세선",
+  "en": "Ise Railway Ise Line"
+ },
+ "伊東線": {
+  "en": "Ito Line",
+  "ko": "이토선",
+  "zh-Hans": "伊东线",
+  "zh-Hant": "伊東線"
+ },
+ "伊豆急行線": {
+  "en": "Izukyu Line",
+  "ko": "이즈 급행선",
+  "zh-Hans": "伊豆急行线",
+  "zh-Hant": "伊豆急行線"
+ },
+ "伊賀鉄道伊賀線": {
+  "ko": "이가철도 이가선",
+  "en": "Iga Railway Iga Line"
+ },
+ "佐野線": {
+  "en": "Sano Line",
+  "ko": "사노선",
+  "zh-Hans": "佐野线",
+  "zh-Hant": "佐野線"
+ },
+ "信楽高原鐵道信楽線": {
+  "ko": "시가라키고원철도 시가라키선",
+  "en": "Shigaraki Kohgen Railway Shigaraki Line"
+ },
+ "信越本線": {
+  "ko": "신에쓰 본선",
+  "en": "Shinetsu Main Line",
+  "zh-Hans": "信越本线",
+  "zh-Hant": "信越本線"
+ },
+ "八高線": {
+  "en": "Hachiko Line",
+  "ko": "하치코선",
+  "zh-Hans": "八高线",
+  "zh-Hant": "八高線"
+ },
+ "公園都市線 普通 (ウッディタウン中央 => 三田)": {
+  "ko": "고엔토시선 보통 (우디타운추오 → 산다)",
+  "en": "Koen-Toshi Line Local (Woody Town Chuo => Sanda)"
+ },
+ "六甲ライナー (マリンパーク=>住吉)": {
+  "ko": "롯코라이너 (마린파크 → 스미요시)",
+  "en": "Rokko Liner"
+ },
+ "内房線": {
+  "en": "Uchibo Line",
+  "ko": "우치보선",
+  "zh-Hans": "内房线",
+  "zh-Hant": "內房線"
+ },
+ "副都心線": {
+  "en": "Fukutoshin Line",
+  "ko": "후쿠토신선",
+  "zh-Hans": "副都心线",
+  "zh-Hant": "副都心線"
+ },
+ "動物園線": {
+  "en": "Dōbutsuen Line",
+  "ko": "도부쓰엔선",
+  "zh-Hans": "动物园线",
+  "zh-Hant": "動物園線",
+  "keep": true
+ },
+ "北条鉄道北条線": {
+  "ko": "호조철도 호조선",
+  "en": "Hojo Railway Hojo Line"
+ },
+ "北総線": {
+  "en": "Hokuso Line",
+  "ko": "호쿠소선",
+  "zh-Hans": "北总线",
+  "zh-Hant": "北總線"
+ },
+ "北陸本線・湖西線・東海道本線・山陽本線 新快速 (敦賀 => 網干)": {
+  "ko": "호쿠리쿠 본선·고세이선·도카이도 본선·산요 본선 신쾌속 (쓰루가 → 아보시)",
+  "en": "JR Hokuriku/Kosei/Tokaido/Sanyo Lines Special Rapid (Tsuruga => Aboshi)"
+ },
+ "千代田線": {
+  "en": "Chiyoda Line",
+  "ko": "지요다선",
+  "zh-Hans": "千代田线",
+  "zh-Hant": "千代田線"
+ },
+ "千原線": {
+  "en": "Chihara Line",
+  "ko": "지하라선",
+  "zh-Hans": "千原线",
+  "zh-Hant": "千原線"
+ },
+ "千葉モノレール1号線": {
+  "en": "Chiba Monorail Line 1",
+  "ko": "지바 모노레일 1호선",
+  "zh-Hans": "千叶单轨电车1号线",
+  "zh-Hant": "千葉單軌電車1號線"
+ },
+ "千葉モノレール2号線": {
+  "en": "Chiba Monorail Line 2",
+  "ko": "지바 모노레일 2호선",
+  "zh-Hans": "千叶单轨电车2号线",
+  "zh-Hant": "千葉單軌電車2號線"
+ },
+ "千葉線": {
+  "en": "Chiba Line",
+  "ko": "지바선",
+  "zh-Hans": "千叶线",
+  "zh-Hant": "千葉線"
+ },
+ "半蔵門線": {
+  "en": "Hanzomon Line",
+  "ko": "한조몬선",
+  "zh-Hans": "半藏门线",
+  "zh-Hant": "半藏門線"
+ },
+ "南北線": {
+  "en": "Namboku Line",
+  "ko": "난보쿠선",
+  "zh-Hans": "南北线",
+  "zh-Hant": "南北線"
+ },
+ "南武線": {
+  "en": "Nambu Line",
+  "ko": "난부선",
+  "zh-Hans": "南武线",
+  "zh-Hant": "南武線"
+ },
+ "南武線浜川崎支線": {
+  "en": "Nambu Branch Line",
+  "ko": "난부선 하마카와사키 지선",
+  "zh-Hans": "南武线滨川崎支线",
+  "zh-Hant": "南武線濱川崎支線"
+ },
+ "南海加太線 普通 (加太 => 和歌山市)": {
+  "ko": "난카이 가다선 보통 (가다 → 와카야마시)",
+  "en": "Nankai Kada Line Local (Kada => Wakayamashi)"
+ },
+ "南海多奈川線": {
+  "ko": "난카이 다나가와선",
+  "en": "Nankai Tanagawa Line"
+ },
+ "南海本線 (なんば => 和歌山市)": {
+  "ko": "난카이 본선 (난바 → 와카야마시)",
+  "en": "Nankai Main Line (Namba => Wakayamashi)"
+ },
+ "南海電気鉄道和歌山港線": {
+  "ko": "난카이 와카야마코선",
+  "en": "Nankai Wakayamakō Line"
+ },
+ "南海電気鉄道汐見橋線 普通 (岸里玉出 => 汐見橋)": {
+  "ko": "난카이 시오미바시선 보통 (기시노사토타마데 → 시오미바시)",
+  "en": "Nankai Shiomibashi Line"
+ },
+ "南海電気鉄道泉北線": {
+  "ko": "난카이 센보쿠선",
+  "en": "Nankai Semboku Line"
+ },
+ "南海電気鉄道空港線 (泉佐野 => 関西空港)": {
+  "ko": "난카이 공항선 (이즈미사노 → 간사이공항)",
+  "en": "Nankai Airport Line (railways)",
+  "zh-Hans": "南海电力铁道机场线",
+  "zh-Hant": "南海電氣鐵道機場線"
+ },
+ "南海電気鉄道高野線 (なんば=>橋本->極楽橋)": {
+  "ko": "난카이 고야선 (난바 → 하시모토 → 고쿠라쿠바시)",
+  "en": "Nankai Kōya Line"
+ },
+ "叡山電鉄叡山本線": {
+  "ko": "에이잔전철 에이잔 본선",
+  "en": "Eizan Main Line"
+ },
+ "叡山電鉄鞍馬線": {
+  "ko": "에이잔전철 구라마선",
+  "en": "Kurama Line"
+ },
+ "吾妻線": {
+  "en": "Agatsuma Line",
+  "ko": "아가쓰마선",
+  "zh-Hans": "吾妻线",
+  "zh-Hant": "吾妻線"
+ },
+ "四日市あすなろう鉄道八王子線 (あすなろう四日市->西日野)": {
+  "ko": "욧카이치 아스나로철도 하치오지선 (아스나로욧카이치 → 니시히노)",
+  "en": "Yokkaichi Asunarou Railway Hachiōji Line"
+ },
+ "四日市あすなろう鉄道内部線 (内部->あすなろう四日市)": {
+  "ko": "욧카이치 아스나로철도 우쓰베선 (우쓰베 → 아스나로욧카이치)",
+  "en": "Yokkaichi Asunarou Railway Utsube Line"
+ },
+ "国分寺線": {
+  "en": "Kokubunji Line",
+  "ko": "고쿠분지선",
+  "zh-Hans": "国分寺线",
+  "zh-Hant": "國分寺線"
+ },
+ "埼京線・川越線": {
+  "en": "Saikyo-Kawagoe Line",
+  "ko": "사이쿄선·가와고에선",
+  "zh-Hans": "埼京线·川越线",
+  "zh-Hant": "埼京線·川越線"
+ },
+ "埼玉高速鉄道線": {
+  "en": "Saitama Railway Line",
+  "ko": "사이타마 고속 철도선",
+  "zh-Hans": "埼玉高速铁道线",
+  "zh-Hant": "埼玉高速鐵道線"
+ },
+ "外房線": {
+  "en": "Sotobo Line",
+  "ko": "소토보선",
+  "zh-Hans": "外房线",
+  "zh-Hant": "外房線"
+ },
+ "多摩モノレール": {
+  "en": "Tama Monorail Line",
+  "ko": "다마 모노레일",
+  "zh-Hans": "多摩单轨电车",
+  "zh-Hant": "多摩單軌電車"
+ },
+ "多摩川線": {
+  "en": "Tamagawa Line",
+  "ko": "다마가와선",
+  "zh-Hans": "多摩川线",
+  "zh-Hant": "多摩川線"
+ },
+ "多摩湖線": {
+  "en": "Tamako Line",
+  "ko": "다마코선",
+  "zh-Hans": "多摩湖线",
+  "zh-Hant": "多摩湖線"
+ },
+ "多摩線": {
+  "en": "Tama Line",
+  "ko": "다마선",
+  "zh-Hans": "多摩线",
+  "zh-Hant": "多摩線"
+ },
+ "大井町線": {
+  "en": "Oimachi Line",
+  "ko": "오이마치선",
+  "zh-Hans": "大井町线",
+  "zh-Hant": "大井町線"
+ },
+ "大崎支線": {
+  "en": "Osaki Branch Line",
+  "ko": "오사키 지선",
+  "zh-Hans": "大崎支线",
+  "zh-Hant": "大崎支線"
+ },
+ "大師線": {
+  "en": "Daishi Line",
+  "ko": "다이시선",
+  "zh-Hans": "大师线",
+  "zh-Hant": "大師線"
+ },
+ "大江戸線": {
+  "en": "Oedo Line",
+  "ko": "도에이 오에도선",
+  "zh-Hans": "大江户线",
+  "zh-Hant": "大江戶線"
+ },
+ "大洗鹿島線": {
+  "en": "Oarai-Kashima Line",
+  "ko": "오아라이카시마선",
+  "zh-Hans": "大洗鹿岛线",
+  "zh-Hant": "大洗鹿島線"
+ },
+ "大阪モノレール国際文化公園都市モノレール線 (万博記念公園 => 彩都西)": {
+  "ko": "오사카 모노레일 사이토선 (반파쿠키넨코엔 → 사이토니시)",
+  "en": "Osaka Monorail Kokusai Bunka Koen Toshi Monorail Line (Bampaku-Kinen-Koen => Saito-Nishi)"
+ },
+ "大阪モノレール本線 (大阪空港 => 門真市)": {
+  "ko": "오사카 모노레일 본선 (오사카공항 → 가도마시)",
+  "en": "Osaka Monorail Main Line (Osaka Airport => Kadomashi)"
+ },
+ "大雄山線": {
+  "en": "Daiyuzan Line",
+  "ko": "다이유잔선",
+  "zh-Hans": "大雄山线",
+  "zh-Hant": "大雄山線"
+ },
+ "奈良線": {
+  "ko": "나라선",
+  "en": "Nara Line"
+ },
+ "宇都宮ライトレール": {
+  "en": "Utsunomiya Light Rail Line",
+  "ko": "우츠노미야 경전철선",
+  "zh-Hans": "宇都宫轻轨线",
+  "zh-Hant": "宇都宮輕軌線"
+ },
+ "宇都宮線": {
+  "en": "Utsunomiya Line",
+  "ko": "우쓰노미야선",
+  "zh-Hans": "宇都宫线",
+  "zh-Hant": "宇都宮線"
+ },
+ "富士急行線": {
+  "en": "Fujikyu Line",
+  "ko": "후지 급행선",
+  "zh-Hans": "富士急行线",
+  "zh-Hant": "富士急行線"
+ },
+ "小泉線": {
+  "en": "Koizumi Line",
+  "ko": "고이즈미선",
+  "zh-Hans": "小泉线",
+  "zh-Hant": "小泉線"
+ },
+ "小泉線(東小泉-太田)": {
+  "en": "Koizumi Line(Higashi-koizumi-Ota)",
+  "ko": "고이즈미선(히가시코이즈미-오타)",
+  "zh-Hans": "小泉线(东小泉-太田)",
+  "zh-Hant": "小泉線(東小泉-太田)"
+ },
+ "小湊鉄道線": {
+  "en": "Kominato Line",
+  "ko": "고미나토 철도선",
+  "zh-Hans": "小凑线",
+  "zh-Hant": "小湊線"
+ },
+ "小田原線": {
+  "en": "Odawara Line",
+  "ko": "오다와라선",
+  "zh-Hans": "小田原线",
+  "zh-Hant": "小田原線"
+ },
+ "小田急小田原線・江ノ島線 快速急行 (新宿 => 藤沢)": {
+  "ko": "오다큐 오다와라선·에노시마선 쾌속급행 (신주쿠 → 후지사와)",
+  "en": "Odakyu Odawara/Enoshima Line Rapid Express (Shinjuku-Fujisawa)"
+ },
+ "小田急通勤急行": {
+  "ko": "오다큐 통근급행",
+  "en": "Odakyu Commuter Express"
+ },
+ "山口線": {
+  "en": "Yamaguchi Line",
+  "ko": "야마구치선",
+  "zh-Hans": "山口线",
+  "zh-Hant": "山口線"
+ },
+ "山手線": {
+  "en": "Yamanote Line",
+  "ko": "야마노테선",
+  "zh-Hans": "山手线",
+  "zh-Hant": "山手線"
+ },
+ "山手貨物線": {
+  "en": "Yamanote Freight Line",
+  "ko": "야마노테 화물선",
+  "zh-Hans": "山手货物线",
+  "zh-Hant": "山手貨物線"
+ },
+ "山陽本線 (A)": {
+  "en": "Sanyo Main Line",
+  "ko": "산요 본선",
+  "zh-Hans": "山阳本线",
+  "zh-Hant": "山陽本線"
+ },
+ "山陽電気鉄道本線": {
+  "ko": "산요전철 본선",
+  "en": "Sanyo Electric Railway Main Line"
+ },
+ "山陽電気鉄道網干線": {
+  "ko": "산요전철 아보시선",
+  "en": "Sanyo Electric Railway Aboshi Line"
+ },
+ "嵯峨野観光鉄道嵯峨野観光線": {
+  "ko": "사가노 관광철도 사가노 관광선",
+  "en": "Sagano Scenic Line (Torokko Saga -> Torokko Kameoka)"
+ },
+ "川越線(川越-高麗川間)": {
+  "en": "Kawagoe Line",
+  "ko": "가와고에선",
+  "zh-Hans": "川越线",
+  "zh-Hant": "川越線"
+ },
+ "常磐線": {
+  "en": "Joban Line",
+  "ko": "조반선",
+  "zh-Hans": "常磐线",
+  "zh-Hant": "常磐線"
+ },
+ "常磐線各駅停車": {
+  "en": "Joban Local Line",
+  "ko": "조반선 각역정차",
+  "zh-Hans": "常磐线各站停车",
+  "zh-Hant": "常磐線各站停車"
+ },
+ "常磐線快速": {
+  "en": "Joban Rapid Line",
+  "ko": "조반선 쾌속",
+  "zh-Hans": "常磐线快速",
+  "zh-Hant": "常磐線快速"
+ },
+ "常総線": {
+  "en": "Joso Line",
+  "ko": "조소선",
+  "zh-Hans": "常总线",
+  "zh-Hant": "常總線"
+ },
+ "御殿場線": {
+  "en": "Gotemba Line",
+  "ko": "고텐바선",
+  "zh-Hans": "御殿场线",
+  "zh-Hant": "御殿場線"
+ },
+ "快速急行 (神戸三宮 => 近鉄奈良)": {
+  "ko": "쾌속급행 (고베산노미야 → 긴테쓰나라)",
+  "en": "Rapid Express (Kobe Sannomiya => Kintetsu Nara)"
+ },
+ "成田スカイアクセス線": {
+  "en": "Narita Sky Access Line",
+  "ko": "나리타 스카이액세스선",
+  "zh-Hans": "成田Sky Access线",
+  "zh-Hant": "成田Sky Access線"
+ },
+ "成田線": {
+  "en": "Narita Line",
+  "ko": "나리타선",
+  "zh-Hans": "成田线",
+  "zh-Hant": "成田線"
+ },
+ "成田線我孫子支線": {
+  "en": "Narita Abiko Branch Line",
+  "ko": "나리타선 아비코 지선",
+  "zh-Hans": "成田线我孙子支线",
+  "zh-Hant": "成田線我孫子支線"
+ },
+ "成田線空港支線": {
+  "en": "Narita Airport Branch Line",
+  "ko": "나리타선 공항 지선",
+  "zh-Hans": "成田线机场支线",
+  "zh-Hant": "成田線機場支線"
+ },
+ "押上線": {
+  "en": "Oshiage Line",
+  "ko": "오시아게선",
+  "zh-Hans": "押上线",
+  "zh-Hant": "押上線"
+ },
+ "拝島線": {
+  "en": "Haijima Line",
+  "ko": "하이지마선",
+  "zh-Hans": "拜岛线",
+  "zh-Hant": "拜島線"
+ },
+ "新宿線": {
+  "en": "Shinjuku Line",
+  "ko": "도에이 신주쿠선",
+  "zh-Hans": "新宿线",
+  "zh-Hant": "新宿線"
+ },
+ "日光線": {
+  "en": "Nikko Line",
+  "ko": "닛코선",
+  "zh-Hans": "日光线",
+  "zh-Hant": "日光線"
+ },
+ "日暮里・舎人ライナー": {
+  "en": "Nippori-Toneri Liner",
+  "ko": "닛포리·도네리 라이너",
+  "zh-Hans": "日暮里-舍人线",
+  "zh-Hant": "日暮里-舍人線"
+ },
+ "日比谷線": {
+  "en": "Hibiya Line",
+  "ko": "히비야선",
+  "zh-Hans": "日比谷线",
+  "zh-Hant": "日比谷線"
+ },
+ "智頭急行智頭線": {
+  "ko": "지즈급행 지즈선",
+  "en": "Chizu Express Chizu Line"
+ },
+ "有楽町線": {
+  "en": "Yurakucho Line",
+  "ko": "유라쿠초선",
+  "zh-Hans": "有乐町线",
+  "zh-Hant": "有樂町線"
+ },
+ "有馬・三田線 普通 (三田 => 新開地)": {
+  "ko": "아리마·산다선 보통 (산다 → 신카이치)",
+  "en": "Arima-Sanda Line Local (Sanda => Shinkaichi)"
+ },
+ "有馬線 普通 (有馬口 => 有馬温泉)": {
+  "ko": "아리마선 보통 (아리마구치 → 아리마온센)",
+  "en": "Arima Line Local (Arimaguchi => Arima Onsen)"
+ },
+ "東上線": {
+  "en": "Tojo Line",
+  "ko": "도조선",
+  "zh-Hans": "东上线",
+  "zh-Hant": "東上線"
+ },
+ "東京さくらトラム（都電荒川線）": {
+  "en": "Tokyo Sakura Tram (Arakawa Line)",
+  "ko": "도쿄 사쿠라 트램 (아라카와선)",
+  "zh-Hans": "东京樱电 (荒川线)",
+  "zh-Hant": "東京櫻花 (荒川線)"
+ },
+ "東京メトロ千代田線 : 北綾瀬→綾瀬": {
+  "en": "Chiyoda Line Branch",
+  "ko": "지요다선 지선",
+  "zh-Hans": "千代田线支线",
+  "zh-Hant": "千代田線支線"
+ },
+ "東京地下鉄の直通運転 - 常磐線": {
+  "ko": "도쿄메트로 직통운전 - 조반선",
+  "en": "Tokyo Metro through service - Joban Line"
+ },
+ "東急多摩川線": {
+  "en": "Tokyu-Tamagawa Line",
+  "ko": "도큐 다마가와선",
+  "zh-Hans": "东急多摩川线",
+  "zh-Hant": "東急多摩川線"
+ },
+ "東急新横浜線": {
+  "ko": "도큐 신요코하마선",
+  "en": "Tokyu Shin-Yokohama Line",
+  "zh-Hans": "东急新横滨线",
+  "zh-Hant": "東急新橫濱線"
+ },
+ "東成田線": {
+  "en": "Higashi-Narita Line",
+  "ko": "히가시나리타선",
+  "zh-Hans": "东成田线",
+  "zh-Hant": "東成田線"
+ },
+ "東横線": {
+  "en": "Toyoko Line",
+  "ko": "도요코선",
+  "zh-Hans": "东横线",
+  "zh-Hant": "東橫線"
+ },
+ "東武アーバンパークライン": {
+  "en": "TOBU URBAN PARK Line",
+  "ko": "도부 어번 파크 라인",
+  "zh-Hans": "东武都市公园线",
+  "zh-Hant": "東武都市公園線"
+ },
+ "東武スカイツリーライン": {
+  "en": "TOBU SKYTREE Line",
+  "ko": "도부 스카이트리 라인",
+  "zh-Hans": "东武晴空塔线",
+  "zh-Hant": "東武晴空塔線"
+ },
+ "東海道線": {
+  "en": "Tokaido Line",
+  "ko": "도카이도선",
+  "zh-Hans": "东海道线",
+  "zh-Hant": "東海道線"
+ },
+ "東海道貨物線": {
+  "en": "Tokaido Freight Line",
+  "ko": "도카이도 화물선",
+  "zh-Hans": "东海道货物线",
+  "zh-Hant": "東海道貨物線"
+ },
+ "東葉高速線": {
+  "en": "Toyo Rapid Line",
+  "ko": "도요 고속선",
+  "zh-Hans": "东叶高速线",
+  "zh-Hant": "東葉高速線"
+ },
+ "東西線": {
+  "en": "Tozai Line",
+  "ko": "도자이선",
+  "zh-Hans": "东西线",
+  "zh-Hant": "東西線"
+ },
+ "東金線": {
+  "en": "Togane Line",
+  "ko": "도가네선",
+  "zh-Hans": "东金线",
+  "zh-Hant": "東金線"
+ },
+ "松戸線": {
+  "en": "Matsudo Line",
+  "ko": "마쓰도선",
+  "zh-Hans": "松户线",
+  "zh-Hant": "松戶線"
+ },
+ "桐生線": {
+  "en": "Kiryu Line",
+  "ko": "기류선",
+  "zh-Hans": "桐生线",
+  "zh-Hant": "桐生線"
+ },
+ "横浜線": {
+  "en": "Yokohama Line",
+  "ko": "요코하마선",
+  "zh-Hans": "横滨线",
+  "zh-Hant": "橫濱線"
+ },
+ "横須賀線": {
+  "en": "Yokosuka Line",
+  "ko": "요코스카선",
+  "zh-Hans": "横须贺线",
+  "zh-Hant": "橫須賀線"
+ },
+ "武蔵野線": {
+  "en": "Musashino Line",
+  "ko": "무사시노선",
+  "zh-Hans": "武藏野线",
+  "zh-Hant": "武藏野線"
+ },
+ "水戸線": {
+  "en": "Mito Line",
+  "ko": "미토선",
+  "zh-Hans": "水户线",
+  "zh-Hant": "水戶線"
+ },
+ "水郡線": {
+  "en": "Suigun Line",
+  "ko": "스이군선",
+  "zh-Hans": "水郡线",
+  "zh-Hant": "水郡線"
+ },
+ "水郡線常陸太田支線": {
+  "en": "Suigun Line Hitachi-Ota Branch",
+  "ko": "스이군선 히타치오타 지선",
+  "zh-Hans": "水郡线常陆太田支线",
+  "zh-Hant": "水郡線常陸太田支線"
+ },
+ "水間鉄道水間線": {
+  "ko": "미즈마철도 미즈마선",
+  "en": "Mizuma Railway Mizuma Line"
+ },
+ "江ノ島線": {
+  "en": "Enoshima Line",
+  "ko": "에노시마선",
+  "zh-Hans": "江之岛线",
+  "zh-Hant": "江之島線"
+ },
+ "江ノ島電鉄線": {
+  "en": "Enoden Line",
+  "ko": "에노시마 전철선",
+  "zh-Hans": "江之岛电铁线",
+  "zh-Hant": "江之島電鐵線"
+ },
+ "池上線": {
+  "en": "Ikegami Line",
+  "ko": "이케가미선",
+  "zh-Hans": "池上线",
+  "zh-Hant": "池上線"
+ },
+ "池袋線": {
+  "en": "Ikebukuro Line",
+  "ko": "이케부쿠로선",
+  "zh-Hans": "池袋线",
+  "zh-Hant": "池袋線"
+ },
+ "流山線": {
+  "en": "Nagareyama Line",
+  "ko": "나가레야마선",
+  "zh-Hans": "流山线",
+  "zh-Hant": "流山線"
+ },
+ "浅草線": {
+  "en": "Asakusa Line",
+  "ko": "도에이 아사쿠사선",
+  "zh-Hans": "浅草线",
+  "zh-Hant": "淺草線"
+ },
+ "湊線": {
+  "en": "Minato Line",
+  "ko": "미나토선",
+  "zh-Hans": "凑线",
+  "zh-Hant": "湊線"
+ },
+ "湘南モノレール線": {
+  "en": "Shonan Monorail Line",
+  "ko": "쇼난 모노레일선",
+  "zh-Hans": "湘南单轨电车线",
+  "zh-Hant": "湘南單軌電車線"
+ },
+ "湘南新宿ライン": {
+  "en": "Shonan-Shinjuku Line",
+  "ko": "쇼난 신주쿠 라인",
+  "zh-Hans": "湘南新宿线",
+  "zh-Hant": "湘南新宿線"
+ },
+ "湘南新宿ライン(宇都宮=>JS24:大宮=>JS06:逗子)": {
+  "ko": "쇼난신주쿠라인 (우쓰노미야 → 오미야 → 즈시)",
+  "en": "Shonan-Shinjuku Line (Utsunomiya-Omiya-Zushi)"
+ },
+ "烏山線": {
+  "en": "Karasuyama Line",
+  "ko": "가라스야마선",
+  "zh-Hans": "乌山线",
+  "zh-Hant": "烏山線"
+ },
+ "特急はるか (京都 => 関西空港)": {
+  "ko": "특급 하루카 (교토 → 간사이공항)",
+  "en": "Limited Express Haruka (Kyoto => Kansai Airport)"
+ },
+ "特急ラピートα (なんば => 関西空港)": {
+  "ko": "특급 라피트α (난바 → 간사이공항)",
+  "en": "Express Rapi:t α (Namba => Kansai Airport)"
+ },
+ "狭山線": {
+  "en": "Sayama Line",
+  "ko": "사야마선",
+  "zh-Hans": "狭山线",
+  "zh-Hant": "狹山線"
+ },
+ "田園都市線": {
+  "en": "Den-En-Toshi Line",
+  "ko": "덴엔토시선",
+  "zh-Hans": "田园都市线",
+  "zh-Hant": "田園都市線"
+ },
+ "目黒線": {
+  "en": "Meguro Line",
+  "ko": "메구로선",
+  "zh-Hans": "目黑线",
+  "zh-Hant": "目黑線"
+ },
+ "直通": {
+  "ko": "직통"
+ },
+ "相模原線": {
+  "en": "Sagamihara Line",
+  "ko": "사가미하라선",
+  "zh-Hans": "相模原线",
+  "zh-Hant": "相模原線"
+ },
+ "相模線": {
+  "en": "Sagami Line",
+  "ko": "사가미선",
+  "zh-Hans": "相模线",
+  "zh-Hant": "相模線"
+ },
+ "相鉄厚木線": {
+  "ko": "소테쓰 아쓰기선",
+  "en": "Sotetsu Atsugi Line"
+ },
+ "相鉄新横浜線": {
+  "en": "Sotetsu Shin-Yokohama Line",
+  "ko": "소테쓰 신요코하마선",
+  "zh-Hans": "相铁新横滨线",
+  "zh-Hant": "相鐵新橫濱線"
+ },
+ "相鉄本線": {
+  "en": "Sotetsu Main Line",
+  "ko": "소테쓰 본선",
+  "zh-Hans": "相铁本线",
+  "zh-Hant": "相鐵本線"
+ },
+ "相鉄直通線": {
+  "en": "Sotetsu Direct Connection Line",
+  "ko": "소테쓰 직통선",
+  "zh-Hans": "相铁直通线",
+  "zh-Hant": "相鐵直通線",
+  "keep": true
+ },
+ "真岡線": {
+  "en": "Moka Line",
+  "ko": "모카선",
+  "zh-Hans": "真冈线",
+  "zh-Hant": "真岡線"
+ },
+ "神戸電鉄粟生線": {
+  "ko": "고베전철 아오선",
+  "en": "Kobe Electric Railway Ao Line"
+ },
+ "秩父本線": {
+  "en": "Chichibu Main Line",
+  "ko": "지치부 본선",
+  "zh-Hans": "秩父本线",
+  "zh-Hant": "秩父本線"
+ },
+ "空港線": {
+  "en": "Airport Line",
+  "ko": "공항선",
+  "zh-Hans": "机场线",
+  "zh-Hant": "機場線"
+ },
+ "竜ヶ崎線": {
+  "en": "Ryugasaki Line",
+  "ko": "류가사키선",
+  "zh-Hans": "龙崎线",
+  "zh-Hant": "龍崎線"
+ },
+ "競馬場線": {
+  "en": "Keibajō Line",
+  "ko": "게이바조선",
+  "zh-Hans": "竞马场线",
+  "zh-Hant": "競馬場線"
+ },
+ "箱根登山線": {
+  "en": "Hakone-Tozan Line",
+  "ko": "하코네 등산선",
+  "zh-Hans": "箱根登山线",
+  "zh-Hant": "箱根登山線"
+ },
+ "総武快速線": {
+  "en": "Sobu Rapid Line",
+  "ko": "소부 쾌속선",
+  "zh-Hans": "总武快速线",
+  "zh-Hant": "總武快速線"
+ },
+ "総武本線": {
+  "en": "Sobu Line",
+  "ko": "소부 본선",
+  "zh-Hans": "总武本线",
+  "zh-Hant": "總武本線"
+ },
+ "羽田空港線": {
+  "en": "Haneda Airport Line",
+  "ko": "하네다 공항선",
+  "zh-Hans": "羽田机场线",
+  "zh-Hant": "羽田機場線"
+ },
+ "能勢電鉄妙見線": {
+  "ko": "노세전철 묘켄선",
+  "en": "Noseden Myōken Line"
+ },
+ "能勢電鉄日生線": {
+  "ko": "노세전철 니세이선",
+  "en": "Noseden Nissei Line"
+ },
+ "芝山鉄道線": {
+  "en": "Shibayama Line",
+  "ko": "시바야마 철도선",
+  "zh-Hans": "芝山铁道线",
+  "zh-Hant": "芝山鐵道線"
+ },
+ "西武園線": {
+  "en": "Seibuen Line",
+  "ko": "세이부엔선",
+  "zh-Hans": "西武园线",
+  "zh-Hant": "西武園線",
+  "keep": true
+ },
+ "西武有楽町線": {
+  "en": "Seibu-Yurakucho Line",
+  "ko": "세이부 유라쿠초선",
+  "zh-Hans": "西武有乐町线",
+  "zh-Hant": "西武有樂町線"
+ },
+ "西武秩父線": {
+  "en": "Seibu-Chichibu Line",
+  "ko": "세이부치치부선",
+  "zh-Hans": "西武秩父线",
+  "zh-Hant": "西武秩父線",
+  "keep": true
+ },
+ "西武鉄道池袋線 (吾野=>飯能)": {
+  "ko": "세이부 이케부쿠로선 (아가노 → 한노)",
+  "en": "Seibu Ikebukuro Line (Agano-Hanno)"
+ },
+ "豊島線": {
+  "en": "Toshima Line",
+  "ko": "도시마선",
+  "zh-Hans": "丰岛线",
+  "zh-Hant": "豐島線"
+ },
+ "貴志川線": {
+  "ko": "기시가와선",
+  "en": "Kishigawa Line (Wakayama => Kishi)"
+ },
+ "越生線": {
+  "en": "Ogose Line",
+  "ko": "오고세선",
+  "zh-Hans": "越生线",
+  "zh-Hant": "越生線"
+ },
+ "近江鉄道万葉あかね線 (八日市->近江八幡)": {
+  "ko": "오미철도 만요아카네선 (요카이치 → 오미하치만)",
+  "en": "Ohmi Railway Yōkaichi Line"
+ },
+ "近江鉄道多賀線 (高宮->多賀大社前)": {
+  "ko": "오미철도 다가선 (다카미야 → 다가타이샤마에)",
+  "en": "Ohmi Railway Taga Line"
+ },
+ "近江鉄道本線": {
+  "ko": "오미철도 본선",
+  "en": "Ohmi Railway Main Line"
+ },
+ "近畿日本鉄道けいはんな線": {
+  "ko": "긴테쓰 게이한나선",
+  "en": "Kintetsu Keihanna Line (railway)"
+ },
+ "近畿日本鉄道京都線 普通 (大和西大寺 => 近鉄京都)": {
+  "ko": "긴테쓰 교토선 보통 (야마토사이다이지 → 긴테쓰교토)",
+  "en": "Kintetsu Kyoto Line Local (Yamato-Saidaiji => Kintetsu-Kyoto)"
+ },
+ "近畿日本鉄道信貴線": {
+  "ko": "긴테쓰 시기선",
+  "en": "Shigi Line"
+ },
+ "近畿日本鉄道南大阪線": {
+  "ko": "긴테쓰 미나미오사카선",
+  "en": "Kintetsu Minami-Osaka Line"
+ },
+ "近畿日本鉄道吉野線": {
+  "ko": "긴테쓰 요시노선",
+  "en": "Kintetsu Yoshino Line"
+ },
+ "近畿日本鉄道天理線": {
+  "ko": "긴테쓰 덴리선",
+  "en": "Kintetsu Tenri Line"
+ },
+ "近畿日本鉄道奈良線": {
+  "ko": "긴테쓰 나라선",
+  "en": "Kintetsu Nara Line"
+ },
+ "近畿日本鉄道山田線": {
+  "ko": "긴테쓰 야마다선",
+  "en": "Kintetsu Yamada Line"
+ },
+ "近畿日本鉄道御所線": {
+  "ko": "긴테쓰 고세선",
+  "en": "Kintetsu Gose Line"
+ },
+ "近畿日本鉄道志摩線": {
+  "ko": "긴테쓰 시마선",
+  "en": "Kintetsu Shima Line"
+ },
+ "近畿日本鉄道橿原線": {
+  "ko": "긴테쓰 가시하라선",
+  "en": "Kintetsu Kashihara Line"
+ },
+ "近畿日本鉄道湯の山線": {
+  "ko": "긴테쓰 유노야마선",
+  "en": "Kintetsu Yunoyama Line"
+ },
+ "近畿日本鉄道生駒線": {
+  "ko": "긴테쓰 이코마선",
+  "en": "Kintetsu Ikoma Line"
+ },
+ "近畿日本鉄道田原本線": {
+  "ko": "긴테쓰 다와라모토선",
+  "en": "Kintetsu Tawaramoto Line"
+ },
+ "近畿日本鉄道道明寺線": {
+  "ko": "긴테쓰 도묘지선",
+  "en": "Kintetsu Dōmyōji Line"
+ },
+ "近畿日本鉄道鈴鹿線": {
+  "ko": "긴테쓰 스즈카선",
+  "en": "Kintetsu Suzuka line"
+ },
+ "近畿日本鉄道長野線": {
+  "ko": "긴테쓰 나가노선",
+  "en": "Kintetsu Nagano Line"
+ },
+ "近畿日本鉄道難波線": {
+  "ko": "긴테쓰 난바선",
+  "en": "Kintetsu Namba Line"
+ },
+ "近畿日本鉄道鳥羽線": {
+  "ko": "긴테쓰 도바선",
+  "en": "Kintetsu Toba Line"
+ },
+ "近鉄名古屋線": {
+  "ko": "긴테쓰 나고야선",
+  "en": "Kintetsu Nagoya Line"
+ },
+ "近鉄特急 (京都 => 橿原神宮前)": {
+  "ko": "긴테쓰 특급 (교토 → 가시하라진구마에)",
+  "en": "Kintetsu Limited Express (Kyoto => Kashiharajingu-mae)"
+ },
+ "近鉄特急ひのとり（大阪難波 => 近鉄名古屋）": {
+  "ko": "긴테쓰 특급 히노토리 (오사카난바 → 긴테쓰나고야)",
+  "en": "Kintetsu Limited Express HINOTORI (Osaka-Namba => Kintetsu-Nagoya)"
+ },
+ "逗子線": {
+  "en": "Zushi Line",
+  "ko": "즈시선",
+  "zh-Hans": "逗子线",
+  "zh-Hant": "逗子線"
+ },
+ "都営三田線 : 目黒→西高島平": {
+  "en": "Toei Mita Line (Meguro --> Nishi-takashimadaira)",
+  "ko": "도에이 미타선 (메구로 → 니시타카시마다이라)",
+  "zh-Hans": "三田线",
+  "zh-Hant": "三田線"
+ },
+ "都営大江戸線 : 光が丘→都庁前": {
+  "en": "Oedo Line (Hikarigaoka → Tochōmae)",
+  "ko": "도에이 오에도선 (히카리가오카 → 도초마에)",
+  "zh-Hans": "丰岛线",
+  "zh-Hant": "豐島線"
+ },
+ "都営新宿線 : 新宿→本八幡": {
+  "en": "Shinjuku Line (Shinjuku --> Motoyawata)",
+  "ko": "도에이 신주쿠선 (신주쿠 → 모토야와타)",
+  "zh-Hans": "新宿线",
+  "zh-Hant": "新宿線"
+ },
+ "都営浅草線 : 押上→西馬込": {
+  "en": "Toei Asakusa Line (Oshiage --> Nishi-magome)",
+  "ko": "도에이 아사쿠사선 (오시아게 → 니시마고메)",
+  "zh-Hans": "浅草线",
+  "zh-Hant": "淺草線"
+ },
+ "野岩鉄道会津鬼怒川線": {
+  "ko": "야간철도 아이즈키누가와선",
+  "en": "Yagan Railway Aizu-Kinugawa Line"
+ },
+ "金沢シーサイドライン": {
+  "en": "Kanazawa Seaside Line",
+  "ko": "가나자와 시사이드 라인",
+  "zh-Hans": "金泽海岸线",
+  "zh-Hant": "金澤海岸線"
+ },
+ "金町線": {
+  "en": "Kanamachi Line",
+  "ko": "가나마치선",
+  "zh-Hans": "金町线",
+  "zh-Hant": "金町線"
+ },
+ "銀座線": {
+  "en": "Ginza Line",
+  "ko": "긴자선",
+  "zh-Hans": "银座线",
+  "zh-Hant": "銀座線"
+ },
+ "銚子電鉄線": {
+  "en": "Choshi Electric Railway Line",
+  "ko": "조시 전기철도선",
+  "zh-Hans": "铫子电铁线",
+  "zh-Hant": "銚子電鐵線"
+ },
+ "関空快速 (京橋 => 関西空港)": {
+  "ko": "간쿠 쾌속 (교바시 → 간사이공항)",
+  "en": "Kansai Airport Rapid (Kyobashi => Kansai Airport)"
+ },
+ "阪堺電気軌道上町線 (住吉 => 天王寺駅前)": {
+  "ko": "한카이전기궤도 우에마치선 (스미요시 → 덴노지에키마에)",
+  "en": "Hankai Tramway Uemachi Line (Sumiyoshi => Tennōjieki-mae)"
+ },
+ "阪堺電気軌道阪堺線 (恵美須町 => 浜寺駅前)": {
+  "ko": "한카이전기궤도 한카이선 (에비스초 → 하마데라에키마에)",
+  "en": "Hankai Tramway Hankai Line (Ebisucho => Hamaderaeki-mae)"
+ },
+ "阪急京都本線・千里線 普通 (大阪梅田 => 北千里)": {
+  "en": "Kyoto Main / Senri Line",
+  "ko": "교토 본선·센리선",
+  "zh-Hans": "京都本线·千里线",
+  "zh-Hant": "京都本線·千里線"
+ },
+ "阪急千里線 普通 (北千里 => 天神橋筋六丁目)": {
+  "en": "Senri Line",
+  "ko": "센리선",
+  "zh-Hans": "千里线",
+  "zh-Hant": "千里線"
+ },
+ "阪急嵐山線": {
+  "ko": "한큐 아라시야마선",
+  "en": "Hankyū Arashiyama Line"
+ },
+ "阪急甲陽線": {
+  "ko": "한큐 고요선",
+  "en": "Hankyū Kōyō Line"
+ },
+ "阪急電鉄今津線": {
+  "en": "Imazu Line",
+  "ko": "이마즈선",
+  "zh-Hans": "今津线",
+  "zh-Hant": "今津線"
+ },
+ "阪急電鉄今津線 (西宮北口=>宝塚)": {
+  "en": "Imazu Line",
+  "ko": "이마즈선",
+  "zh-Hans": "今津线",
+  "zh-Hant": "今津線"
+ },
+ "阪急電鉄伊丹線 (塚口=>伊丹)": {
+  "ko": "한큐 이타미선 (쓰카구치 → 이타미)",
+  "en": "Hankyū Itami Line"
+ },
+ "阪急電鉄神戸高速線": {
+  "ko": "한큐 고베고속선",
+  "en": "Kōbe Rapid Transit Railway Tozai Line"
+ },
+ "阪急電鉄箕面線": {
+  "ko": "한큐 미노오선",
+  "en": "Hankyū Minoo Line"
+ },
+ "阪神電気鉄道本線": {
+  "ko": "한신 본선",
+  "en": "Hanshin Main Line"
+ },
+ "阪神電気鉄道武庫川線": {
+  "ko": "한신 무코가와선",
+  "en": "Hanshin Mukogawa Line"
+ },
+ "阪神電気鉄道阪神なんば線": {
+  "ko": "한신 난바선",
+  "en": "Hanshin Namba Line"
+ },
+ "青梅線": {
+  "en": "Ome Line",
+  "ko": "오메선",
+  "zh-Hans": "青梅线",
+  "zh-Hant": "青梅線"
+ },
+ "養老鉄道養老線": {
+  "ko": "요로철도 요로선",
+  "en": "Yōrō Railway Yōrō Line"
+ },
+ "駿豆線": {
+  "en": "Sunzu Line",
+  "ko": "슨즈선",
+  "zh-Hans": "骏豆线",
+  "zh-Hant": "駿豆線"
+ },
+ "高尾線": {
+  "en": "Takao Line",
+  "ko": "다카오선",
+  "zh-Hans": "高尾线",
+  "zh-Hant": "高尾線"
+ },
+ "高崎線": {
+  "en": "Takasaki Line",
+  "ko": "다카사키선",
+  "zh-Hans": "高崎线",
+  "zh-Hant": "高崎線"
+ },
+ "鬼怒川線": {
+  "en": "Kinugawa Line",
+  "ko": "기누가와선",
+  "zh-Hans": "鬼怒川线",
+  "zh-Hant": "鬼怒川線"
+ },
+ "鶴見線": {
+  "en": "Tsurumi Line",
+  "ko": "쓰루미선",
+  "zh-Hans": "鹤见线",
+  "zh-Hant": "鶴見線"
+ },
+ "鶴見線大川支線": {
+  "en": "Tsurumi Okawa Branch Line",
+  "ko": "쓰루미선 오카와 지선",
+  "zh-Hans": "鹤见线大川支线",
+  "zh-Hant": "鶴見線大川支線"
+ },
+ "鶴見線海芝浦支線": {
+  "en": "Tsurumi Umi Shibaura Branch Line",
+  "ko": "쓰루미선 우미시바우라 지선",
+  "zh-Hans": "鹤见线海芝浦支线",
+  "zh-Hant": "鶴見線海芝浦支線"
+ },
+ "鹿島線": {
+  "en": "Kashima Line",
+  "ko": "가시마선",
+  "zh-Hans": "鹿岛线",
+  "zh-Hant": "鹿島線"
+ },
+ "東急新横浜線 (新横浜->日吉)": {
+  "ja": "東急新横浜線",
+  "en": "Tokyu Shin-Yokohama Line",
+  "ko": "신요코하마선",
+  "zh-Hans": "新横滨线",
+  "zh-Hant": "新橫濱線"
+ },
+ "東武小泉線": {
+  "en": "Tobu Koizumi Line",
+  "ko": "고이즈미선",
+  "zh-Hans": "小泉线",
+  "zh-Hant": "小泉線"
+ },
+ "西武山口線": {
+  "en": "Seibu Yamaguchi Line",
+  "ko": "야마구치선",
+  "zh-Hans": "山口线",
+  "zh-Hant": "山口線"
+ },
+ "西武鉄道狭山線": {
+  "en": "Seibu Sayama Line",
+  "ko": "사야마선",
+  "zh-Hans": "狭山线",
+  "zh-Hant": "狹山線"
+ },
+ "JR埼京線 (大崎 → 大宮)": {
+  "en": "Saikyo Line",
+  "ko": "사이쿄선",
+  "zh-Hans": "埼京线",
+  "zh-Hant": "埼京線"
+ },
+ "JR武蔵野線 (府中本町 → 東京)": {
+  "en": "Musashino Line",
+  "ko": "무사시노선",
+  "zh-Hans": "武藏野线",
+  "zh-Hant": "武藏野線"
+ },
+ "JR鶴見線": {
+  "en": "Tsurumi Line",
+  "ko": "쓰루미선",
+  "zh-Hans": "鹤见线",
+  "zh-Hant": "鶴見線"
+ },
+ "S-Train (Weekdays) (豊洲=>小手指)": {
+  "en": "S-Train",
+  "ko": "S-TRAIN",
+  "zh-Hans": "S-TRAIN",
+  "zh-Hant": "S-TRAIN"
+ },
+ "きぬがわ列車 : 鬼怒川温泉→新宿": {
+  "en": "Kinugawa",
+  "ko": "기누가와",
+  "zh-Hans": "鬼怒川",
+  "zh-Hant": "鬼怒川"
+ },
+ "さがみ": {
+  "en": "Sagami",
+  "ko": "사가미",
+  "zh-Hans": "相模",
+  "zh-Hant": "相模"
+ },
+ "はこね": {
+  "en": "Hakone",
+  "ko": "하코네",
+  "zh-Hans": "箱根",
+  "zh-Hant": "箱根"
+ },
+ "京急本線・久里浜線 快特 (三崎口 → 泉岳寺)": {
+  "en": "Main/Kurihama Line Ltd. Express",
+  "ko": "본선·구리하마선 쾌특",
+  "zh-Hans": "本线·久里滨线快特",
+  "zh-Hant": "本線·久里濱線快特"
+ },
+ "京成本線・千葉線・千原線 普通 (ちはら台 => 京成上野)": {
+  "en": "Main/Chiba/Chihara Line Local",
+  "ko": "본선·지바선·지하라선 보통",
+  "zh-Hans": "本线·千叶线·千原线普通",
+  "zh-Hant": "本線·千葉線·千原線普通"
+ },
+ "京成電鉄 押上線 (押上 → 青砥)": {
+  "en": "Oshiage Line",
+  "ko": "오시아게선",
+  "zh-Hans": "押上线",
+  "zh-Hant": "押上線"
+ },
+ "京成電鉄 東成田線 (京成成田 → 東成田)": {
+  "en": "Higashi-Narita Line",
+  "ko": "히가시나리타선",
+  "zh-Hans": "东成田线",
+  "zh-Hant": "東成田線"
+ },
+ "京王競馬場線 : 府中競馬正門前→東府中": {
+  "en": "Keiba-jo Line",
+  "ko": "게이바조선",
+  "zh-Hans": "竞马场线",
+  "zh-Hant": "競馬場線"
+ },
+ "川越線 (高麗川=>大宮)": {
+  "en": "Kawagoe Line",
+  "ko": "가와고에선",
+  "zh-Hans": "川越线",
+  "zh-Hant": "川越線"
+ },
+ "新宿 => 海老名": {
+  "en": "Sotetsu-JR Link Line",
+  "ko": "소테쓰·JR 직통선",
+  "zh-Hans": "相铁·JR直通线",
+  "zh-Hant": "相鐵·JR直通線",
+  "keep": true
+ },
+ "湘南新宿ライン (高崎線直通, 北行 小田原=>前橋)": {
+  "en": "Shonan-Shinjuku Line",
+  "ko": "쇼난신주쿠라인",
+  "zh-Hans": "湘南新宿线",
+  "zh-Hant": "湘南新宿線"
+ },
+ "相模鉄道いずみ野線: 横浜 => 湘南台": {
+  "en": "Izumino Line",
+  "ko": "이즈미노선",
+  "zh-Hans": "泉野线",
+  "zh-Hant": "泉野線"
+ },
+ "箱根登山鉄道鉄道線": {
+  "en": "Hakone Tozan Line",
+  "ko": "하코네 등산철도선",
+  "zh-Hans": "箱根登山铁道线",
+  "zh-Hant": "箱根登山鐵道線"
+ },
+ "西武鉄道西武秩父線": {
+  "en": "Seibu Chichibu Line",
+  "ko": "세이부치치부선",
+  "zh-Hans": "西武秩父线",
+  "zh-Hant": "西武秩父線",
+  "keep": true
+ },
+ "JR奈良線 普通 (京都 => 奈良)": {
+  "en": "Nara Line",
+  "ko": "나라선",
+  "zh-Hans": "奈良线",
+  "zh-Hant": "奈良線"
+ },
+ "京都市営地下鉄東西線 : 太秦天神川→六地蔵": {
+  "en": "Kyoto Subway Tozai Line",
+  "ko": "교토 시영지하철 도자이선",
+  "zh-Hans": "京都市营地铁东西线",
+  "zh-Hant": "京都市營地鐵東西線"
+ },
+ "JR桜井線 普通 (奈良 => 高田)": {
+  "en": "Sakurai Line",
+  "ko": "사쿠라이선",
+  "zh-Hans": "樱井线",
+  "zh-Hant": "櫻井線"
+ },
+ "JR中央線JC": {
+  "en": "Chuo Rapid Line",
+  "ko": "주오선 쾌속",
+  "zh-Hans": "中央线快速",
+  "zh-Hant": "中央線快速"
+ },
+ "東京メトロ丸ノ内線 : 池袋→荻窪": {
+  "en": "Marunouchi Line",
+  "ko": "마루노우치선",
+  "zh-Hans": "丸之内线",
+  "zh-Hant": "丸之內線"
+ },
+ "東京メトロ丸ノ内線 : 中野坂上→方南町": {
+  "en": "Marunouchi Line Branch",
+  "ko": "마루노우치선 지선",
+  "zh-Hans": "丸之内线支线",
+  "zh-Hant": "丸之內線支線"
+ },
+ "東京メトロ千代田線 (代々木上原->綾瀬)": {
+  "en": "Chiyoda Line",
+  "ko": "지요다선",
+  "zh-Hans": "千代田线",
+  "zh-Hant": "千代田線"
+ },
+ "東京メトロ副都心線 : 和光市→渋谷": {
+  "en": "Fukutoshin Line",
+  "ko": "후쿠토신선",
+  "zh-Hans": "副都心线",
+  "zh-Hant": "副都心線"
+ },
+ "東京メトロ有楽町線 : 和光市→新木場": {
+  "en": "Yurakucho Line",
+  "ko": "유라쿠초선",
+  "zh-Hans": "有乐町线",
+  "zh-Hant": "有樂町線"
+ },
+ "東京メトロ銀座線 : 浅草→渋谷": {
+  "en": "Ginza Line",
+  "ko": "긴자선",
+  "zh-Hans": "银座线",
+  "zh-Hant": "銀座線"
+ },
+ "東京メトロ東西線 各駅停車 : 中野→西船橋": {
+  "en": "Tozai Line",
+  "ko": "도자이선",
+  "zh-Hans": "东西线",
+  "zh-Hant": "東西線"
+ },
+ "東京メトロ南北線 : 目黒→ 赤羽岩淵": {
+  "en": "Namboku Line",
+  "ko": "난보쿠선",
+  "zh-Hans": "南北线",
+  "zh-Hant": "南北線"
+ },
+ "阪急京都本線 普通 (京都河原町 => 大阪梅田)": {
+  "en": "Kyoto Main Line",
+  "ko": "교토 본선",
+  "zh-Hans": "京都本线",
+  "zh-Hant": "京都本線"
+ },
+ "阪急神戸本線 普通 (大阪梅田 => 神戸三宮)": {
+  "en": "Kobe Main Line",
+  "ko": "고베 본선",
+  "zh-Hans": "神户本线",
+  "zh-Hant": "神戶本線"
+ },
+ "阪急電鉄宝塚本線": {
+  "en": "Takarazuka Main Line",
+  "ko": "다카라즈카 본선",
+  "zh-Hans": "宝冢本线",
+  "zh-Hant": "寶塚本線"
+ },
+ "JR水郡線常陸太田支線": {
+  "en": "Suigun Line Hitachi-Ota Branch",
+  "ko": "스이군선 히타치오타 지선",
+  "zh-Hans": "水郡线常陆太田支线",
+  "zh-Hant": "水郡線常陸太田支線"
+ },
+ "JR水郡線": {
+  "en": "Suigun Line",
+  "ko": "스이군선",
+  "zh-Hans": "水郡线",
+  "zh-Hant": "水郡線"
+ },
+ "京急空港線 (京急蒲田 → 羽田空港第1・第2ターミナル)": {
+  "en": "Airport Line",
+  "ko": "공항선",
+  "zh-Hans": "机场线",
+  "zh-Hant": "機場線"
+ },
+ "JR烏山線": {
+  "en": "Karasuyama Line",
+  "ko": "가라스야마선",
+  "zh-Hans": "乌山线",
+  "zh-Hant": "烏山線"
+ },
+ "小湊鉄道線 (上総中野 => 五井)": {
+  "en": "Kominato Line",
+  "ko": "고미나토 철도선",
+  "zh-Hans": "小凑线",
+  "zh-Hant": "小湊線"
+ },
+ "山陽本線（和田岬線）": {
+  "en": "Wadamisaki Line",
+  "ko": "와다미사키선",
+  "zh-Hans": "和田岬线",
+  "zh-Hant": "和田岬線"
+ }
+}

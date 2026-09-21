@@ -1,0 +1,65 @@
+{
+ "id": "korea",
+ "note": "아직 만들지 않은 권역이다. 아래 값은 틀이고, 표시한 곳을 채워야 돈다. 순서와 손봐야 할 곳은 저장소 뿌리의 HANDOVER.md 에 있다.",
+ "todo": [
+  "data/osm/south-korea-latest.osm.pbf 를 Geofabrik 에서 내려받는다",
+  "grid 를 권역에 맞춘다. lon0/lat0 는 남서쪽 끝, span 은 미터",
+  "ocean_seeds 를 격자 안의 확실한 바다 점으로 채운다 (서해·남해·동해)",
+  "prefectures 를 OSM admin_level=4 의 name 과 정확히 맞춘다",
+  "start 를 기본 출발역으로 (서울역 또는 통행량이 가장 많은 역)",
+  "build_rail.py 의 열차 종별·사업자 표기를 한국어로 (KINDS, STRIP, SHINKANSEN)",
+  "build_naive.py 의 SUBWAY, FAST_NAME 정규식을 한국어로",
+  "build_colors.py 의 위키 항목 이름을 ko.wikipedia 의 '노선색' 으로",
+  "build_express.py 는 ko.wikipedia 에 정차역 표가 없으면 건너뛴다"
+ ],
+ "center": [
+  126.9780,
+  37.5665
+ ],
+ "zoom": 11,
+ "names": {
+  "ja": "韓国（未作成）",
+  "en": "Korea (not built)",
+  "ko": "한국 (미작성)",
+  "zh-Hans": "韩国（未建）",
+  "zh-Hant": "韓國（未建）"
+ },
+ "model": "naive",
+ "timetable": null,
+ "rail": {
+  "source": "OpenStreetMap",
+  "license": "ODbL 1.0"
+ },
+ "osm_files": [
+  "south-korea-latest.osm.pbf"
+ ],
+ "grid": {
+  "lon0": 126.0,
+  "lat0": 36.8,
+  "lat_ref": 37.5,
+  "span_x": 200000.0,
+  "span_y": 160000.0,
+  "ocean_seeds": [
+   [
+    126.2,
+    37.3
+   ]
+  ]
+ },
+ "prefectures": [
+  "서울특별시",
+  "인천광역시",
+  "경기도"
+ ],
+ "start": {
+  "lon": 126.9707,
+  "lat": 37.5547,
+  "names": {
+   "ja": "ソウル",
+   "en": "Seoul",
+   "ko": "서울",
+   "zh-Hans": "首尔",
+   "zh-Hant": "首爾"
+  }
+ }
+}
