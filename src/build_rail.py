@@ -34,6 +34,9 @@ from pathlib import Path
 import numpy as np
 import osmium
 
+import osmcache
+from regional import book_for
+
 ROOT = Path(__file__).resolve().parent.parent
 REGION = os.environ.get("REGION", "kansai")
 OUT = ROOT / "data" / "regions" / REGION / "raw"
@@ -420,10 +423,9 @@ def clean_station_name(nm: str) -> str:
 class StationNodes(osmium.SimpleHandler):
     """역 노드 전부와, 관계가 가리킨 정차 노드."""
 
-    def __init__(self, want, inside=None):
+    def __init__(self, want):
         super().__init__()
         self.want = want
-        self.inside = inside
         self.pos = {}
         self.stations = {}
         self.rail = set()
@@ -435,9 +437,6 @@ class StationNodes(osmium.SimpleHandler):
         is_station = (t.get("railway") in STATION_TAGS
                       or t.get("public_transport") in ("station", STOP_POSITION))
         if not is_station and n.id not in self.want:
-            return
-        if self.inside is not None and not self.inside(n.location.lon,
-                                                       n.location.lat):
             return
         rec = (n.location.lon, n.location.lat,
                {g: clean_station_name(t.get("name:" + g, "")) for g in LANGS},
@@ -455,6 +454,18 @@ class StationNodes(osmium.SimpleHandler):
                     and t.get("monorail") != "yes"
                     and not (rec[3] or "").endswith("信号場")):
                 self.rail.add(n.id)
+
+
+def keep_inside(nodes, inside):
+    """권역 밖 역 노드를 버린다. 훑은 결과는 권역과 무관하게 캐시하므로
+    거르기는 여기서 한다. 훑을 때 거르던 것과 결과가 같다."""
+    if inside is None:
+        return
+    out = [n for n, v in nodes.pos.items() if not inside(v[0], v[1])]
+    for n in out:
+        nodes.pos.pop(n, None)
+        nodes.stations.pop(n, None)
+        nodes.rail.discard(n)
 
 
 def stitch(ways, geom):
@@ -1231,32 +1242,28 @@ def overlap(small, big):
 #
 # 그래서 훑은 결과를 그대로 저장해 둔다. 20k 노드와 36k 웨이라 50 MB 쯤이다.
 #
-#     REGION=<권역> RAIL_REUSE=1 python src/build_rail.py
+# 훑은 결과는 권역이 아니라 추출본에 매인다. 관계와 선로 웨이는 권역과
+# 상관없이 읽고, 권역 경계는 역 노드를 거를 때만 쓰기 때문이다. 그래서
+# 거르기 전 결과를 추출본 이름으로 data/cache/rail/ 에 두고, 같은 추출본을
+# 읽는 다른 권역이 그대로 가져다 쓴다. 현 조합 권역은 이것이 없으면 조합마다
+# 같은 PBF 를 6~9분씩 다시 훑는다(조립은 5.6초, 시각표는 1.4초뿐이다).
 #
-# PBF 와 권역 경계, 제외 목록이 그대로일 때만 쓴다. 하나라도 바뀌면
-# 저장해 둔 것을 버리고 다시 훑는다. 켤 때만 쓴다.
-_CACHE_NPZ = OUT / "osm-extract.npz"
-_CACHE_JSON = OUT / "osm-extract.json"
-
-
+# PBF 가 바뀌거나 읽는 코드(아래 세 핸들러)가 바뀌면 도장이 어긋나 다시
+# 훑는다. 억지로 다시 훑으려면 RAIL_RESCAN=1 을 준다.
 class _Bag:
     """핸들러 자리에 끼울 껍데기."""
 
 
+def _cache_files(pbfs):
+    return osmcache.files("rail", pbfs)
+
+
 def _cache_stamp(pbfs):
-    def of(p):
-        try:
-            st = p.stat()
-            return [p.name, st.st_size, int(st.st_mtime)]
-        except OSError:
-            return [str(p), 0, 0]
-    # 제외 목록은 도장에 넣지 않는다. 캐시를 읽을 때 다시 걸러서, 제외를
-    # 늘리는 것만으로는 다시 훑을 필요가 없다. 제외를 풀었을 때는 캐시에 그
-    # 노선이 없으니 raw/osm-extract.* 를 지우고 다시 훑는다.
-    extra = [ROOT / "data" / "regions" / REGION / "region.json",
-             OUT / "prefecture-rings.json"]
-    # 형식 판. 캐시에 담는 것이 바뀌면 올린다. 2: 관계의 위키 태그.
-    return {"v": 2, "pbf": [of(p) for p in pbfs], "extra": [of(p) for p in extra]}
+    # 제외 목록과 권역 경계는 도장에 넣지 않는다. 제외는 캐시를 읽을 때 다시
+    # 거르고, 권역 경계는 캐시를 읽은 뒤에 쓴다. 제외를 풀었을 때는 캐시에 그
+    # 노선이 없으니 data/cache/rail/ 의 파일을 지우고 다시 훑는다.
+    # 판 3: 권역으로 거르기 전의 역 노드.
+    return osmcache.stamp(pbfs, Relations, Ways, StationNodes, v=3)
 
 
 def save_osm_cache(pbfs, rel, ways, nodes):
@@ -1273,8 +1280,9 @@ def save_osm_cache(pbfs, rel, ways, nodes):
         rf.append(a)
         rptr.append(rptr[-1] + len(a))
     node_ids = sorted(nodes.pos)
+    npz_path, json_path = _cache_files(pbfs)
     np.savez_compressed(
-        _CACHE_NPZ,
+        npz_path,
         way_ids=np.asarray(way_ids, dtype=np.int64),
         geom_xy=(np.concatenate(xy) if xy else np.zeros((0, 2))),
         geom_ptr=np.asarray(gptr, dtype=np.int64),
@@ -1287,7 +1295,7 @@ def save_osm_cache(pbfs, rel, ways, nodes):
         is_station=np.asarray([n in nodes.stations for n in node_ids], dtype=bool),
         is_rail=np.asarray([n in nodes.rail for n in node_ids], dtype=bool),
     )
-    _CACHE_JSON.write_text(json.dumps({
+    json_path.write_text(json.dumps({
         "stamp": _cache_stamp(pbfs),
         "routes": rel.routes,
         "dropped": rel.dropped,
@@ -1297,19 +1305,16 @@ def save_osm_cache(pbfs, rel, ways, nodes):
 
 
 def load_osm_cache(pbfs):
-    if not (_CACHE_NPZ.exists() and _CACHE_JSON.exists()):
+    npz_path, json_path = _cache_files(pbfs)
+    if not (npz_path.exists() and json_path.exists()):
         return None
     try:
-        meta = json.loads(_CACHE_JSON.read_text(encoding="utf-8"))
-        old = meta.get("stamp") or {}
-        # 제외 목록을 도장에 넣던 때 만든 캐시도 받는다.
-        old = dict(old, extra=[e for e in old.get("extra", [])
-                               if e[0] != "excluded-lines.json"])
-        if old != _cache_stamp(pbfs):
-            print("  (저장해 둔 OSM 추출이 지금 파일과 안 맞아 다시 훑는다)",
+        meta = json.loads(json_path.read_text(encoding="utf-8"))
+        if (meta.get("stamp") or {}) != _cache_stamp(pbfs):
+            print("  (저장해 둔 OSM 훑기가 지금 파일·코드와 안 맞아 다시 훑는다)",
                   flush=True)
             return None
-        z = np.load(_CACHE_NPZ)
+        z = np.load(npz_path)
     except (OSError, ValueError) as e:
         print(f"  (저장해 둔 OSM 추출을 못 읽었다: {e})", flush=True)
         return None
@@ -1327,7 +1332,11 @@ def load_osm_cache(pbfs):
 
     ways = _Bag()
     wid, gp, gx = z["way_ids"], z["geom_ptr"], z["geom_xy"]
-    ways.geom = {int(w): gx[gp[i]:gp[i + 1]] for i, w in enumerate(wid)}
+    # 파이썬 float 으로 되돌린다. numpy 배열 그대로 두면 값은 같아도 반올림이
+    # 달라져서, 그린 선이 훑어서 만든 것과 0.1m 씩 어긋난다(예전에는 참거짓
+    # 판정에서 멈추기도 했다).
+    ways.geom = {int(w): [(float(a), float(b)) for a, b in gx[gp[i]:gp[i + 1]]]
+                 for i, w in enumerate(wid)}
     rid, rp, rn = z["ref_ids"], z["ref_ptr"], z["ref_nodes"]
     ways.refs = {int(w): rn[rp[i]:rp[i + 1]].tolist() for i, w in enumerate(rid)}
 
@@ -1359,40 +1368,41 @@ def main():
     print("[" + REGION + "] " + ", ".join(p.name for p in pbfs) + " 읽는 중...",
           flush=True)
 
-    cached = (load_osm_cache(pbfs)
-              if os.environ.get("RAIL_REUSE") == "1" else None)
+    cached = (None if os.environ.get("RAIL_RESCAN") == "1"
+              else load_osm_cache(pbfs))
     if cached is not None:
         rel, ways, nodes = cached
-        print(f"  저장해 둔 OSM 추출을 다시 쓴다 "
+        print(f"  저장해 둔 OSM 훑기를 다시 쓴다 "
               f"(관계 {len(rel.routes):,}개, 웨이 {len(ways.geom):,}개, "
               f"노드 {len(nodes.pos):,}개)", flush=True)
-        return _build(pbfs, rel, ways, nodes)
+    else:
+        rel = Relations()
+        for p in pbfs:
+            rel.apply_file(str(p))
+        track_only = sum(1 for r in rel.routes if not r["stops"])
+        print(f"  철도 계통 관계 {len(rel.routes):,}개 "
+              f"(신칸센 {rel.dropped}개, 못 타는 노선 {rel.skipped}개 제외), "
+              f"선로만 있는 것 {track_only:,}개", flush=True)
 
-    rel = Relations()
-    for p in pbfs:
-        rel.apply_file(str(p))
-    track_only = sum(1 for r in rel.routes if not r["stops"])
-    print(f"  철도 계통 관계 {len(rel.routes):,}개 "
-          f"(신칸센 {rel.dropped}개, 못 타는 노선 {rel.skipped}개 제외), "
-          f"선로만 있는 것 {track_only:,}개", flush=True)
+        ways = Ways(rel.want_ways)
+        for p in pbfs:
+            ways.apply_file(str(p), locations=True, idx="flex_mem")
+        print(f"  선로 웨이 {len(ways.geom):,}개", flush=True)
 
-    ways = Ways(rel.want_ways)
-    for p in pbfs:
-        ways.apply_file(str(p), locations=True, idx="flex_mem")
-    print(f"  선로 웨이 {len(ways.geom):,}개", flush=True)
+        nodes = StationNodes(rel.want_nodes)
+        for p in pbfs:
+            nodes.apply_file(str(p))
+        try:
+            save_osm_cache(pbfs, rel, ways, nodes)
+        except Exception as e:        # 캐시를 못 써도 빌드는 계속한다
+            print(f"  (OSM 훑기를 저장하지 못했다: {e})", flush=True)
 
     inside, how = _region_filter()
-    nodes = StationNodes(rel.want_nodes, inside)
-    for p in pbfs:
-        nodes.apply_file(str(p))
+    keep_inside(nodes, inside)
     if how:
         print(f"  권역 밖은 버린다 ({how})", flush=True)
     print(f"  역 노드 {len(nodes.stations):,}개, 정차 노드 {len(nodes.pos):,}개",
           flush=True)
-    try:
-        save_osm_cache(pbfs, rel, ways, nodes)
-    except Exception as e:        # 캐시를 못 써도 빌드는 계속한다
-        print(f"  (OSM 추출을 저장하지 못했다: {e})", flush=True)
     return _build(pbfs, rel, ways, nodes)
 
 
@@ -1515,7 +1525,7 @@ def trim_lines(lines, members, pos, cpos=None, scale=1.0):
     path = ROOT / "data" / "line-extensions.json"
     if not path.exists():
         return
-    book = json.loads(path.read_text(encoding="utf-8")).get(REGION) or {}
+    book = book_for(path, REGION)
     names = {}
     for cl, ns in enumerate(members):
         if ns:
@@ -1587,7 +1597,7 @@ def extend_lines(lines, members, pos):
     path = ROOT / "data" / "line-extensions.json"
     if not path.exists():
         return
-    book = json.loads(path.read_text(encoding="utf-8")).get(REGION) or {}
+    book = book_for(path, REGION)
     if not book:
         return
     by_name = defaultdict(list)
@@ -1726,7 +1736,13 @@ def _build(pbfs, rel, ways, nodes):
                     _insert_cheapest(seq, n, xy)
                     have.add(key)
                     picked_up += 1
-        if len(seq) >= 2 and len(seq) >= len(r["stops"]):
+        # 되살린 목록이 적힌 것보다 짧으면 버린다. 적힌 것은 권역 안에 남은
+        # 것만 센다. 권역 밖 정차역까지 세면, 경계에서 잘린 노선이 늘 "되살린
+        # 것이 더 적다" 가 되어 버려진다. 岡山·広島 조합의 JR因美線 은 적힌
+        # 9개 중 5개가 권역 밖이라, 선로에서 되살린 7역이 버려지고 적힌 채로
+        # 남은 4역이 순서도 뒤엉킨 채 노선이 됐다.
+        kept = sum(1 for n in r["stops"] if n in nodes.pos)
+        if len(seq) >= 2 and len(seq) >= kept:
             r["stops"] = seq
             recovered += 1
             by_node += found == "웨이 노드"

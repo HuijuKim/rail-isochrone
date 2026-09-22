@@ -3,11 +3,17 @@ from __future__ import annotations
 
 import json
 import os
+import re
+import subprocess
+import sys
+import threading
+import time
 from pathlib import Path
 
 import numpy as np
 from flask import Flask, jsonify, request, send_from_directory
 
+import make_region
 import region as region_mod
 from isochrone import (
     EGRESS_WALK_MAX_SEC,
@@ -362,12 +368,230 @@ def regions():
                     "start": r.meta.get("start"),
                     "stations": int(r.supported.sum()),
                     "note": r.meta.get("note", ""),
+                    # 현을 골라 만든 권역은 화면의 "현 조합" 탭에 따로 모인다.
+                    "custom": bool(r.meta.get("custom")),
+                    "prefectures": r.meta.get("prefectures") or [],
                 }
                 # 역이 많은 권역부터 보인다.
                 for r in sorted(REGIONS.values(), key=lambda r: -int(r.supported.sum()))
             ],
         }
     )
+
+
+# ---------------------------------------------------------------------------
+# 현 조합 권역. 화면의 "현 조합" 탭에서 현을 골라 권역 하나로 빌드한다.
+# 빌드는 make_region.py 를 따로 된 프로세스로 돌리고(10-40분), 끝나면 이
+# 서버에 올린다. 다른 권역은 그동안에도 그대로 쓸 수 있다. 한 번에 하나만
+# 돈다. 빌드와 올리기는 서버를 띄운 컴퓨터에서 온 요청만 받는다.
+# ---------------------------------------------------------------------------
+COMBO_JOB = {"id": None, "prefectures": [], "names": None, "k": 0,
+             "n": len(make_region.STEPS), "step": "", "detail": "",
+             "started": None, "ended": None, "ok": None, "error": None}
+COMBO_LOCK = threading.Lock()
+
+
+def _from_this_machine() -> bool:
+    return request.remote_addr in ("127.0.0.1", "::1")
+
+
+def _combo_running() -> bool:
+    return COMBO_JOB["started"] is not None and COMBO_JOB["ended"] is None
+
+
+def _combo_state(rid: str) -> str:
+    """ready: 서버에 올라 있음, building: 빌드 중, built: 다 됐는데 안 올림,
+    incomplete: 만들다 말았거나 실패, none: 없음."""
+    if rid in REGIONS:
+        return "ready"
+    if _combo_running() and COMBO_JOB["id"] == rid:
+        return "building"
+    return make_region.state(rid)
+
+
+def _combo_prefs() -> list[str]:
+    raw = request.args.get("prefs") or ""
+    if request.is_json:
+        raw = (request.get_json(silent=True) or {}).get("prefectures") or raw
+    names = raw.split(",") if isinstance(raw, str) else list(raw)
+    names = [str(n) for n in names if str(n).strip()]
+    if not names:
+        raise BadRequest("현을 하나 이상 고르세요")
+    try:
+        return make_region.resolve(names)
+    except ValueError as err:
+        raise BadRequest(str(err)) from None
+
+
+def _combo_status() -> dict:
+    job = dict(COMBO_JOB)
+    if job["started"]:
+        job["elapsed_min"] = round(((job["ended"] or time.time()) - job["started"]) / 60, 1)
+    # 단계 안에서 무엇을 하는지는 빌드 로그의 마지막 줄로 보여준다.
+    if _combo_running() and job["k"] >= 1:
+        log = region_mod.REGIONS_DIR / job["id"] / "build.log"
+        try:
+            with open(log, "rb") as f:
+                f.seek(max(0, log.stat().st_size - 4096))
+                tail = f.read().decode("utf-8", "replace").splitlines()
+            job["detail"] = next((x.strip() for x in reversed(tail) if x.strip()), "")
+        except OSError:
+            pass
+    return job
+
+
+def _run_combo(rid: str, prefs: list[str]) -> None:
+    cmd = [sys.executable, str(ROOT / "src" / "make_region.py"), *prefs, "--build", "--force"]
+    env = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUNBUFFERED="1")
+    last = ""
+    try:
+        proc = subprocess.Popen(cmd, cwd=ROOT, env=env, stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT, text=True,
+                                encoding="utf-8", errors="replace")
+        for line in proc.stdout:
+            line = line.strip()
+            if not line:
+                continue
+            last = line
+            m = re.match(r"\[(\d+)/(\d+)\] (.+)", line)
+            if m:
+                COMBO_JOB.update(k=int(m[1]), n=int(m[2]), step=m[3], detail="")
+            else:
+                COMBO_JOB["detail"] = line
+        code = proc.wait()
+        if code != 0:
+            raise RuntimeError(last or f"make_region.py 종료 코드 {code}")
+        COMBO_JOB.update(step="서버에 올리는 중", detail="")
+        REGIONS[rid] = region_mod.load(rid)
+        COMBO_JOB["ok"] = True
+    except Exception as err:      # noqa: BLE001 - 무엇이든 화면에 알린다
+        print(f"!! 현 조합 {rid} 빌드 실패: {err}", flush=True)
+        COMBO_JOB.update(ok=False, error=str(err))
+    finally:
+        COMBO_JOB["ended"] = time.time()
+
+
+@app.get("/api/combo")
+def combo():
+    """현 조합 탭이 그릴 것. 지방별 현 목록, 만들어 둔 조합, 빌드 상황."""
+    areas = []
+    for names, members in make_region.AREAS:
+        prefs = []
+        for ja in members:
+            info = make_region.PREFS[ja]
+            prefs.append({
+                "ja": ja,
+                "names": {"ja": ja, "en": info["en"], "ko": info["ko"],
+                          "zh-Hans": ja, "zh-Hant": ja},
+                "stations": info.get("stations", 0),
+                "ok": "rail_bbox" in info,
+                # 이어진 현만 고르게 하려고 함께 보낸다. 바다 위 경계도 이웃이라
+                # 다리로 이어진 岡山-香川, 広島-愛媛 이 들어 있다.
+                "neighbors": info.get("neighbors", []),
+            })
+        areas.append({"names": dict(names, **{"zh-Hans": names["ja"], "zh-Hant": names["ja"]}),
+                      "prefectures": prefs})
+    made = []
+    for meta_path in sorted(region_mod.REGIONS_DIR.glob(make_region.PREFIX + "*/region.json")):
+        try:
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        except ValueError:
+            continue
+        rid = meta_path.parent.name
+        made.append({"id": rid, "names": meta.get("names"),
+                     "prefectures": meta.get("prefectures") or [],
+                     "state": _combo_state(rid),
+                     "stations": int(REGIONS[rid].supported.sum()) if rid in REGIONS else None})
+    return jsonify({"can_build": _from_this_machine(), "areas": areas,
+                    "regions": made, "job": _combo_status()})
+
+
+@app.get("/api/combo/plan")
+def combo_plan():
+    """고른 현으로 만들 권역의 크기와 상태. 빌드 전에 보여준다."""
+    info = make_region.plan(_combo_prefs())
+    info["state"] = _combo_state(info["id"])
+    return jsonify(info)
+
+
+@app.get("/api/combo/status")
+def combo_status():
+    return jsonify(_combo_status())
+
+
+@app.post("/api/combo/build")
+def combo_build():
+    """고른 현으로 권역을 빌드한다. 바로 돌아오고, 진행은 status 로 본다."""
+    if not _from_this_machine():
+        return jsonify({"error": "빌드는 서버를 띄운 컴퓨터에서만 할 수 있습니다"}), 403
+    prefs = _combo_prefs()
+    info = make_region.plan(prefs)
+    if info["too_big"]:
+        raise BadRequest(f"격자가 {info['span_km'][0]}x{info['span_km'][1]}km 라 너무 큽니다. "
+                         "현을 나눠 주세요.")
+    rid = info["id"]
+    with COMBO_LOCK:
+        if _combo_running():
+            return jsonify({"error": "다른 조합을 빌드하는 중입니다", "job": _combo_status()}), 409
+        if rid in REGIONS:
+            return jsonify({"id": rid, "state": "ready"})
+        COMBO_JOB.update(id=rid, prefectures=prefs, names=info["names"], k=0, step="준비",
+                         detail="", started=time.time(), ended=None, ok=None, error=None)
+        threading.Thread(target=_run_combo, args=(rid, prefs), daemon=True).start()
+    return jsonify({"id": rid, "state": "building", "job": _combo_status()})
+
+
+@app.post("/api/combo/delete")
+def combo_delete():
+    """만든 조합을 서버에서 내리고 폴더째 지운다.
+
+    윈도우는 열어 둔 파일을 못 지운다. 권역을 REGIONS 에서 빼고 쓰레기를
+    거두어야 npz 파일이 닫히므로, 몇 번 다시 해 본 뒤에도 안 되면 그대로
+    알린다(대개 계산 중인 요청이 붙들고 있다).
+    """
+    import gc
+    import shutil
+
+    if not _from_this_machine():
+        return jsonify({"error": "서버를 띄운 컴퓨터에서만 할 수 있습니다"}), 403
+    rid = str((request.get_json(silent=True) or {}).get("id") or request.args.get("id") or "")
+    if not re.fullmatch(make_region.PREFIX + r"[0-9_]+", rid):
+        raise BadRequest(f"현 조합 권역 id 가 아닙니다: {rid!r}")
+    if _combo_running() and COMBO_JOB["id"] == rid:
+        raise BadRequest("지금 만드는 중인 조합입니다. 끝난 뒤에 지워 주세요.")
+    base = region_mod.REGIONS_DIR / rid
+    if not base.exists():
+        return jsonify({"id": rid, "deleted": True})
+    REGIONS.pop(rid, None)
+    err = None
+    for _ in range(6):
+        gc.collect()
+        try:
+            shutil.rmtree(base)
+            err = None
+            break
+        except OSError as e:      # 아직 열려 있는 파일이 있다
+            err = e
+            time.sleep(0.5)
+    if err is not None:
+        return jsonify({"error": f"지우지 못했습니다: {err}"}), 409
+    print(f"현 조합 {rid} 를 지웠습니다", flush=True)
+    return jsonify({"id": rid, "deleted": True})
+
+
+@app.post("/api/combo/open")
+def combo_open():
+    """빌드는 끝났는데 서버에 안 올라간 조합(명령줄로 만든 것 등)을 올린다."""
+    if not _from_this_machine():
+        return jsonify({"error": "서버를 띄운 컴퓨터에서만 할 수 있습니다"}), 403
+    rid = str((request.get_json(silent=True) or {}).get("id") or request.args.get("id") or "")
+    if not re.fullmatch(make_region.PREFIX + r"[0-9_]+", rid):
+        raise BadRequest(f"현 조합 권역 id 가 아닙니다: {rid!r}")
+    state = _combo_state(rid)
+    if state == "built":
+        REGIONS[rid] = region_mod.load(rid)
+        state = "ready"
+    return jsonify({"id": rid, "state": state})
 
 
 @app.get("/api/stations")

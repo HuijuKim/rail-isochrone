@@ -130,7 +130,9 @@ def load(region_id: str) -> Region:
 
     # 손으로 적은 것이 짐작(3)보다 먼저다. JR伊東線 은 도카이 권역에서
     # 흔한 JR도카이로 짐작되지만 JR동일본 노선이다.
-    hand = _line_operators().get(region_id, {})
+    from regional import merge_books
+
+    hand = merge_books(_line_operators(), region_id)
     for r in railways.values():
         if (r.get("operator") or "").strip():
             continue
@@ -1207,7 +1209,11 @@ def railway_shapes(geometry, railways: dict, stops: dict, coords: np.ndarray,
                     continue
                 arc = np.asarray(got, dtype=np.float64)
                 straight = _dist_m(coords[a], coords[b])
-                if _path_len_m(arc) > straight * geometry_mod.MAX_DETOUR_RATIO:
+                # 선로를 따라 찾아 둔 구간은 길이로 거르지 않는다. 스위치백
+                # (木次線 出雲坂根)이나 회차선처럼 실제로 크게 도는 선로가
+                # 지도에서 통째로 끊겼다. 경로 쪽은 이미 이렇게 하고 있다.
+                if (src != geometry_mod.TRACK_SRC
+                        and _path_len_m(arc) > straight * geometry_mod.MAX_DETOUR_RATIO):
                     if len(path) >= 2:
                         pieces.append(path)
                         spans.append((start, end))

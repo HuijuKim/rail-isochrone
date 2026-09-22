@@ -23,6 +23,7 @@ BASE = DATA / "regions" / REGION
 # 읽을 추출본은 build_walk 와 같은 목록을 쓴다. 야마나시·시즈오카 경계는
 # 주부 추출본에만 있다.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import osmcache  # noqa: E402
 from build_walk import PBFS  # noqa: E402
 
 # 도도부현
@@ -458,7 +459,8 @@ def check_outline(lines, scale):
 #
 # 켤 때만 쓴다. PBF 를 새로 받았으면 그냥 전부 다시 돌린다.
 def _poly_cache_path():
-    return BASE / "raw" / "admin-polygons.npz"
+    # 행정경계는 추출본에만 매인다. 권역 폴더가 아니라 공용 캐시에 둔다.
+    return osmcache.files("admin", PBFS, ".npz")[0]
 
 
 def _save_polygons(polygons, labels) -> None:
@@ -476,6 +478,7 @@ def _save_polygons(polygons, labels) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(
         path,
+        stamp=np.array(json.dumps(osmcache.stamp(PBFS, prefecture_polygons))),
         names=np.array(names, dtype=object),
         labels=np.array(json.dumps(labels, ensure_ascii=False)),
         owner=np.array(owner, dtype=np.int32),
@@ -489,6 +492,9 @@ def _load_polygons():
     if not path.exists():
         return None, None
     z = np.load(path, allow_pickle=True)
+    if "stamp" not in z or json.loads(str(z["stamp"])) != osmcache.stamp(PBFS, prefecture_polygons):
+        print("  (저장해 둔 행정경계가 지금 파일·코드와 안 맞아 다시 훑는다)", flush=True)
+        return None, None
     names = [str(x) for x in z["names"]]
     labels = json.loads(str(z["labels"]))
     pts, ptr, owner = z["pts"], z["ptr"], z["owner"]
@@ -506,15 +512,15 @@ def main() -> None:
     if not stops_path.exists():
         sys.exit(f"역 목록이 없습니다: {stops_path}")
 
+    # ADMIN_REUSE 는 "3) 권역 경계 자르기" 를 건너뛸지만 정한다. 행정경계
+    # 자체는 추출본에만 매이므로 도장이 맞으면 언제나 다시 쓴다.
+    # 결과를 담을 자리. 예전에는 행정경계 캐시를 권역 폴더에 쓰면서 덩달아
+    # 생겼는데, 캐시를 공용으로 옮긴 뒤로는 여기서 만들어야 한다.
+    (BASE / "raw").mkdir(parents=True, exist_ok=True)
     reuse = os.environ.get("ADMIN_REUSE") == "1"
-    polygons = labels = None
-    if reuse:
-        polygons, labels = _load_polygons()
-        if polygons:
-            print(f"1) 저장해 둔 행정경계를 다시 쓴다 (현 {len(polygons)}개)",
-                  flush=True)
-        else:
-            reuse = False
+    polygons, labels = _load_polygons()
+    if polygons:
+        print(f"1) 저장해 둔 행정경계를 다시 쓴다 (현 {len(polygons)}개)", flush=True)
     if not polygons:
         print("1) 행정경계 추출", flush=True)
         polygons, labels = prefecture_polygons()

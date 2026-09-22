@@ -56,6 +56,9 @@ PROBES = {
         ("오사카만 한가운데", 135.25, 34.50, False),
         ("와카사만", 135.50, 35.65, False),
         ("나고야", 136.882, 35.171, False),
+        # 미에는 도카이 권역에 있다. 간사이와 함께 보려면 현 조합으로 만든다.
+        ("쓰", 136.509, 34.734, False),
+        ("이가우에노", 136.137, 34.767, False),
     ],
     "tokai": [
         ("나고야", 136.882, 35.171, True),
@@ -76,7 +79,8 @@ PROBES = {
         ("오이타", 131.6065, 33.2334, True),
         ("가고시마추오", 130.5413, 31.5838, True),
         ("미야자키", 131.4309, 31.9160, True),
-        ("시모노세키", 130.9230, 33.9496, True),
+        # 야마구치는 주고쿠 권역으로 옮겼다. 규슈와 함께 보려면 현 조합으로 만든다.
+        ("시모노세키", 130.9230, 33.9496, False),
         ("겐카이나다", 130.20, 33.90, False),
         ("히로시마", 132.475, 34.397, False),
         ("부산", 129.04, 35.10, False),
@@ -141,9 +145,11 @@ FAR_NEIGHBOUR_KM = 20.0
 
 
 def _regions():
+    """기존 권역만. 현 조합 권역(make_region.py)은 쓰는 사람마다 달라 기준선이 없다."""
     import region as region_mod
+    from regional import is_custom
 
-    return region_mod.available()
+    return [r for r in region_mod.available() if not is_custom(r)]
 
 
 @pytest.fixture(scope="session")

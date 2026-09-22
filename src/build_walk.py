@@ -21,6 +21,8 @@ from pathlib import Path
 
 import numpy as np
 
+import osmcache
+
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
 REGION = os.environ.get("REGION", "kanto")
@@ -675,15 +677,15 @@ def _save_coast_chains(lon: np.ndarray, lat: np.ndarray, bounds: list) -> None:
           flush=True)
 
 
-def build_land_mask() -> dict:
-    """OSM 해안선으로 육지 마스크를 만든다.
+class _Bag:
+    """핸들러 자리에 끼울 껍데기."""
 
-    해안선 way 는 육지를 왼쪽에 두고 그려진다는 규약이 있지만, 조각조각
-    끊겨 있어 그대로 이어 붙이기는 까다롭다. 대신 해안선을 격자에 굽고
-    바깥에서 물을 채워 들어가, 닿지 않은 곳을 육지로 본다.
-    """
+
+def _coastline():
+    """해안선 점과 way 경계. 추출본에만 매이므로 공용 캐시에 둔다."""
+    import json
+
     import osmium
-    from scipy import ndimage
 
     class Coast(osmium.SimpleHandler):
         def __init__(self) -> None:
@@ -707,6 +709,18 @@ def build_land_mask() -> dict:
                 return
             self.bounds.append(self.bounds[-1] + n)
 
+    npz_path, json_path = osmcache.files("coast", PBFS)
+    if os.environ.get("COAST_RESCAN") != "1" and npz_path.exists():
+        meta = osmcache.read_meta(json_path, PBFS, Coast)
+        if meta is not None:
+            try:
+                z = np.load(npz_path)
+                lon, lat, bounds = z["lon"], z["lat"], z["bounds"].tolist()
+                print(f"  저장해 둔 해안선을 다시 쓴다 (점 {len(lon):,}개)", flush=True)
+                return lon, lat, bounds
+            except (OSError, ValueError) as e:
+                print(f"  (저장해 둔 해안선을 못 읽었다: {e})", flush=True)
+
     print("  해안선 추출 중...", flush=True)
     h = Coast()
     for path in PBFS:
@@ -714,11 +728,60 @@ def build_land_mask() -> dict:
     lon = np.array(h.lon)
     lat = np.array(h.lat)
     print(f"  해안선 점 {len(lon):,}개", flush=True)
+    try:
+        np.savez_compressed(npz_path, lon=lon, lat=lat,
+                            bounds=np.asarray(h.bounds, dtype=np.int64))
+        json_path.write_text(json.dumps({"stamp": osmcache.stamp(PBFS, Coast)}),
+                             encoding="utf-8")
+    except Exception as e:          # 캐시를 못 써도 빌드는 계속한다
+        print(f"  (해안선을 저장하지 못했다: {e})", flush=True)
+    return lon, lat, h.bounds
+
+
+def _sea_by_coast_side(lon, lat, bounds, labels, lon0, lat0, m_lon, w, hgt,
+                       offset_cells=1.5) -> set:
+    """해안선 오른쪽(바다)과 왼쪽(육지)에 표본을 찍어 면마다 표를 센다."""
+    fx = (np.asarray(lon) - lon0) * m_lon / LAND_CELL_M
+    fy = (np.asarray(lat) - lat0) * M_PER_DEG_LAT / LAND_CELL_M
+    a = np.arange(len(fx) - 1)
+    seam = np.zeros(len(a), dtype=bool)
+    seam[np.array(bounds[1:-1], dtype=np.int64) - 1] = True
+    a = a[~seam]
+    dx, dy = fx[a + 1] - fx[a], fy[a + 1] - fy[a]
+    length = np.hypot(dx, dy)
+    ok = length > 0.05
+    a, dx, dy, length = a[ok], dx[ok], dy[ok], length[ok]
+    mx, my = (fx[a] + fx[a + 1]) / 2, (fy[a] + fy[a + 1]) / 2
+    nx, ny = dy / length, -dx / length          # 진행 방향의 오른쪽
+    n_lab = int(labels.max())
+
+    def votes(sign):
+        sx = np.floor(mx + sign * nx * offset_cells).astype(np.int64)
+        sy = np.floor(my + sign * ny * offset_cells).astype(np.int64)
+        inb = (sx >= 0) & (sx < w) & (sy >= 0) & (sy < hgt)
+        return np.bincount(labels[sy[inb], sx[inb]], minlength=n_lab + 1)
+
+    sea_v, land_v = votes(+1.0), votes(-1.0)
+    return {k for k in range(1, n_lab + 1) if sea_v[k] > land_v[k]}
+
+
+def build_land_mask() -> dict:
+    """OSM 해안선으로 육지 마스크를 만든다.
+
+    해안선 way 는 육지를 왼쪽에 두고 그려진다는 규약이 있지만, 조각조각
+    끊겨 있어 그대로 이어 붙이기는 까다롭다. 대신 해안선을 격자에 굽고
+    바깥에서 물을 채워 들어가, 닿지 않은 곳을 육지로 본다.
+    """
+    from scipy import ndimage
+
+    lon, lat, bounds = _coastline()
+    h = _Bag()
+    h.bounds = bounds
 
     # 해안선을 끝점끼리 이어 사슬로 만들어 저장한다. 권역 경계를 바다에서
     # 자를 때, 격자로 깎는 대신 이 좌표를 그대로 쓴다. 최단경로로 잇지
     # 않고 사슬을 따라가야 만 안쪽까지 제대로 돈다.
-    _save_coast_chains(lon, lat, h.bounds)
+    _save_coast_chains(lon, lat, bounds)
 
     m_lon = 111_320.0 * np.cos(np.radians(GRID_LAT_REF))
     lon0, lat0 = float(lon.min()) - 0.3, float(lat.min()) - 0.3
@@ -791,19 +854,29 @@ def build_land_mask() -> dict:
     # 점은 아무 일도 하지 않으므로, 간토 좌표를 그대로 둔 채 간사이를
     # 빌드하면 시드가 하나도 바다에 닿지 않아 전부 육지가 된다.
     seeds = _GRID.get("ocean_seeds") if isinstance(_GRID, dict) else None
-    OCEAN_SEEDS = [tuple(x) for x in seeds] if seeds else [
-        (142.0, 35.5),   # 지바 동쪽 먼바다
-        (140.0, 33.0),   # 남쪽 먼바다
-        (139.0, 34.3),   # 사가미나다
-        (141.5, 30.0),   # 이즈 제도 앞바다
-    ]
-    sea_labels = set()
-    for slon, slat in OCEAN_SEEDS:
-        cx, cy = to_cell(np.array([slon]), np.array([slat]))
-        if 0 <= cx[0] < w and 0 <= cy[0] < hgt:
-            lab = int(labels[cy[0], cx[0]])
-            if lab > 0:
-                sea_labels.add(lab)
+    if seeds == "auto" or os.environ.get("LAND_AUTO") == "1":
+        # 시드를 사람이 찍지 않는다. OSM 해안선은 오른쪽이 늘 바다다.
+        # 해안선 양옆에 표본을 찍어, 갈라진 면마다 바다 쪽 표본이 더
+        # 많으면 바다로 본다. 북도호쿠에서 陸奥湾 시드를 夏泊半島 위에
+        # 찍어 육지가 통째로 바다가 된 일이 다시 없게 한다.
+        OCEAN_SEEDS = []
+        sea_labels = _sea_by_coast_side(lon, lat, h.bounds, labels,
+                                        lon0, lat0, m_lon, w, hgt)
+        print(f"  바다 면 {len(sea_labels)}개를 해안선 방향으로 가렸다", flush=True)
+    else:
+        OCEAN_SEEDS = [tuple(x) for x in seeds] if seeds else [
+            (142.0, 35.5),   # 지바 동쪽 먼바다
+            (140.0, 33.0),   # 남쪽 먼바다
+            (139.0, 34.3),   # 사가미나다
+            (141.5, 30.0),   # 이즈 제도 앞바다
+        ]
+        sea_labels = set()
+        for slon, slat in OCEAN_SEEDS:
+            cx, cy = to_cell(np.array([slon]), np.array([slat]))
+            if 0 <= cx[0] < w and 0 <= cy[0] < hgt:
+                lab = int(labels[cy[0], cx[0]])
+                if lab > 0:
+                    sea_labels.add(lab)
 
     sea = np.isin(labels, sorted(sea_labels)) if sea_labels else np.zeros_like(free)
     land = ~sea          # 해안선 자체도 육지로 친다

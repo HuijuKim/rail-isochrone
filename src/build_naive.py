@@ -155,7 +155,9 @@ def _line_headways():
     path = ROOT / "data" / "line-headways.json"
     if not path.exists():
         return {}
-    got = json.loads(path.read_text(encoding="utf-8")).get(REGION) or {}
+    from regional import book_for
+
+    got = book_for(path, REGION)
     return {k: v for k, v in got.items() if isinstance(v, dict)}
 
 

@@ -30,6 +30,9 @@ from pathlib import Path
 import numpy as np
 import osmium
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import osmcache  # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent
 REGION = os.environ.get("REGION", "kanto_osm")
 BASE = ROOT / "data" / "regions" / REGION
@@ -45,6 +48,20 @@ SNAP_TRIES = 12             # 가까운 선로 노드 몇 개까지 시도할지
 # 애써 찾은 경로가 그쪽에서 버려지고 더 거친 선형이 대신 뽑힌다.
 MAX_RATIO = 2.4
 MIN_CAP_M = 2500.0
+# 스위치백은 되짚어 올라가므로 선로가 직선의 몇 배가 된다. 木次線 出雲坂根 은
+# 3단이라 직선 1.9km 에 선로 6.4km 다. 사전(data/switchbacks.json)에 적힌 역이
+# 걸린 구간만 한도를 늘린다.
+SWITCHBACK_RATIO = 6.0
+SWITCHBACK_MIN_M = 8000.0
+
+
+def _switchbacks() -> dict:
+    path = ROOT / "data" / "switchbacks.json"
+    try:
+        got = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return {k: set(v) for k, v in got.items() if isinstance(v, list)}
 
 # 웨이 이름에서 떼어낼 사업자·종별 표기. 半蔵門線 과 東京メトロ半蔵門線 을
 # 같은 것으로 보기 위한 것이다.
@@ -120,6 +137,51 @@ def _way_attrs(tags):
             num(tags.get("maxspeed")),
             None if elec is None else elec != "no",
             None if tracks is None else tracks >= 2)
+
+
+def _load_tracks(pbfs):
+    """저장해 둔 선로 훑기. 도장이 안 맞으면 None."""
+    npz_path, json_path = osmcache.files("track", pbfs)
+    meta = (osmcache.read_meta(json_path, pbfs, Tracks, _way_attrs)
+            if npz_path.exists() else None)
+    if meta is None:
+        return None
+    try:
+        z = np.load(npz_path)
+    except (OSError, ValueError) as e:
+        print(f"  (저장해 둔 선로 훑기를 못 읽었다: {e})", flush=True)
+        return None
+    tr = _Bag()
+    refs, ptr = z["refs"], z["ptr"]
+    tr.ways = [refs[ptr[i]:ptr[i + 1]].tolist() for i in range(len(ptr) - 1)]
+    tr.names = meta["names"]
+    tr.attrs = [tuple(a) for a in meta["attrs"]]
+    ids, xy = z["node_ids"], z["node_xy"]
+    tr.pos = {int(n): (float(xy[i, 0]), float(xy[i, 1])) for i, n in enumerate(ids)}
+    return tr
+
+
+def _save_tracks(pbfs, tr) -> None:
+    npz_path, json_path = osmcache.files("track", pbfs)
+    ptr = np.cumsum([0] + [len(w) for w in tr.ways])
+    ids = sorted(tr.pos)
+    np.savez_compressed(
+        npz_path,
+        refs=(np.concatenate([np.asarray(w, dtype=np.int64) for w in tr.ways])
+              if tr.ways else np.zeros(0, dtype=np.int64)),
+        ptr=np.asarray(ptr, dtype=np.int64),
+        node_ids=np.asarray(ids, dtype=np.int64),
+        node_xy=np.asarray([tr.pos[n] for n in ids], dtype=np.float64).reshape(-1, 2),
+    )
+    json_path.write_text(json.dumps({
+        "stamp": osmcache.stamp(pbfs, Tracks, _way_attrs),
+        "names": tr.names,
+        "attrs": tr.attrs,
+    }, ensure_ascii=False), encoding="utf-8")
+
+
+class _Bag:
+    """핸들러 자리에 끼울 껍데기."""
 
 
 def build_edges(ways, pos, scale):
@@ -218,6 +280,9 @@ def route(graph, dijkstra, srcs, targets, cap, xy):
     return xy[best], int(best[0]), int(best[-1])
 
 
+SWITCHBACKS = _switchbacks()
+
+
 def main() -> None:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from build_rail import _pbf_list
@@ -243,9 +308,17 @@ def main() -> None:
     pbfs = _pbf_list()
     print("[" + REGION + "] 선로 읽는 중: "
           + ", ".join(p.name for p in pbfs), flush=True)
-    tr = Tracks()
-    for p in pbfs:
-        tr.apply_file(str(p), locations=True, idx="flex_mem")
+    tr = None if os.environ.get("TRACK_RESCAN") == "1" else _load_tracks(pbfs)
+    if tr is not None:
+        print(f"  저장해 둔 선로 훑기를 다시 쓴다", flush=True)
+    else:
+        tr = Tracks()
+        for p in pbfs:
+            tr.apply_file(str(p), locations=True, idx="flex_mem")
+        try:
+            _save_tracks(pbfs, tr)
+        except Exception as e:      # 캐시를 못 써도 빌드는 계속한다
+            print(f"  (선로 훑기를 저장하지 못했다: {e})", flush=True)
     print(f"  철도 웨이 {len(tr.ways):,}개, 선로 노드 {len(tr.pos):,}개", flush=True)
 
     edges, xy, x, y = build_edges(tr.ways, tr.pos, scale)
@@ -372,6 +445,11 @@ def main() -> None:
         # 벌점을 주면 필요할 때만 남의 선로로 넘어간다. 직통운전은
         # 실제로 남의 선로를 달리므로 막아서는 안 된다.
         key = norm_line(r["title"].get("ja", ""))
+        title_ja = r["title"].get("ja", "")
+        # 이 노선의 스위치백 역. 아래 구간 반복문이 sb 를 역 id 로 쓰므로
+        # 이름을 겹치지 않게 둔다.
+        sb_at = SWITCHBACKS.get(title_ja) or SWITCHBACKS.get(
+            re.sub(r"\s*[(（].*$", "", title_ja)) or set()
         sub = pen = own_nodes = None
         if key:
             mask = np.array([any(k == key or k in key or key in k for k in ks)
@@ -427,6 +505,8 @@ def main() -> None:
                 (cpos[b][0] - cpos[a][0]) * scale * 111_320.0,
                 (cpos[b][1] - cpos[a][1]) * 111_132.0))
             cap = max(straight * MAX_RATIO, MIN_CAP_M)
+            if sb_at and (cname.get(a) in sb_at or cname.get(b) in sb_at):
+                cap = max(straight * SWITCHBACK_RATIO, SWITCHBACK_MIN_M)
 
             def find(srcs):
                 if sub is not None:

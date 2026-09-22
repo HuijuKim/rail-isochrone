@@ -4,6 +4,8 @@ config.json
 # 내려받거나 빌드해서 만드는 데이터 (680 MB).
 # README 의 순서대로 돌리면 그대로 재현된다.
 data/osm/
+# 추출본을 훑은 결과. 추출본만 있으면 다시 만들어진다.
+data/cache/
 data/regions/*/raw/
 data/regions/*/walk/
 data/regions/*/stops.json
@@ -12,6 +14,9 @@ data/regions/*/prefectures.json
 
 # 권역 설정 자체는 코드에 가깝다. 이것만 남긴다.
 !data/regions/*/region.json
+
+# 현 조합 탭(make_region.py)으로 만든 권역은 쓰는 사람마다 다르다. 통째로 뺀다.
+data/regions/custom_*/
 
 # 주문 목록과 구현 현황. 작업용 메모라 저장소에는 올리지 않는다.
 REQUESTS.md

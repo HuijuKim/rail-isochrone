@@ -55,6 +55,10 @@
   "color": "#36b558",
   "source": "ja.wikipedia:久大本線"
  },
+ "JR予讃線 (松山=>高松)": {
+  "color": "#fbaf18",
+  "source": "ja.wikipedia:予讃線"
+ },
  "JR五日市線": {
   "color": "#f15a22",
   "source": "ja.wikipedia:JR五日市線"
@@ -1517,6 +1521,10 @@
  },
  "南阿蘇鉄道高森線": {
   "color": "#54ad28",
+  "source": "지어냄"
+ },
+ "南風": {
+  "color": "#28ad81",
   "source": "지어냄"
  },
  "叡山電鉄叡山本線": {
@@ -3218,5 +3226,9 @@
  "鹿島臨海鉄道大洗鹿島線（上り）": {
   "color": "#2866ad",
   "source": "지어냄"
+ },
+ "黒部峡谷鉄道本線": {
+  "color": "#dd793d",
+  "source": "ja.wikipedia:黒部峡谷鉄道本線"
  }
 }

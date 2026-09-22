@@ -254,9 +254,11 @@ details#walk-advanced[open] > summary::before { content: "▾ "; }
   padding: 7px 9px; cursor: pointer;
 }
 .results button:hover { background: var(--surface-2); }
-.results .name { display: flex; align-items: baseline; gap: 8px; }
-.results .ja { font-weight: 700; }
-.results .ko { color: var(--muted); font-size: var(--step-1); }
+/* 이름이 길어 한 줄에 안 들어가면 일본어와 번역을 각자 제 줄에 둔다. 예전에는
+   둘 다 가운데서 줄이 바뀌어 "あしかがフラワーパー / ク" 처럼 쪼개졌다. */
+.results .name { display: flex; flex-wrap: wrap; align-items: baseline; gap: 1px 8px; }
+.results .ja { font-weight: 700; flex: 0 0 auto; max-width: 100%; }
+.results .ko { color: var(--muted); font-size: var(--step-1); flex: 0 0 auto; max-width: 100%; }
 .results .ops {
   font-size: var(--step-2); color: var(--muted);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -270,6 +272,75 @@ details#walk-advanced[open] > summary::before { content: "▾ "; }
 }
 input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 .hint { font-size: var(--step-1); color: var(--muted); margin: 0; }
+
+/* 권역 / 현 조합 탭. 만든 조합은 권역 목록과 섞지 않고 따로 모은다. */
+.tabs { display: flex; gap: 18px; border-bottom: 1px solid var(--line-soft); }
+.tabs [role="tab"] {
+  font: inherit; font-size: var(--step-1); font-weight: 500;
+  letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted); background: none; border: 0;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  padding: 2px 0 6px; cursor: pointer;
+}
+.tabs [role="tab"]:hover { color: var(--ink-2); }
+.tabs [role="tab"][aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.combo { display: flex; flex-direction: column; gap: 14px; }
+.combo .legend-title { margin-bottom: 6px; }
+.combo-list, .combo-areas { display: flex; flex-direction: column; gap: 5px; }
+.combo-row { display: flex; align-items: stretch; gap: 6px; }
+.combo-row .combo-item { flex: 1 1 auto; min-width: 0; }
+.combo-del { flex: none; width: 30px; font-size: var(--step0); line-height: 1; }
+.combo-del:hover { color: var(--warn); border-color: var(--warn); }
+.combo-item {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  width: 100%; text-align: start; font: inherit; font-size: var(--step-1);
+  color: var(--ink); background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 7px 10px; cursor: pointer;
+}
+.combo-item:hover { border-color: var(--accent); }
+.combo-item[aria-current="true"] { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+.combo-item .meta {
+  font-family: var(--mono); font-size: var(--step-2); color: var(--muted);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.combo-area { display: grid; grid-template-columns: 5.4em 1fr; gap: 8px; align-items: start; }
+.combo-area .area { font-size: var(--step-2); color: var(--muted); padding-top: 4px; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip {
+  font: inherit; font-size: var(--step-1); line-height: 1.35;
+  color: var(--ink-2); background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: 999px;
+  padding: 2px 9px; cursor: pointer;
+}
+.chip:hover { border-color: var(--accent); color: var(--ink); }
+.chip[aria-pressed="true"] { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
+.chip:disabled { opacity: .4; cursor: default; }
+.chip:disabled:hover { border-color: var(--line); color: var(--ink-2); }
+.combo-plan { font-size: var(--step-1); color: var(--ink-2); margin: 0; display: flex; flex-direction: column; gap: 2px; }
+.combo-plan:empty { display: none; }
+.combo .warn { color: var(--warn); }
+.combo-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.primary-btn {
+  font: inherit; font-size: var(--step-1); font-weight: 700;
+  color: var(--accent-ink); background: var(--accent);
+  border: 0; border-radius: var(--radius); padding: 8px 14px; cursor: pointer;
+}
+.primary-btn:disabled { opacity: .45; cursor: default; }
+.combo-job {
+  border: 1px solid var(--line); border-left: 3px solid var(--accent);
+  border-radius: var(--radius); background: var(--surface-2);
+  padding: 10px 12px; display: flex; flex-direction: column; gap: 6px;
+  font-size: var(--step-1);
+}
+.combo-job.failed { border-left-color: var(--warn); }
+.combo-job .bar { height: 4px; background: var(--line-soft); border-radius: 2px; overflow: hidden; }
+.combo-job .bar > span { display: block; height: 100%; background: var(--accent); transition: width .4s; }
+.combo-job .detail {
+  font-family: var(--mono); font-size: var(--step-2); color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.combo-job .linkish { align-self: flex-start; }
 
 /* ---------- 도착지 결과 ---------- */
 .verdict {
@@ -605,8 +676,33 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 
     <div class="controls">
       <div class="field" id="field-region" hidden>
-        <label for="region" data-i18n="region">권역</label>
-        <select id="region"></select>
+        <div class="tabs" role="tablist">
+          <button type="button" role="tab" id="tab-preset" aria-selected="true"
+                  aria-controls="pane-preset" data-i18n="tabPreset">권역</button>
+          <button type="button" role="tab" id="tab-combo" aria-selected="false"
+                  aria-controls="pane-combo" data-i18n="tabCombo">현 조합</button>
+        </div>
+        <div id="pane-preset" role="tabpanel" aria-labelledby="tab-preset">
+          <select id="region" aria-labelledby="tab-preset"></select>
+        </div>
+        <div id="pane-combo" class="combo" role="tabpanel" aria-labelledby="tab-combo" hidden>
+          <div>
+            <p class="legend-title" data-i18n="comboMade">만든 조합</p>
+            <div class="combo-list" id="combo-made"></div>
+          </div>
+          <div class="combo-job" id="combo-job" role="status" hidden></div>
+          <div>
+            <p class="legend-title" data-i18n="comboPick">현 고르기</p>
+            <div class="combo-areas" id="combo-areas"></div>
+          </div>
+          <p class="combo-plan" id="combo-plan"></p>
+          <div class="combo-actions">
+            <button type="button" class="primary-btn" id="combo-build" disabled
+                    data-i18n="comboBuild">이 조합 만들기</button>
+            <button type="button" class="linkish" id="combo-clear" data-i18n="comboClear">선택 지우기</button>
+          </div>
+          <p class="hint" data-i18n="comboHint">고른 현을 한 권역으로 새로 빌드합니다. 10-40분 걸리고, 그동안 다른 권역은 그대로 쓸 수 있습니다. 현 경계를 넘는 노선도 끊기지 않습니다.</p>
+        </div>
       </div>
 
       <div class="field search" id="field-origin">
@@ -888,6 +984,22 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       googleTrouble: "구글 지도에 문제가 생겨 OpenStreetMap 으로 표시합니다 — {msg}",
       googleLoadFailed: "구글 지도를 불러오지 못했습니다", googleNoResponse: "구글 지도 응답 없음",
       regionFailed: "권역을 불러오지 못했습니다", regionListFailed: "권역 목록을 받지 못했습니다",
+      tabPreset: "권역", tabCombo: "현 조합", comboMade: "만든 조합",
+      comboNone: "아직 만든 조합이 없습니다.", comboPick: "현 고르기",
+      comboBuild: "이 조합 만들기", comboOpen: "열기", comboLoad: "서버에 올려 열기",
+      comboRebuild: "다시 만들기", comboBuilding: "만드는 중", comboClear: "선택 지우기",
+      comboHint: "고른 현을 한 권역으로 새로 빌드합니다. 10-40분 걸리고, 그동안 다른 권역은 그대로 쓸 수 있습니다. 현 경계를 넘는 노선도 끊기지 않습니다.",
+      comboSize: "격자 {w}×{h} km · 추출본 {ex}",
+      comboHeavy: "격자가 커서 빌드에 메모리가 많이 듭니다.",
+      comboTooBig: "너무 넓어 만들 수 없습니다. 현을 나눠 주세요.",
+      comboMissing: "추출본 {ex} 을 먼저 내려받습니다(수백 MB).",
+      comboLocalOnly: "빌드는 서버를 띄운 컴퓨터에서만 할 수 있습니다.",
+      comboStep: "{k}/{n} 단계 · {min}분째", comboDone: "다 만들었습니다 ({min}분)",
+      comboFailed: "빌드 실패: {msg}", comboListFailed: "현 목록을 받지 못했습니다: {msg}",
+      comboStateBuilt: "빌드됨", comboStateIncomplete: "미완성", comboStateBuilding: "만드는 중",
+      comboAdjacent: "고른 현과 이어진 현만 켜집니다. 다리로 이어진 곳(岡山·香川)도 이어진 것으로 봅니다.",
+      comboDelete: "지우기", comboDeleteAsk: "{name} 을(를) 지울까요? 만들어 둔 데이터가 사라집니다.",
+      comboDeleteFailed: "지우지 못했습니다",
       stationCount: "(역 {n})"
     },
     ja: {
@@ -975,6 +1087,22 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       googleTrouble: "Google マップに問題が起きたため OpenStreetMap で表示します — {msg}",
       googleLoadFailed: "Google マップを読み込めませんでした", googleNoResponse: "Google マップの応答がありません",
       regionFailed: "エリアを読み込めませんでした", regionListFailed: "エリア一覧を取得できませんでした",
+      tabPreset: "エリア", tabCombo: "県の組み合わせ", comboMade: "作った組み合わせ",
+      comboNone: "まだ組み合わせはありません。", comboPick: "県を選ぶ",
+      comboBuild: "この組み合わせを作る", comboOpen: "開く", comboLoad: "読み込んで開く",
+      comboRebuild: "作り直す", comboBuilding: "作成中", comboClear: "選択を解除",
+      comboHint: "選んだ県をひとつのエリアとして新しくビルドします。10-40分かかり、その間もほかのエリアはそのまま使えます。県境をまたぐ路線も途切れません。",
+      comboSize: "格子 {w}×{h} km · 抽出データ {ex}",
+      comboHeavy: "格子が大きく、ビルドに多くのメモリを使います。",
+      comboTooBig: "範囲が広すぎて作れません。県を分けてください。",
+      comboMissing: "先に抽出データ {ex} をダウンロードします（数百MB）。",
+      comboLocalOnly: "ビルドはサーバーを起動したパソコンでのみ行えます。",
+      comboStep: "{k}/{n} 段階 · {min}分経過", comboDone: "完成しました（{min}分）",
+      comboFailed: "ビルド失敗: {msg}", comboListFailed: "県の一覧を取得できませんでした: {msg}",
+      comboStateBuilt: "ビルド済み", comboStateIncomplete: "未完成", comboStateBuilding: "作成中",
+      comboAdjacent: "選んだ県と隣り合う県だけ選べます。橋でつながる県（岡山・香川）も隣として扱います。",
+      comboDelete: "削除", comboDeleteAsk: "{name} を削除しますか？ 作成したデータは消えます。",
+      comboDeleteFailed: "削除できませんでした",
       stationCount: "(駅 {n})"
     },
     en: {
@@ -1062,6 +1190,22 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       googleTrouble: "Google Maps had a problem, showing OpenStreetMap — {msg}",
       googleLoadFailed: "Could not load Google Maps", googleNoResponse: "No response from Google Maps",
       regionFailed: "Could not load the region", regionListFailed: "Could not get the region list",
+      tabPreset: "Regions", tabCombo: "Combine prefectures", comboMade: "Your combinations",
+      comboNone: "No combinations yet.", comboPick: "Pick prefectures",
+      comboBuild: "Build this combination", comboOpen: "Open", comboLoad: "Load and open",
+      comboRebuild: "Build again", comboBuilding: "Building", comboClear: "Clear",
+      comboHint: "Builds the selected prefectures as one new region. It takes 10-40 minutes, and the other regions stay usable meanwhile. Lines that cross prefecture borders stay connected.",
+      comboSize: "Grid {w}×{h} km · extracts {ex}",
+      comboHeavy: "Large grid: the build needs a lot of memory.",
+      comboTooBig: "Too large to build. Split the prefectures.",
+      comboMissing: "Downloads the {ex} extract first (hundreds of MB).",
+      comboLocalOnly: "Builds can only be started on the computer running the server.",
+      comboStep: "Step {k}/{n} · {min} min", comboDone: "Done ({min} min)",
+      comboFailed: "Build failed: {msg}", comboListFailed: "Could not get the prefecture list: {msg}",
+      comboStateBuilt: "built", comboStateIncomplete: "incomplete", comboStateBuilding: "building",
+      comboAdjacent: "Only prefectures next to your picks stay enabled. Bridge links (Okayama-Kagawa) count as adjacent.",
+      comboDelete: "Delete", comboDeleteAsk: "Delete {name}? The built data is removed.",
+      comboDeleteFailed: "Could not delete it",
       stationCount: "({n} stations)"
     },
     "zh-Hans": {
@@ -1149,6 +1293,22 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       googleTrouble: "Google 地图出现问题，改用 OpenStreetMap — {msg}",
       googleLoadFailed: "无法载入 Google 地图", googleNoResponse: "Google 地图无响应",
       regionFailed: "无法载入区域", regionListFailed: "无法取得区域列表",
+      tabPreset: "区域", tabCombo: "组合县", comboMade: "已建的组合",
+      comboNone: "还没有组合。", comboPick: "选择县",
+      comboBuild: "建立此组合", comboOpen: "打开", comboLoad: "载入并打开",
+      comboRebuild: "重新建立", comboBuilding: "建立中", comboClear: "清除选择",
+      comboHint: "把所选的县作为一个区域重新构建。需要10-40分钟，其间其他区域照常可用。跨越县界的线路也不会中断。",
+      comboSize: "网格 {w}×{h} km · 数据 {ex}",
+      comboHeavy: "网格较大，构建需要大量内存。",
+      comboTooBig: "范围太大，无法构建。请分开选择。",
+      comboMissing: "将先下载 {ex} 数据（数百MB）。",
+      comboLocalOnly: "只能在运行服务器的电脑上构建。",
+      comboStep: "第 {k}/{n} 步 · 已 {min} 分钟", comboDone: "已完成（{min} 分钟）",
+      comboFailed: "构建失败: {msg}", comboListFailed: "无法取得县列表: {msg}",
+      comboStateBuilt: "已构建", comboStateIncomplete: "未完成", comboStateBuilding: "建立中",
+      comboAdjacent: "只能选择与已选县相邻的县。由桥梁连接的（冈山·香川）也算相邻。",
+      comboDelete: "删除", comboDeleteAsk: "要删除 {name} 吗？已建的数据会消失。",
+      comboDeleteFailed: "无法删除",
       stationCount: "({n} 站)"
     },
     "zh-Hant": {
@@ -1236,6 +1396,22 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       googleTrouble: "Google 地圖發生問題，改用 OpenStreetMap — {msg}",
       googleLoadFailed: "無法載入 Google 地圖", googleNoResponse: "Google 地圖無回應",
       regionFailed: "無法載入區域", regionListFailed: "無法取得區域列表",
+      tabPreset: "區域", tabCombo: "組合縣", comboMade: "已建的組合",
+      comboNone: "還沒有組合。", comboPick: "選擇縣",
+      comboBuild: "建立此組合", comboOpen: "開啟", comboLoad: "載入並開啟",
+      comboRebuild: "重新建立", comboBuilding: "建立中", comboClear: "清除選擇",
+      comboHint: "把所選的縣作為一個區域重新建置。需要10-40分鐘，期間其他區域照常可用。跨越縣界的路線也不會中斷。",
+      comboSize: "網格 {w}×{h} km · 資料 {ex}",
+      comboHeavy: "網格較大，建置需要大量記憶體。",
+      comboTooBig: "範圍太大，無法建置。請分開選擇。",
+      comboMissing: "將先下載 {ex} 資料（數百MB）。",
+      comboLocalOnly: "只能在執行伺服器的電腦上建置。",
+      comboStep: "第 {k}/{n} 步 · 已 {min} 分鐘", comboDone: "已完成（{min} 分鐘）",
+      comboFailed: "建置失敗: {msg}", comboListFailed: "無法取得縣列表: {msg}",
+      comboStateBuilt: "已建置", comboStateIncomplete: "未完成", comboStateBuilding: "建立中",
+      comboAdjacent: "只能選擇與已選縣相鄰的縣。由橋樑連接的（岡山·香川）也算相鄰。",
+      comboDelete: "刪除", comboDeleteAsk: "要刪除 {name} 嗎？已建的資料會消失。",
+      comboDeleteFailed: "無法刪除",
       stationCount: "({n} 站)"
     }
   };
@@ -1330,6 +1506,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     var keep = sel.value;
     sel.textContent = "";
     regionList.forEach(function (r) {
+      if (r.custom) return;      // 현 조합 탭에 따로 모인다
       var o = document.createElement("option");
       o.value = r.id;
       o.textContent = localName(r.names) + " " + t("stationCount", { n: r.stations.toLocaleString() });
@@ -1354,6 +1531,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 
   function redrawAfterLanguage() {
     paintNotes();
+    if (combo.data) {
+      renderCombo();
+      renderPlan();
+      renderJob(combo.data.job);
+    }
     if (!mapView) return;
     buildRegionOptions();
     Object.keys(MENU).forEach(function (kind) {
@@ -2507,7 +2689,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
        ㅇㅁㄴ     -> 초성만 친 것. 초성 줄(ㅇㅁㄴㅌㅅ)에서 찾는다
 
      받침 ㅁ 과 초성 ㅁ 은 같은 글자라 "얌" 이 "야마" 의 앞이 된다.
-     글자 그대로 찾아서 나오면 그걸 쓰고, 없을 때만 자모로 본다. */
+     글자 그대로 찾아서 나오면 그걸 쓰고, 없을 때만 자모로 본다.
+
+     풀어 둔 것은 캐시에 담는다. 캐시 크기를 Object.keys 로 재던 때는
+     못 찾을 때마다 캐시를 통째로 세어서, 초성만 연달아 치면 화면이 멎었다
+     (역 2만 7천 개 x 다섯 언어 x 캐시 2만 칸). Map 은 크기를 바로 안다. */
   var CHO = ["ㄱ","ㄲ","ㄴ","ㄷ","ㄸ","ㄹ","ㅁ","ㅂ","ㅃ","ㅅ","ㅆ","ㅇ",
              "ㅈ","ㅉ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"];
   var JUNG = ["ㅏ","ㅐ","ㅑ","ㅒ","ㅓ","ㅔ","ㅕ","ㅖ","ㅗ","ㅘ","ㅙ","ㅚ","ㅛ",
@@ -2517,10 +2703,12 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
               "ㅌ","ㅍ","ㅎ"];
   var HANGUL = /[가-힣ㄱ-ㆎ]/;
   var JAMO_ONLY = /^[ㄱ-ㆎ\s]+$/;
-  var _jamoMemo = {}, _choMemo = {};
+  var _jamoMemo = new Map(), _choMemo = new Map();
+  var MEMO_MAX = 50000;
 
   function jamo(s) {
-    if (_jamoMemo[s] !== undefined) return _jamoMemo[s];
+    var hit = _jamoMemo.get(s);
+    if (hit !== undefined) return hit;
     var out = "";
     for (var i = 0; i < s.length; i++) {
       var c = s.charCodeAt(i) - 0xac00;
@@ -2528,20 +2716,23 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
         out += CHO[(c / 588) | 0] + JUNG[((c % 588) / 28) | 0] + JONG[c % 28];
       } else out += s.charAt(i);
     }
-    if (Object.keys(_jamoMemo).length > 20000) _jamoMemo = {};
-    return (_jamoMemo[s] = out);
+    if (_jamoMemo.size >= MEMO_MAX) _jamoMemo.clear();
+    _jamoMemo.set(s, out);
+    return out;
   }
 
   function chosung(s) {
-    if (_choMemo[s] !== undefined) return _choMemo[s];
+    var hit = _choMemo.get(s);
+    if (hit !== undefined) return hit;
     var out = "";
     for (var i = 0; i < s.length; i++) {
       var c = s.charCodeAt(i) - 0xac00;
       if (c >= 0 && c < 11172) out += CHO[(c / 588) | 0];
       else out += s.charAt(i);
     }
-    if (Object.keys(_choMemo).length > 20000) _choMemo = {};
-    return (_choMemo[s] = out);
+    if (_choMemo.size >= MEMO_MAX) _choMemo.clear();
+    _choMemo.set(s, out);
+    return out;
   }
 
   /* 찾은 자리. 못 찾으면 -1. 0 이면 맨 앞이라 위로 올린다. */
@@ -2549,7 +2740,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     if (!q) return -1;
     var at = hay.indexOf(q);
     if (at >= 0) return at;
-    if (!HANGUL.test(q)) return -1;
+    if (!HANGUL.test(q) || !HANGUL.test(hay)) return -1;
     at = jamo(hay).indexOf(jamo(q));
     if (at >= 0) return at === 0 ? 0 : 1;
     if (JAMO_ONLY.test(q)) {
@@ -2561,6 +2752,19 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 
   function norm(s) { return (s || "").toLowerCase(); }
 
+  /* 친 글자가 어느 말인지 보고 그 말의 이름만 뒤진다. 다섯 언어를 다 보면
+     한 글자마다 역 수의 다섯 배를 뒤지고, "ㅅ" 이 중국어 이름에 걸리는 것
+     같은 쓸모없는 일치도 늘어난다. 한자는 일본어와 중국어가 같이 쓴다. */
+  var KANA = /[\u3040-\u30ff\u31f0-\u31ff\uff66-\uff9f]/;
+  var HAN = /[\u3400-\u9fff\uf900-\ufaff]/;
+
+  function searchLangs(q) {
+    if (HANGUL.test(q)) return ["ko"];
+    if (KANA.test(q)) return ["ja"];
+    if (HAN.test(q)) return ["ja", "zh-Hans", "zh-Hant"];
+    return ["en"];
+  }
+
   function stationLabel(s) {
     return name(s);
   }
@@ -2568,13 +2772,14 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   function search(term) {
     var q = norm(term);
     if (!q) return [];
+    var langs = searchLangs(q);
     var head = [], tail = [];
     for (var i = 0; i < stations.length; i++) {
       var s = stations[i];
-      // 어느 언어로 치든 찾히게 한다. 화면 언어와 상관없이 전부 본다.
+      // 화면 언어와 상관없이 친 글자의 언어로 찾는다. 한국어 화면에서 新宿 도 된다.
       var best = -1;
-      for (var k = 0; k < LANGS.length; k++) {
-        var at = matchAt(norm(s[LANGS[k]] || ""), q);
+      for (var k = 0; k < langs.length; k++) {
+        var at = matchAt(norm(s[langs[k]] || ""), q);
         if (at === 0) { best = 0; break; }
         if (at > 0 && best !== 0) best = at;
       }
@@ -2583,52 +2788,6 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       if (head.length >= 20) break;
     }
     return head.concat(tail).slice(0, 20);
-  }
-
-  /* ---------- 다른 권역에서도 찾기 ----------
-     권역은 손으로 고르게 돼 있는데, 간토를 보는 중에 "오사카" 를 치면
-     아무것도 안 나와 검색이 고장 난 것처럼 보인다. 지금 권역에서 못
-     찾으면 다른 권역도 뒤지고, 거기 것을 고르면 권역을 바꾼다.
-     역 목록은 한 권역에 2~3천 개라 한 번 받아 두고 쓴다. */
-  var otherStations = {};      // 권역 id -> 역 목록
-  var otherPending = null;
-
-  function loadOtherRegions() {
-    if (otherPending) return otherPending;
-    var want = regionList
-      .map(function (r) { return r.id; })
-      .filter(function (id) { return id !== (el("region").value || "kanto"); });
-    otherPending = Promise.all(want.map(function (id) {
-      return getJSON("/api/stations?region=" + encodeURIComponent(id))
-        .then(function (v) { otherStations[id] = v; })
-        .catch(function () { otherStations[id] = []; });
-    }));
-    return otherPending;
-  }
-
-  function searchOther(term) {
-    var q = norm(term);
-    if (!q) return [];
-    var out = [];
-    Object.keys(otherStations).forEach(function (id) {
-      var meta = null;
-      for (var i = 0; i < regionList.length; i++) {
-        if (regionList[i].id === id) meta = regionList[i];
-      }
-      var list = otherStations[id] || [];
-      for (var k = 0; k < list.length && out.length < 20; k++) {
-        var st = list[k];
-        for (var j = 0; j < LANGS.length; j++) {
-          if (matchAt(norm(st[LANGS[j]] || ""), q) >= 0) {
-            out.push({ st: st, region: id,
-                       label: (meta && meta.names && (meta.names[LANG]
-                               || meta.names.ja)) || id });
-            break;
-          }
-        }
-      }
-    });
-    return out;
   }
 
   function attachSearch(input, box, onPick) {
@@ -2668,54 +2827,10 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       });
       box.hidden = false;
     }
-    function renderOther(list, term) {
-      list.forEach(function (row) {
-        var b = document.createElement("button");
-        b.type = "button";
-        var name = document.createElement("span");
-        name.className = "name";
-        var ja = document.createElement("span");
-        ja.className = "ja";
-        ja.textContent = row.st.ja;
-        var ko = document.createElement("span");
-        ko.className = "ko";
-        ko.textContent = row.st.ko || row.st.en;
-        name.appendChild(ja);
-        name.appendChild(ko);
-        b.appendChild(name);
-        var tag = document.createElement("span");
-        tag.className = "ops";
-        tag.textContent = row.label;
-        b.appendChild(tag);
-        b.addEventListener("click", function () {
-          input.value = row.st.ja;
-          box.hidden = true;
-          var sel = el("region");
-          sel.value = row.region;
-          try { localStorage.setItem("region", row.region); } catch (e) { /* 무시 */ }
-          // 권역을 바꾸면 역 목록이 통째로 갈리므로, 다 올라온 뒤에 고른다.
-          loadRegion(row.region).then(function () {
-            var pick = null;
-            for (var i = 0; i < stations.length; i++) {
-              if (stations[i].id === row.st.id) { pick = stations[i]; break; }
-            }
-            onPick(pick || row.st);
-          });
-        });
-        box.appendChild(b);
-      });
-      if (list.length) box.hidden = false;
-    }
-
+    // 지금 권역에서만 찾는다. 예전에는 못 찾으면 다른 권역 역 목록을 모두
+    // 받아 뒤졌는데, 초성 같은 짧은 입력마다 역 2만 7천 개를 훑어 화면이 멎었다.
     input.addEventListener("input", function () {
-      var term = input.value;
-      var here = search(term);
-      render(here);
-      if (here.length || !norm(term)) return;
-      loadOtherRegions().then(function () {
-        if (input.value !== term) return;      // 그새 더 쳤으면 버린다
-        renderOther(searchOther(term), term);
-      });
+      render(search(input.value));
     });
     input.addEventListener("keydown", function (e) { if (e.key === "Escape") box.hidden = true; });
     document.addEventListener("click", function (e) {
@@ -2805,7 +2920,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 
   function baseParams() {
     var p = {
-      region: el("region").value || "kanto",
+      region: activeRegion,
       lon: origin.lon,
       lat: origin.lat,
       depart: el("depart").value,
@@ -3242,8 +3357,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     var target = forced || clickMode;
     getJSON("/api/reachable?" + new URLSearchParams(
       walkUnlimited.checked
-        ? { region: el("region").value || "kanto", lon: lon, lat: lat, walk_unlimited: "1" }
-        : { region: el("region").value || "kanto", lon: lon, lat: lat, walk_total: walkTotal.value }
+        ? { region: activeRegion, lon: lon, lat: lat, walk_unlimited: "1" }
+        : { region: activeRegion, lon: lon, lat: lat, walk_total: walkTotal.value }
     ))
       .then(function (res) {
         if (!res.ok) {
@@ -3327,7 +3442,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 
       var seq = ++seqs.snap;
       busy(true);
-      getJSON("/api/nearest?" + new URLSearchParams({ region: el("region").value || "kanto", lon: pin.lon, lat: pin.lat }))
+      getJSON("/api/nearest?" + new URLSearchParams({ region: activeRegion, lon: pin.lon, lat: pin.lat }))
         .then(function (res) {
           // 그 사이 다른 스냅이나 맞바꾸기가 있었으면 이 답은 옛 핀 기준이다.
           // 그대로 쓰면 출발지와 도착지가 한 점으로 합쳐진다.
@@ -3452,7 +3567,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       if (!on) { mapView.clearLines(); return; }
       if (railwayShapes) { refreshLines(); return; }
       busy(true);
-      getJSON("/api/railways?region=" + encodeURIComponent(el("region").value || "kanto"))
+      getJSON("/api/railways?region=" + encodeURIComponent(activeRegion))
         .then(function (list) {
           railwayShapes = list;
           refreshLines();
@@ -3479,7 +3594,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       // 먼저 눌러야만 쓸 수 있으면 디버그용으로 번거롭다.
       busy(true);
       buildDebugMenu();
-      getJSON("/api/railways?region=" + encodeURIComponent(el("region").value || "kanto"))
+      getJSON("/api/railways?region=" + encodeURIComponent(activeRegion))
         .then(function (list) {
           railwayShapes = list;
           el("toggle-lines").setAttribute("aria-pressed", "true");
@@ -3710,6 +3825,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   var coverageGeo = null;
   var regionList = [];
   var regionInfo = null;   // 지금 고른 권역의 정보
+  var activeRegion = "kanto";   // 지금 고른 권역 id. 조합 권역은 드롭다운에 없다
 
   /* 경계선은 끄고 켤 수 있다. 지도를 볼 때 선이 방해되는 경우가 있다. */
   function showCoverage() {
@@ -3723,15 +3839,21 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 
   /* 권역이 바뀌면 그 권역의 역 목록과 범위를 새로 받아 처음부터 다시 그린다 */
   function loadRegion(id) {
-    // 권역이 바뀌면 "다른 권역" 목록도 다시 짜야 한다. 안 그러면 지금
-    // 권역의 역이 남의 권역인 척 나온다.
-    otherStations = {};
-    otherPending = null;
     var info = null;
     for (var i = 0; i < regionList.length; i++) {
       if (regionList[i].id === id) info = regionList[i];
     }
     regionInfo = info;
+    activeRegion = id;
+    // 조합 권역이면 조합 탭을, 아니면 권역 탭을 연다
+    if (info && info.custom) {
+      selectTab("combo");
+      try { localStorage.setItem("comboRegion", id); } catch (e) { /* 무시 */ }
+    } else {
+      selectTab("preset");
+      el("region").value = id;
+    }
+    if (combo.data) renderCombo();
     // 출발지 예시는 권역을 따른다. 간사이로 옮겼는데 신주쿠를 예로 들 수는 없다.
     applyLanguage();
     busy(true);
@@ -3767,7 +3889,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
           // 얹힌다. 도착한 응답이 지금 권역 것인지도 다시 본다.
           lines = getJSON("/api/railways?region=" + encodeURIComponent(id))
             .then(function (list) {
-              if (el("region").value !== id) return;
+              if (activeRegion !== id) return;
               railwayShapes = list;
               refreshLines();
             })
@@ -3791,6 +3913,375 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     }).then(function () { busy(false); });
   }
 
+  /* ---------- 현 조합 ----------
+     현을 골라 권역 하나로 새로 빌드한다(서버가 make_region.py 를 돌린다).
+     빌드가 10-40분 걸리므로 진행을 몇 초마다 물어 본다. 만든 조합은 권역
+     목록과 섞지 않고 이 탭에 모은다. 탭마다 제 권역을 기억한다. 권역
+     탭으로 돌아오면 드롭다운의 권역을, 조합 탭으로 가면 마지막 조합을 연다. */
+  var combo = { data: null, pick: [], plan: null, planError: "", seq: 0,
+                poll: null, planTimer: null };
+  try { combo.pick = JSON.parse(localStorage.getItem("comboPick") || "[]") || []; }
+  catch (e) { combo.pick = []; }
+
+  function postJSON(url, body) {
+    return fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body || {})
+    }).then(function (r) {
+      return r.text().then(function (text) {
+        var data = null;
+        try { data = JSON.parse(text); } catch (e) { /* JSON 이 아니다 */ }
+        if (r.ok && data) return data;
+        throw new Error((data && data.error) || t("serverSaid", { code: r.status }));
+      });
+    });
+  }
+
+  function isCustom(id) {
+    return regionList.some(function (r) { return r.id === id && r.custom; });
+  }
+
+  function selectTab(which) {
+    var on = which === "combo";
+    el("tab-preset").setAttribute("aria-selected", on ? "false" : "true");
+    el("tab-combo").setAttribute("aria-selected", on ? "true" : "false");
+    el("pane-preset").hidden = on;
+    el("pane-combo").hidden = !on;
+    if (on && !combo.data) refreshCombo();
+  }
+
+  function switchRegion(id) {
+    try { localStorage.setItem("region", id); } catch (e) { /* 무시 */ }
+    return loadRegion(id).then(run);
+  }
+
+  function refreshRegionList() {
+    return getJSON("/api/regions").then(function (data) {
+      regionList = data.regions;
+      buildRegionOptions();
+    });
+  }
+
+  function prefLabel(p) {
+    if (LANG === "ja") return p.ja.replace(/[都府県]$/, "");
+    return (p.names && (p.names[LANG] || p.names.en)) || p.ja;
+  }
+
+  function refreshCombo() {
+    return getJSON("/api/combo").then(function (data) {
+      combo.data = data;
+      var ok = {};
+      data.areas.forEach(function (a) {
+        a.prefectures.forEach(function (p) { if (p.ok) ok[p.ja] = true; });
+      });
+      combo.pick = combo.pick.filter(function (ja) { return ok[ja]; });
+      renderCombo();
+      schedulePlan();
+      if (data.job && data.job.started && !data.job.ended) pollCombo();
+      else renderJob(data.job);
+    }).catch(function (err) {
+      el("combo-areas").textContent = t("comboListFailed", { msg: err.message });
+    });
+  }
+
+  function renderCombo() {
+    var d = combo.data;
+    if (!d) return;
+    var made = el("combo-made");
+    made.textContent = "";
+    if (!d.regions.length) {
+      var none = document.createElement("p");
+      none.className = "hint";
+      none.textContent = t("comboNone");
+      made.appendChild(none);
+    }
+    d.regions.forEach(function (r) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "combo-item";
+      if (r.id === activeRegion) b.setAttribute("aria-current", "true");
+      var nm = document.createElement("span");
+      nm.textContent = localName(r.names) || r.id;
+      var meta = document.createElement("span");
+      meta.className = "meta";
+      meta.textContent = r.state === "ready"
+        ? t("stationCount", { n: (r.stations || 0).toLocaleString() })
+        : t({ built: "comboStateBuilt", building: "comboStateBuilding" }[r.state]
+            || "comboStateIncomplete");
+      b.appendChild(nm);
+      b.appendChild(meta);
+      b.addEventListener("click", function () { openCombo(r); });
+      var row = document.createElement("div");
+      row.className = "combo-row";
+      row.appendChild(b);
+      // 만드는 중인 것은 지울 수 없다. 단추도 두지 않는다.
+      if (d.can_build && r.state !== "building") {
+        var del = document.createElement("button");
+        del.type = "button";
+        del.className = "square-btn combo-del";
+        del.textContent = "\u00d7";
+        del.title = t("comboDelete");
+        del.setAttribute("aria-label", t("comboDelete"));
+        del.addEventListener("click", function () { deleteCombo(r); });
+        row.appendChild(del);
+      }
+      made.appendChild(row);
+    });
+
+    var areas = el("combo-areas");
+    areas.textContent = "";
+    // 떨어진 현을 함께 고르면 철도로 못 잇는 권역이 된다. 고른 것과 맞닿은
+    // 현만 켜 둔다. 바다 위 경계도 맞닿은 것으로 치므로 瀬戸大橋(岡山-香川),
+    // しまなみ海道(広島-愛媛) 처럼 다리로 이어진 곳은 그대로 고를 수 있다.
+    var allowed = null;
+    if (combo.pick.length) {
+      allowed = {};
+      combo.pick.forEach(function (ja) { allowed[ja] = true; });
+      d.areas.forEach(function (a) {
+        a.prefectures.forEach(function (p) {
+          if (combo.pick.indexOf(p.ja) < 0) return;
+          (p.neighbors || []).forEach(function (n) { allowed[n] = true; });
+        });
+      });
+    }
+    d.areas.forEach(function (a) {
+      var row = document.createElement("div");
+      row.className = "combo-area";
+      var label = document.createElement("span");
+      label.className = "area";
+      label.textContent = localName(a.names);
+      var chips = document.createElement("div");
+      chips.className = "chips";
+      a.prefectures.forEach(function (p) {
+        var c = document.createElement("button");
+        c.type = "button";
+        c.className = "chip";
+        c.textContent = prefLabel(p);
+        c.disabled = !p.ok || (allowed && !allowed[p.ja]);
+        c.setAttribute("aria-pressed", combo.pick.indexOf(p.ja) >= 0 ? "true" : "false");
+        if (p.ok) c.title = p.ja + " " + t("stationCount", { n: p.stations.toLocaleString() });
+        c.addEventListener("click", function () {
+          var i = combo.pick.indexOf(p.ja);
+          if (i >= 0) combo.pick.splice(i, 1); else combo.pick.push(p.ja);
+          try { localStorage.setItem("comboPick", JSON.stringify(combo.pick)); } catch (e) { /* 무시 */ }
+          // 고른 것이 바뀌면 켤 현도 달라진다
+          renderCombo();
+          schedulePlan();
+        });
+        chips.appendChild(c);
+      });
+      row.appendChild(label);
+      row.appendChild(chips);
+      areas.appendChild(row);
+    });
+    if (allowed) {
+      var note = document.createElement("p");
+      note.className = "hint";
+      note.textContent = t("comboAdjacent");
+      areas.appendChild(note);
+    }
+  }
+
+  function schedulePlan() {
+    clearTimeout(combo.planTimer);
+    combo.planTimer = setTimeout(updatePlan, 150);
+  }
+
+  function updatePlan() {
+    var seq = ++combo.seq;
+    if (!combo.pick.length) {
+      combo.plan = null;
+      combo.planError = "";
+      renderPlan();
+      return;
+    }
+    getJSON("/api/combo/plan?prefs=" + encodeURIComponent(combo.pick.join(",")))
+      .then(function (plan) {
+        if (seq !== combo.seq) return;
+        combo.plan = plan;
+        combo.planError = "";
+        renderPlan();
+      })
+      .catch(function (err) {
+        if (seq !== combo.seq) return;
+        combo.plan = null;
+        combo.planError = err.message;
+        renderPlan();
+      });
+  }
+
+  function planLine(box, text, cls) {
+    var s = document.createElement("span");
+    if (cls) s.className = cls;
+    s.textContent = text;
+    box.appendChild(s);
+    return s;
+  }
+
+  function renderPlan() {
+    var box = el("combo-plan");
+    var btn = el("combo-build");
+    var plan = combo.plan;
+    box.textContent = "";
+    btn.disabled = true;
+    btn.textContent = t("comboBuild");
+    if (combo.planError) { planLine(box, combo.planError, "warn"); return; }
+    if (!plan || !combo.data) return;
+    planLine(box, localName(plan.names)).style.fontWeight = "700";
+    planLine(box, t("comboSize", { w: plan.span_km[0], h: plan.span_km[1],
+                                    ex: plan.extracts.join(" · ") }));
+    if (plan.too_big) planLine(box, t("comboTooBig"), "warn");
+    else if (plan.heavy) planLine(box, t("comboHeavy"), "warn");
+    if (plan.missing.length) planLine(box, t("comboMissing", { ex: plan.missing.join(" · ") }));
+    var job = combo.data.job;
+    var running = !!(job && job.started && !job.ended);
+    var local = !!combo.data.can_build;
+    if (plan.state === "ready") {
+      btn.textContent = t("comboOpen");
+      btn.disabled = plan.id === activeRegion;
+      return;
+    }
+    if (plan.state === "built") {
+      btn.textContent = t("comboLoad");
+      btn.disabled = !local;
+    } else if (plan.state === "building") {
+      btn.textContent = t("comboBuilding");
+    } else {
+      btn.textContent = t(plan.state === "incomplete" ? "comboRebuild" : "comboBuild");
+      btn.disabled = plan.too_big || !local || running;
+    }
+    if (!local) planLine(box, t("comboLocalOnly"), "warn");
+  }
+
+  function openCombo(r) {
+    if (r.state === "building") return Promise.resolve();
+    if (r.state !== "ready" && r.state !== "built") {
+      // 만들다 만 조합은 그 현들을 골라 두어 다시 만들 수 있게 한다
+      combo.pick = (r.prefectures || []).slice();
+      renderCombo();
+      schedulePlan();
+      return Promise.resolve();
+    }
+    busy(true);
+    var ready = r.state === "built" ? postJSON("/api/combo/open", { id: r.id }) : Promise.resolve();
+    return ready
+      .then(function () { return isCustom(r.id) ? null : refreshRegionList(); })
+      .then(function () { return switchRegion(r.id); })
+      .then(function () { return refreshCombo(); })
+      .catch(function (err) { notice(t("regionFailed"), err.message); })
+      .then(function () { busy(false); });
+  }
+
+  function deleteCombo(r) {
+    if (r.state === "building") return;
+    if (!window.confirm(t("comboDeleteAsk", { name: localName(r.names) || r.id }))) return;
+    busy(true);
+    // 보던 조합을 지우면 권역 탭의 권역으로 옮겨 둔다
+    var move = (r.id === activeRegion && el("region").value)
+      ? switchRegion(el("region").value) : Promise.resolve();
+    move
+      .then(function () { return postJSON("/api/combo/delete", { id: r.id }); })
+      .then(function () { return refreshRegionList(); })
+      .then(function () { return refreshCombo(); })
+      .catch(function (err) { notice(t("comboDeleteFailed"), err.message); })
+      .then(function () { busy(false); });
+  }
+
+  function pollCombo() {
+    clearTimeout(combo.poll);
+    getJSON("/api/combo/status").then(function (job) {
+      if (combo.data) combo.data.job = job;
+      renderJob(job);
+      if (job.started && !job.ended) {
+        combo.poll = setTimeout(pollCombo, 3000);
+        return null;
+      }
+      // 끝났다. 목록을 새로 받아 만든 조합을 보여준다.
+      return refreshRegionList().then(refreshCombo);
+    }).catch(function () { combo.poll = setTimeout(pollCombo, 10000); });
+  }
+
+  function renderJob(job) {
+    var box = el("combo-job");
+    // 끝난 빌드는 10분 동안만 알린다
+    if (!job || !job.started || (job.ended && Date.now() / 1000 - job.ended > 600)) {
+      box.hidden = true;
+      return;
+    }
+    var running = !job.ended;
+    box.textContent = "";
+    box.classList.toggle("failed", !running && !job.ok);
+    var head = document.createElement("b");
+    head.textContent = localName(job.names) + " · " + (running ? t("comboBuilding")
+      : job.ok ? t("comboDone", { min: Math.round(job.elapsed_min || 0) })
+      : t("comboFailed", { msg: job.error || "" }));
+    box.appendChild(head);
+    if (running) {
+      var step = document.createElement("span");
+      step.textContent = t("comboStep", { k: job.k || 0, n: job.n || 0,
+                                          min: Math.round(job.elapsed_min || 0) })
+        + (job.step ? " · " + job.step : "");
+      box.appendChild(step);
+      var bar = document.createElement("div");
+      bar.className = "bar";
+      var fill = document.createElement("span");
+      var done = Math.max(0, (job.k || 1) - 1) / (job.n || 1);
+      fill.style.width = Math.max(3, Math.round(100 * done)) + "%";
+      bar.appendChild(fill);
+      box.appendChild(bar);
+      if (job.detail) {
+        var det = document.createElement("span");
+        det.className = "detail";
+        det.textContent = job.detail;
+        det.title = job.detail;
+        box.appendChild(det);
+      }
+    } else if (job.ok && job.id !== activeRegion) {
+      var open = document.createElement("button");
+      open.type = "button";
+      open.className = "linkish";
+      open.textContent = t("comboOpen");
+      open.addEventListener("click", function () { openCombo({ id: job.id, state: "ready" }); });
+      box.appendChild(open);
+    }
+    box.hidden = false;
+  }
+
+  el("tab-preset").addEventListener("click", function () {
+    selectTab("preset");
+    // 조합을 보던 중이면 드롭다운에 있는 권역으로 돌아간다
+    if (isCustom(activeRegion) && el("region").value) switchRegion(el("region").value);
+  });
+  el("tab-combo").addEventListener("click", function () {
+    selectTab("combo");
+    if (isCustom(activeRegion)) return;
+    var last = null;
+    try { last = localStorage.getItem("comboRegion"); } catch (e) { /* 무시 */ }
+    if (last && isCustom(last)) switchRegion(last);
+  });
+  el("combo-build").addEventListener("click", function () {
+    var plan = combo.plan;
+    if (!plan) return;
+    if (plan.state === "ready" || plan.state === "built") { openCombo(plan); return; }
+    el("combo-build").disabled = true;
+    postJSON("/api/combo/build", { prefectures: combo.pick })
+      .then(function (res) {
+        if (res.state === "ready") return openCombo({ id: res.id, state: "ready" });
+        return refreshCombo();
+      })
+      .catch(function (err) {
+        notice(t("comboFailed", { msg: "" }), err.message);
+        renderPlan();
+      });
+  });
+  el("combo-clear").addEventListener("click", function () {
+    combo.pick = [];
+    try { localStorage.setItem("comboPick", "[]"); } catch (e) { /* 무시 */ }
+    renderCombo();
+    schedulePlan();
+  });
+
   // 고정 문자열을 먼저 칠한다. 마크업의 한국어는 번역이 없을 때의 대비책이다.
   applyLanguage();
 
@@ -3807,13 +4298,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
           want = saved;
         }
       } catch (e) { /* 사생활 보호 창 등 */ }
-      sel.value = want;
-      // 권역이 하나뿐이면 고를 것이 없으니 숨긴다
-      el("field-region").hidden = regionList.length < 2;
-      sel.addEventListener("change", function () {
-        try { localStorage.setItem("region", sel.value); } catch (e) { /* 무시 */ }
-        loadRegion(sel.value).then(run);
-      });
+      // 조합 권역은 드롭다운에 없다. 드롭다운은 기본 권역을 가리켜 둔다.
+      sel.value = isCustom(want) ? data.default : want;
+      // 권역이 하나뿐이어도 현 조합 탭이 있으니 늘 보인다
+      el("field-region").hidden = false;
+      sel.addEventListener("change", function () { switchRegion(sel.value); });
       return loadRegion(want);
     })
     .catch(function (err) { notice(t("regionListFailed"), err.message); });

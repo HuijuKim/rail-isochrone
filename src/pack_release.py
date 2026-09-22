@@ -53,7 +53,9 @@ def packable() -> list[str]:
         meta = d / "region.json"
         if not meta.exists() or not (d / "stops.json").exists():
             continue
-        if json.loads(meta.read_text(encoding="utf-8")).get("model") != "naive":
+        info = json.loads(meta.read_text(encoding="utf-8"))
+        # 현 조합 권역(make_region.py)은 쓰는 사람이 만드는 것이라 담지 않는다
+        if info.get("model") != "naive" or info.get("custom"):
             continue
         out.append(d.name)
     return out
