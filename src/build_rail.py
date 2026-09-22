@@ -40,6 +40,7 @@ OUT = ROOT / "data" / "regions" / REGION / "raw"
 
 LANGS = ("ja", "en", "ko", "zh-Hans", "zh-Hant")
 RAIL_ROUTES = ("train", "railway", "subway", "light_rail", "monorail", "tram")
+RAIL_TRACKS = ("rail", "narrow_gauge", "light_rail", "subway", "monorail", "tram")
 STATION_TAGS = ("station", "halt", "tram_stop")
 # 사람을 태우지 않는 역의 usage 값. 도쿄 에는 JR동일본 승무원
 # 훈련용 모의역(志茂田·大田, usage=training)이 railway=station 으로
@@ -167,12 +168,21 @@ def _region_filter():
         if paths:
             boxes = np.array(boxes)
 
+            # 현 경계를 조금 넘어 끝나는 노선의 종점. region.json 의
+            # "extra_areas" 에 [경도, 위도, 반경 m] 로 적는다. 大船渡線 은
+            # 이와테에서 미야기의 気仙沼 까지 열차가 다니는데 경계에서 잘렸다.
+            extra = json.loads(meta_path.read_text(encoding="utf-8")).get("extra_areas") or []
+
             def inside(lon, lat):
+                for elon, elat, rad in extra:
+                    if np.hypot((lon - elon) * 111_320.0 * np.cos(np.radians(elat)),
+                                (lat - elat) * 111_132.0) <= rad:
+                        return True
                 near = np.flatnonzero((boxes[:, 0] <= lon) & (lon <= boxes[:, 1])
                                       & (boxes[:, 2] <= lat) & (lat <= boxes[:, 3]))
                 return any(paths[i].contains_point((lon, lat)) for i in near)
 
-            return inside, f"현 {len(prefs)}개 경계"
+            return inside, f"현 {len(prefs)}개 경계" + (f" + 예외 {len(extra)}곳" if extra else "")
 
     box = _bbox()
     if box is None:
@@ -297,9 +307,15 @@ class Relations(osmium.SimpleHandler):
             return
         self.seen.add(r.id)
         t = r.tags
-        if t.get("type") != "route":
-            return
-        if (t.get("route") or "") not in RAIL_ROUTES:
+        rtype = t.get("route") or ""
+        if t.get("type") == "route":
+            if rtype not in RAIL_ROUTES:
+                return
+        elif t.get("type") == "railway" and t.get("railway") in RAIL_TRACKS:
+            # 선로를 type=railway 로 적은 관계. 黒部峡谷鉄道本線 이 이렇게만
+            # 있어 노선째 빠졌다. route=railway 와 같이 선로 관계로 읽는다.
+            rtype = "railway"
+        else:
             return
         name = t.get("name") or t.get("name:ja") or ""
         if not name:
@@ -330,7 +346,7 @@ class Relations(osmium.SimpleHandler):
         self.want_ways.update(ways)
         self.routes.append({
             "name": name,
-            "rtype": t.get("route") or "",
+            "rtype": rtype,
             "titles": {g: t.get("name:" + g, "") for g in LANGS},
             "operator": t.get("operator", "") or t.get("network", ""),
             "ref": t.get("ref", ""),

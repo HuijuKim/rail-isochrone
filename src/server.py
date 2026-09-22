@@ -363,7 +363,8 @@ def regions():
                     "stations": int(r.supported.sum()),
                     "note": r.meta.get("note", ""),
                 }
-                for r in REGIONS.values()
+                # 역이 많은 권역부터 보인다.
+                for r in sorted(REGIONS.values(), key=lambda r: -int(r.supported.sum()))
             ],
         }
     )

@@ -641,6 +641,7 @@ SHAPE_TOLERANCE_M = 3.0
 JOIN_TOLERANCE_M = 600.0
 # 이음매가 이만큼 벌어지면 역을 거쳐 잇는다.
 JOIN_VIA_STATION_M = 30.0
+VIA_DETOUR_MAX = 1.15
 # 선형 안에서 이만큼 벌어지면 거기서도 끊는다.
 # geometry 가 후보를 고를 때도 같은 값을 봐야 한다. 달랐을 때 거기서
 # 괜찮다고 고른 호가 여기서 토막 났다.
@@ -1069,6 +1070,9 @@ def railway_shapes(geometry, railways: dict, stops: dict, coords: np.ndarray,
                              all_st.get(rid) or set()):
             continue
         title_ja = railway.get("title", {}).get("ja", "")
+        # 사전은 괄호 앞 이름으로도 찾는다. 제목에 구간이 붙은 노선이 많다
+        # (富山地方鉄道本線 (電鉄富山=>稲荷町->宇奈月温泉)).
+        sb_key = title_ja if title_ja in switchbacks else _re.sub(r"\s*[(（].*$", "", title_ja)
         order = railway.get("stations") or []
         rows = [row_of[s] for s in order
                 if s in row_of and np.isfinite(coords[row_of[s], 0])]
@@ -1141,7 +1145,7 @@ def railway_shapes(geometry, railways: dict, stops: dict, coords: np.ndarray,
             # 바꿔 西大垣·室 쪽 열차가 같은 선로를 900m 오가는데, 그걸 걷어내
             # 선이 大垣 에 닿지 않았다. 규칙으로 가르려 하면 역을 지나쳤다
             # 돌아오는 인공 꼬리까지 되살아나(42~95개 노선) 손으로 적는다.
-            if path and stops["ja"][a] in switchbacks.get(title_ja, ()):
+            if path and stops["ja"][a] in switchbacks.get(sb_key, ()):
                 skip = 0
             else:
                 skip = geometry_mod.unwind_retrace(path, arc) if path else 0
@@ -1155,7 +1159,10 @@ def railway_shapes(geometry, railways: dict, stops: dict, coords: np.ndarray,
                     via = [float(coords[a][0]), float(coords[a][1])]
                     d1 = _dist_m(path[-1], via)
                     d2 = _dist_m(via, arc[skip])
-                    if d1 + d2 < gap * 1.6:
+                    # 역이 두 끝을 잇는 직선에 가까이 놓일 때만 거친다. 1.6 배까지
+                    # 받았더니 선로에서 20m 비켜 적힌 ODPT 역 좌표를 거치며 Z 자로
+                    # 꺾였다(常磐線 龍ケ崎市, 藤代).
+                    if d1 + d2 < gap * VIA_DETOUR_MAX:
                         path.append(via)
             for q in arc[skip:]:
                 pair = [float(q[0]), float(q[1])]
@@ -1179,8 +1186,10 @@ def railway_shapes(geometry, railways: dict, stops: dict, coords: np.ndarray,
         # 제일 확실하다.
         keep_at = coords[[i for i in rows if np.isfinite(coords[i, 0])]]
         hold_at = coords[[i for i in rows if np.isfinite(coords[i, 0])
-                          and stops["ja"][i] in switchbacks.get(title_ja, ())]]
-        pieces = [geometry_mod.smooth_spikes(p, lat_scale, keep_at, hold_at)
+                          and stops["ja"][i] in switchbacks.get(sb_key, ())]]
+        pieces = [geometry_mod.drop_tiny_zigzags(
+                      geometry_mod.smooth_spikes(p, lat_scale, keep_at, hold_at),
+                      lat_scale)
                   for p in pieces]
         if not pieces:
             # 제 선형이 아예 없는 노선(직통 계통이 남의 선로만 쓰는 경우)은

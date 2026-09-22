@@ -46,7 +46,7 @@
   "boundary_disagree": 0.0,
   "far_neighbour_lines": 0,
   "pieces_per_line": 1.0,
-  "stations": 481
+  "stations": 482
  },
  "tohoku_s": {
   "boundary_disagree": 0.0,
@@ -58,7 +58,7 @@
   "boundary_disagree": 0.0,
   "far_neighbour_lines": 0,
   "pieces_per_line": 1.0,
-  "stations": 418
+  "stations": 430
  },
  "koshinetsu": {
   "boundary_disagree": 0.0,

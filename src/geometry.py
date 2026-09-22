@@ -184,6 +184,40 @@ def turn_deg(a, b, c, scale):
     return math.degrees(math.acos(max(-1.0, min(1.0, d))))
 
 
+def drop_tiny_zigzags(path, scale, max_m=25.0, min_turn_deg=80.0):
+    """짧은 토막 양 끝에서 연달아 크게 꺾이는 작은 Z 를 편다.
+
+    두 구간 선형이 역에서 15m 쯤 어긋나 맞물리면, 앞 구간 끝보다 뒤에서 뒤
+    구간이 시작해 Z 자가 생긴다(常磐線 龍ケ崎市). 가운데 토막이 max_m 보다
+    짧고 양 끝이 모두 min_turn_deg 넘게 꺾이면 그 두 점을 빼고 곧게 잇는다.
+    스위치백의 되짚기는 수백 m 라 걸리지 않는다.
+    """
+    import math
+
+    def vec(a, b):
+        return ((b[0] - a[0]) * scale * 111_320.0, (b[1] - a[1]) * 111_132.0)
+
+    def turn(a, b, c):
+        u, v = vec(a, b), vec(b, c)
+        nu, nv = math.hypot(*u), math.hypot(*v)
+        if nu == 0 or nv == 0:
+            return 0.0
+        cos = (u[0] * v[0] + u[1] * v[1]) / (nu * nv)
+        return math.degrees(math.acos(max(-1.0, min(1.0, cos))))
+
+    out = list(path)
+    i = 1
+    while i + 2 < len(out):
+        a, b, c, d = out[i - 1], out[i], out[i + 1], out[i + 2]
+        if (math.hypot(*vec(b, c)) < max_m and turn(a, b, c) > min_turn_deg
+                and turn(b, c, d) > min_turn_deg):
+            del out[i:i + 2]
+            i = max(i - 1, 1)
+            continue
+        i += 1
+    return out
+
+
 def smooth_spikes(path, scale, keep=None, hold=None):
     """되돌아왔다 다시 가는 점을 뺀다. 뺄 것이 없으면 그대로 돌려준다.
 

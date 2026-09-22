@@ -362,6 +362,8 @@ RAIL_OPERATORS: dict[str, tuple[str, str, str, str, str]] = {
                  "IR石川铁道", "IR石川鐵道"),
     "ハピラインふくい": ("ハピラインふくい", "Hapi-Line Fukui", "해피라인 후쿠이",
                   "福井幸福线", "福井幸福線"),
+    "黒部峡谷鉄道": ("黒部峡谷鉄道", "Kurobe Gorge Railway", "구로베 협곡철도",
+               "黑部峡谷铁道", "黑部峽谷鐵道"),
     # 고신에쓰
     "しなの鉄道": ("しなの鉄道", "Shinano Railway", "시나노철도", "信浓铁道", "信濃鐵道"),
     "えちごトキめき鉄道": ("えちごトキめき鉄道", "Echigo Tokimeki Railway",
