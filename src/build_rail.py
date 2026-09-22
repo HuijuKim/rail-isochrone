@@ -514,6 +514,34 @@ def _path_m(seq, cpos, scale):
                           np.diff(P[:, 1]) * 111_132.0).sum())
 
 
+def _follows_track(seq, cpos, way_ids, geom, scale):
+    """역들이 가장 긴 선로 사슬 위에 한 방향 차례로 놓여 있는가.
+
+    역의 90% 이상이 그 사슬 200m 안에 있고, 사슬 위 위치가 목록 순서대로
+    늘거나 줄기만 해야 한다. 선로가 잘게 쪼개져 가장 긴 사슬이 역을 다
+    못 덮으면 판단하지 않는다(False).
+    """
+    if len(seq) < 3 or any(c not in cpos for c in seq):
+        return False
+    chains = stitch_all(way_ids, geom)
+    if not chains:
+        return False
+    C = np.asarray(chains[0], dtype=np.float64)
+    cx, cy = C[:, 0] * scale * 111_320.0, C[:, 1] * 111_132.0
+    arc = np.concatenate([[0.0], np.cumsum(np.hypot(np.diff(cx), np.diff(cy)))])
+    at = []
+    for c in seq:
+        d = np.hypot(cx - cpos[c][0] * scale * 111_320.0,
+                     cy - cpos[c][1] * 111_132.0)
+        k = int(np.argmin(d))
+        if d[k] <= FILL_NEAR_M:
+            at.append(float(arc[k]))
+    if len(at) < 0.9 * len(seq) or len(at) < 3:
+        return False
+    d = np.diff(at)
+    return bool((d >= 0).all() or (d <= 0).all())
+
+
 def repair_order(seq, cpos, scale):
     """정차 순서에서 튀는 자리를 찾아 토막을 내고 다시 잇는다.
 
@@ -624,6 +652,7 @@ def reseat_strays(seq, cpos, scale, rounds: int = 40):
     P = np.array([cpos[c] for c in seq], dtype=np.float64)
     P[:, 0] *= scale * 111.320
     P[:, 1] *= 111.132
+
 
     def total(idx):
         Q = P[idx]
@@ -1454,7 +1483,31 @@ def _build(pbfs, rel, ways, nodes):
             if c is not None and (not seq or seq[-1] != c):
                 seq.append(c)
         fixed = repair_order(seq, cpos, scale)
-        seated = reseat_strays(fixed, cpos, scale)
+        # 역들이 제 선로 위에 차례대로 놓여 있으면 그 순서는 선로가
+        # 보증한다. 길이로 옮기지 않는다. 선로가 고리처럼 도는 노선은 틀린
+        # 자리가 몇 % 짧게 나와 옳은 관계 순서를 망가뜨렸다(ゆりかもめ 의
+        # お台場海浜公園 가 青海 옆으로, ユーカリが丘線 의 井野 가 公園 옆으로).
+        # 튀는 간격으로 가르려 하니 成田線 의 千葉 11km 왕복을 못 잡았다.
+        # 출발역으로 돌아오는 닫힌 관계(순환선, ユーカリが丘線 같은 라켓
+        # 모양)도 옮기지 않는다. 중복을 지운 순서가 이미 선로 순서다.
+        closed = len(seq) >= 4 and seq[0] == seq[-1]
+        # 라켓 모양(줄기를 지나 고리를 돌고 줄기로 돌아온다)은 고리를 처음
+        # 닫는 곳까지 쓴다. 중복을 다 지우면 고리의 마지막 구간이 빠진다.
+        # ユーカリが丘線 이 井野 에서 公園 으로 돌아오지 못하고 끊겼다.
+        # 바로 뒤돌아서는 왕복(阪神なんば線 관계)은 라켓이 아니다.
+        # 고리를 돈 뒤 남은 것이 들어온 줄기를 그대로 거꾸로 되짚어야
+        # 라켓이다. 간사이의 近鉄名古屋線 은 미에 쪽만 잘려 남은 목록이
+        # 우연히 닫혀, 이 조건 없이는 라켓으로 잘못 읽혔다.
+        turn = next((i for i, c in enumerate(seq) if c in seq[:i]), None)
+        stem = seq.index(seq[turn]) if turn is not None else 0
+        racket = (closed and turn is not None and turn - stem >= 3
+                  and seq[turn + 1:] == seq[:stem][::-1])
+        if racket:
+            seated = seq[:turn + 1]
+        elif closed or _follows_track(fixed, cpos, r["ways"], ways.geom, scale):
+            seated = fixed
+        else:
+            seated = reseat_strays(fixed, cpos, scale)
         if seated != fixed:
             reseated += 1
             fixed = seated

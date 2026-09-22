@@ -1,9 +1,9 @@
 {
  "kansai": {
   "boundary_disagree": 0.0,
-  "far_neighbour_lines": 10,
+  "far_neighbour_lines": 6,
   "pieces_per_line": 1.0,
-  "stations": 2129
+  "stations": 2132
  },
  "kanto": {
   "boundary_disagree": 0.0005,
@@ -13,9 +13,9 @@
  },
  "kanto_osm": {
   "boundary_disagree": 0.0,
-  "far_neighbour_lines": 10,
-  "pieces_per_line": 1.006,
-  "stations": 2768
+  "far_neighbour_lines": 7,
+  "pieces_per_line": 1.0,
+  "stations": 2761
  },
  "tokai": {
   "boundary_disagree": 0.0,

@@ -1176,7 +1176,9 @@ def railway_shapes(geometry, railways: dict, stops: dict, coords: np.ndarray,
         # 다르지만 모양은 늘 같아서, 그리는 마지막에 한 번 훑는 것이
         # 제일 확실하다.
         keep_at = coords[[i for i in rows if np.isfinite(coords[i, 0])]]
-        pieces = [geometry_mod.smooth_spikes(p, lat_scale, keep_at)
+        hold_at = coords[[i for i in rows if np.isfinite(coords[i, 0])
+                          and stops["ja"][i] in switchbacks.get(title_ja, ())]]
+        pieces = [geometry_mod.smooth_spikes(p, lat_scale, keep_at, hold_at)
                   for p in pieces]
         if not pieces:
             # 제 선형이 아예 없는 노선(직통 계통이 남의 선로만 쓰는 경우)은

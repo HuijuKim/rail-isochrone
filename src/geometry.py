@@ -184,7 +184,7 @@ def turn_deg(a, b, c, scale):
     return math.degrees(math.acos(max(-1.0, min(1.0, d))))
 
 
-def smooth_spikes(path, scale, keep=None):
+def smooth_spikes(path, scale, keep=None, hold=None):
     """되돌아왔다 다시 가는 점을 뺀다. 뺄 것이 없으면 그대로 돌려준다.
 
     앞에서부터 한 번 훑으면서, 새 점을 담을 때마다 방금 담은 셋이
@@ -192,6 +192,9 @@ def smooth_spikes(path, scale, keep=None):
     또 되꺾일 수 있어 뒤로 물러 가며 본다.
 
     keep 은 그 노선의 역 좌표다. 지우려는 점이 역 옆이면 두고 넘어간다.
+    hold 는 스위치백 역 좌표다(data/switchbacks.json). 그 역 30m 안의 점은
+    처음부터 지우지 않는다. 되꺾이는 끝이 곧 역이라 그 점 하나만 빠져도
+    선이 역에 못 닿는다(養老線 大垣 94m, 広見線 新可児 86m).
     """
     if len(path) < 4:
         return path
@@ -249,7 +252,15 @@ def smooth_spikes(path, scale, keep=None):
                 idx.pop(-2)
         return out
 
-    out = sweep(set())
+    base = set()
+    if hold is not None and len(hold):
+        H = np.asarray(hold, dtype=np.float64).reshape(-1, 2)
+        for i, p in enumerate(path):
+            d = np.hypot((H[:, 0] - p[0]) * scale * 111_320.0,
+                         (H[:, 1] - p[1]) * 111_132.0)
+            if d.min() < SPIKE_AT_STATION_M:
+                base.add(i)
+    out = sweep(base)
     if K is None:
         return out
     # 하나씩은 작게 빼도 되풀이하면 스위치백 끝을 통째로 먹는다. 역에서
@@ -258,7 +269,7 @@ def smooth_spikes(path, scale, keep=None):
     # 원래 선이 지나던 역에서 정리한 선이 멀어졌으면 그 역에 가장 가까운
     # 원래 점을 고정하고 다시 정리한다.
     P = np.asarray(path, dtype=np.float64)
-    pinned = set()
+    pinned = set(base)
     for k in range(len(K)):
         d0 = np.hypot((P[:, 0] - K[k, 0]) * scale * 111_320.0,
                       (P[:, 1] - K[k, 1]) * 111_132.0)
@@ -269,7 +280,7 @@ def smooth_spikes(path, scale, keep=None):
                       (Q[:, 1] - K[k, 1]) * 111_132.0)
         if d1.min() >= SPIKE_AWAY_M:
             pinned.add(int(np.argmin(d0)))
-    return sweep(pinned) if pinned else out
+    return sweep(pinned) if pinned != base else out
 
 class Geometry:
     """노선 선형과, 각 역이 어느 선형 위 어디에 놓이는지."""

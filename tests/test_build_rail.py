@@ -189,6 +189,22 @@ def test_drop_strays_keeps_the_occurrence_that_fits():
     assert _drop_strays(seq, xy, lambda n: n) == list(range(10))
 
 
+def test_follows_track_trusts_an_order_along_a_loop():
+    """선로를 따라 차례로 놓인 순서는 믿는다. 길이로 옮기면 망가진다.
+
+    ゆりかもめ 는 오다이바를 돌아 お台場海浜公園 가 직선으로는 青海 옆이라
+    길이로 옮기면 그리로 갔다.
+    """
+    from build_rail import _follows_track
+
+    # 반원을 도는 선로 위의 역 다섯
+    t = np.linspace(0, np.pi, 200)
+    chain = [(139.0 + 0.02 * np.cos(a), 35.7 + 0.02 * np.sin(a)) for a in t]
+    cpos = {i: chain[int(i * 49.75)] for i in range(5)}
+    assert _follows_track([0, 1, 2, 3, 4], cpos, [10], {10: chain}, 0.81)
+    assert not _follows_track([0, 3, 1, 2, 4], cpos, [10], {10: chain}, 0.81)
+
+
 def test_join_runs_flips_and_places_fragments():
     """토막은 끝 역이 가까운 쪽으로, 방향까지 맞춰 붙인다."""
     from build_rail import join_runs

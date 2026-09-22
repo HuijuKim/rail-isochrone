@@ -975,8 +975,10 @@
   "zh-Hant": "千代田線支線"
  },
  "東京地下鉄の直通運転 - 常磐線": {
-  "ko": "도쿄메트로 직통운전 - 조반선",
-  "en": "Tokyo Metro through service - Joban Line"
+  "en": "Jōban Line through service (Chiyoda Line)",
+  "ko": "조반선 직통 (지요다선)",
+  "zh-Hans": "常磐线直通（千代田线）",
+  "zh-Hant": "常磐線直通（千代田線）"
  },
  "東急多摩川線": {
   "en": "Tokyu-Tamagawa Line",
@@ -2174,5 +2176,37 @@
   "ko": "슨즈선",
   "zh-Hans": "骏豆线",
   "zh-Hant": "駿豆線"
+ },
+ "東京メトロ半蔵門線 - 東急田園都市線 - 東武スカイツリーライン直通運転 : 南栗橋→押上→渋谷→中央林間": {
+  "en": "Hanzōmon–Den-en-toshi–Skytree Line through service",
+  "ko": "한조몬선·덴엔토시선·스카이트리 라인 직통",
+  "zh-Hans": "半藏门线·田园都市线·晴空塔线直通",
+  "zh-Hant": "半藏門線·田園都市線·晴空塔線直通"
+ },
+ "東京メトロ日比谷線 - 東武スカイツリーライン直通運転 : 中目黒→北千住→南栗橋": {
+  "en": "Hibiya–Skytree Line through service",
+  "ko": "히비야선·스카이트리 라인 직통",
+  "zh-Hans": "日比谷线·晴空塔线直通",
+  "zh-Hant": "日比谷線·晴空塔線直通"
+ },
+ "東京地下鉄の直通運転 - 東急東横線 : 横浜→渋谷": {
+  "en": "Tōyoko Line through service",
+  "ko": "도요코선 직통",
+  "zh-Hans": "东横线直通",
+  "zh-Hant": "東橫線直通"
+ },
+ "京浜電鉄 - 都営浅草線快特 - 京成成田空港アクセス (成田空港 → 浅草 → 羽田空港)": {
+  "en": "Keikyū–Asakusa–Narita Sky Access through service",
+  "ko": "게이큐·아사쿠사선·나리타 스카이 액세스 직통",
+  "zh-Hans": "京急·浅草线·成田SKY ACCESS直通",
+  "zh-Hant": "京急·淺草線·成田SKY ACCESS直通",
+  "keep": true
+ },
+ "東京地下鉄の直通運転 - 西武有楽町線 : 小竹向原→練馬": {
+  "en": "Seibu Yūrakuchō Line through service",
+  "ko": "세이부 유라쿠초선 직통",
+  "zh-Hans": "西武有乐町线直通",
+  "zh-Hant": "西武有樂町線直通",
+  "keep": true
  }
 }
