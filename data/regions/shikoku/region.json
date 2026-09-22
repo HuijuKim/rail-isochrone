@@ -1,0 +1,88 @@
+{
+ "id": "shikoku",
+ "center": [
+  134.0467,
+  34.3505
+ ],
+ "zoom": 11,
+ "names": {
+  "ja": "四国",
+  "en": "Shikoku",
+  "ko": "시코쿠",
+  "zh-Hans": "四国",
+  "zh-Hant": "四國"
+ },
+ "model": "naive",
+ "timetable": null,
+ "rail": {
+  "source": "OpenStreetMap",
+  "license": "ODbL 1.0",
+  "express_source": "ja.wikipedia.org",
+  "express_license": "CC BY-SA 4.0"
+ },
+ "osm_extracts": [
+  "shikoku"
+ ],
+ "osm_files": [
+  "shikoku-latest.osm.pbf"
+ ],
+ "grid": {
+  "lon0": 132.0,
+  "lat0": 32.68,
+  "lat_ref": 33.6,
+  "span_x": 265000.0,
+  "span_y": 205000.0,
+  "ocean_seeds": [
+   [
+    133.6,
+    33.3
+   ],
+   [
+    134.3,
+    33.0
+   ],
+   [
+    132.3,
+    33.98
+   ],
+   [
+    132.2,
+    33.2
+   ],
+   [
+    133.3,
+    34.1
+   ],
+   [
+    134.45,
+    34.35
+   ],
+   [
+    134.8,
+    33.9
+   ],
+   [
+    132.35,
+    33.0
+   ]
+  ]
+ },
+ "note": "시각표가 없어 나이브 모델로 돈다. 권역은 시코쿠 4현(가가와·에히메·도쿠시마·고치)이고, 경계는 현 경계를 해안선으로 자른 것이다. 瀬戸大橋線 은 오카야마 쪽이 권역 밖이라 児島 앞에서 끊긴다.",
+ "start": {
+  "lon": 134.0467,
+  "lat": 34.3505,
+  "names": {
+   "ja": "高松",
+   "en": "Takamatsu",
+   "ko": "다카마쓰",
+   "zh-Hans": "高松",
+   "zh-Hant": "高松"
+  }
+ },
+ "prefectures": [
+  "香川県",
+  "愛媛県",
+  "徳島県",
+  "高知県"
+ ]
+}

@@ -81,6 +81,58 @@ PROBES = {
         ("히로시마", 132.475, 34.397, False),
         ("부산", 129.04, 35.10, False),
     ],
+    "chugoku": [
+        ("히로시마", 132.4755, 34.3977, True),
+        ("오카야마", 133.9177, 34.6660, True),
+        ("돗토리", 134.2323, 35.4940, True),
+        ("마쓰에", 133.0625, 35.4646, True),
+        ("시모노세키", 130.9230, 33.9496, True),
+        ("히우치나다", 133.30, 34.10, False),
+        ("다카마쓰", 134.0467, 34.3505, False),
+        ("하카타", 130.4206, 33.5897, False),
+    ],
+    "shikoku": [
+        ("다카마쓰", 134.0467, 34.3505, True),
+        ("마쓰야마", 132.7512, 33.8375, True),
+        ("고치", 133.5438, 33.5672, True),
+        ("도쿠시마", 134.5510, 34.0747, True),
+        ("도사만", 133.60, 33.30, False),
+        ("오카야마", 133.9177, 34.6660, False),
+    ],
+    "tohoku_s": [
+        ("센다이", 140.8824, 38.2601, True),
+        ("야마가타", 140.3279, 38.2486, True),
+        ("후쿠시마", 140.4592, 37.7543, True),
+        ("고리야마", 140.3886, 37.3985, True),
+        ("센다이만", 141.30, 38.10, False),
+        ("모리오카", 141.1363, 39.7016, False),
+        ("니가타", 139.0613, 37.9121, False),
+    ],
+    "tohoku_n": [
+        ("모리오카", 141.1363, 39.7016, True),
+        ("아오모리", 140.7285, 40.8285, True),
+        ("아키타", 140.1263, 39.7175, True),
+        ("하치노헤", 141.4331, 40.5091, True),
+        ("무쓰만", 140.95, 41.05, False),
+        ("센다이", 140.8824, 38.2601, False),
+        ("하코다테", 140.7266, 41.7738, False),
+    ],
+    "hokuriku": [
+        ("가나자와", 136.6480, 36.5780, True),
+        ("도야마", 137.2133, 36.7013, True),
+        ("후쿠이", 136.2240, 36.0621, True),
+        ("쓰루가", 136.0759, 35.6454, True),
+        ("도야마만", 137.30, 36.85, False),
+        ("기후", 136.7588, 35.4094, False),
+    ],
+    "koshinetsu": [
+        ("나가노", 138.1887, 36.6432, True),
+        ("니가타", 139.0613, 37.9121, True),
+        ("고후", 138.5690, 35.6666, True),
+        ("마쓰모토", 137.9722, 36.2310, True),
+        ("사도섬", 138.40, 38.00, False),   # 철도도 다리도 없다
+        ("나고야", 136.882, 35.171, False),
+    ],
 }
 
 # 이웃 역 사이가 이보다 벌어지면 순서가 틀렸을 만하다고 본다.
@@ -432,3 +484,25 @@ def test_different_operators_do_not_share_a_color_key():
                 bad.append(f"{key}: {seen[key][0]} 와 {op} 가 {color}")
             seen.setdefault(key, (op, color))
     assert not bad, "회사가 다른데 같은 색을 받은 노선: " + str(bad[:5])
+
+
+@pytest.mark.parametrize("region_id", _regions())
+def test_derived_files_match_rail_build(region_id):
+    """build_rail 뒤에 후속 단계를 다 돌렸는가.
+
+    build_rail 만 다시 돌리면 역 번호가 바뀔 수 있는데, 시각표(stops.json)와
+    구간 선형은 옛 번호를 들고 남는다. 이름과 순서가 같아도 번호가 달라
+    서버가 노선을 엉뚱하게 읽었다(주고쿠 山陰本線 이 由良-荒島 50km 로 보였다).
+    시각표가 없는 권역만 본다.
+    """
+    root = Path(__file__).resolve().parent.parent / "data" / "regions" / region_id
+    meta = json.loads((root / "region.json").read_text(encoding="utf-8"))
+    if meta.get("model") != "naive":
+        pytest.skip("시각표 권역은 역 번호를 ODPT 가 정한다")
+    rail = json.loads((root / "raw" / "railways.json").read_text(encoding="utf-8"))
+    stops = json.loads((root / "stops.json").read_text(encoding="utf-8"))
+    want = {s for r in rail for s in r["stations"]}
+    have = set(stops["ids"])
+    missing = sorted(want - have)
+    assert not missing, (f"stops.json 에 없는 역 {len(missing)}개 "
+                         f"(build_track 부터 다시 돌리세요): {missing[:5]}")

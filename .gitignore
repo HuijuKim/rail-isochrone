@@ -34,3 +34,5 @@ data/line-colors-wiki.json
 station_tags_*.json
 missing_*.json
 data/line-audit.txt
+dist/
+data/honsu/

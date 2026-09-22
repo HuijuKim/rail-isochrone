@@ -1,0 +1,71 @@
+{
+ "id": "koshinetsu",
+ "center": [
+  138.1887,
+  36.6432
+ ],
+ "zoom": 11,
+ "names": {
+  "ja": "甲信越",
+  "en": "Koshinetsu",
+  "ko": "고신에쓰",
+  "zh-Hans": "甲信越",
+  "zh-Hant": "甲信越"
+ },
+ "model": "naive",
+ "timetable": null,
+ "rail": {
+  "source": "OpenStreetMap",
+  "license": "ODbL 1.0",
+  "express_source": "ja.wikipedia.org",
+  "express_license": "CC BY-SA 4.0"
+ },
+ "osm_extracts": [
+  "chubu"
+ ],
+ "osm_files": [
+  "chubu-latest.osm.pbf"
+ ],
+ "grid": {
+  "lon0": 137.3,
+  "lat0": 35.15,
+  "lat_ref": 36.9,
+  "span_x": 237000.0,
+  "span_y": 384000.0,
+  "ocean_seeds": [
+   [
+    138.8,
+    38.0
+   ],
+   [
+    138.0,
+    37.2
+   ],
+   [
+    139.3,
+    38.4
+   ],
+   [
+    138.4,
+    38.5
+   ]
+  ]
+ },
+ "note": "시각표가 없어 나이브 모델로 돈다. 권역은 야마나시·나가노·니가타 3현이고, 경계는 현 경계를 해안선으로 자른 것이다. 도쿄·군마·기후로 넘어가는 노선(中央本線, 上越線, 信越本線 横川 쪽)은 현 경계에서 끊긴다. 사도섬은 철도가 없어 빠진다.",
+ "start": {
+  "lon": 138.1887,
+  "lat": 36.6432,
+  "names": {
+   "ja": "長野",
+   "en": "Nagano",
+   "ko": "나가노",
+   "zh-Hans": "长野",
+   "zh-Hant": "長野"
+  }
+ },
+ "prefectures": [
+  "山梨県",
+  "長野県",
+  "新潟県"
+ ]
+}

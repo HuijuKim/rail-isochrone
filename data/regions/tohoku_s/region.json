@@ -1,0 +1,75 @@
+{
+ "id": "tohoku_s",
+ "center": [
+  140.8824,
+  38.2601
+ ],
+ "zoom": 11,
+ "names": {
+  "ja": "南東北",
+  "en": "Southern Tohoku",
+  "ko": "남도호쿠",
+  "zh-Hans": "南东北",
+  "zh-Hant": "南東北"
+ },
+ "model": "naive",
+ "timetable": null,
+ "rail": {
+  "source": "OpenStreetMap",
+  "license": "ODbL 1.0",
+  "express_source": "ja.wikipedia.org",
+  "express_license": "CC BY-SA 4.0"
+ },
+ "osm_extracts": [
+  "tohoku"
+ ],
+ "osm_files": [
+  "tohoku-latest.osm.pbf"
+ ],
+ "grid": {
+  "lon0": 139.1,
+  "lat0": 36.75,
+  "lat_ref": 38.0,
+  "span_x": 230000.0,
+  "span_y": 280000.0,
+  "ocean_seeds": [
+   [
+    141.3,
+    38.1
+   ],
+   [
+    141.2,
+    37.4
+   ],
+   [
+    141.0,
+    36.9
+   ],
+   [
+    139.6,
+    38.9
+   ],
+   [
+    141.7,
+    38.3
+   ]
+  ]
+ },
+ "note": "시각표가 없어 나이브 모델로 돈다. 권역은 미야기·야마가타·후쿠시마 3현이고, 경계는 현 경계를 해안선으로 자른 것이다. 니가타·도치기로 넘어가는 노선(磐越西線, 只見線, 東北本線 黒磯 쪽)은 현 경계에서 끊긴다.",
+ "start": {
+  "lon": 140.8824,
+  "lat": 38.2601,
+  "names": {
+   "ja": "仙台",
+   "en": "Sendai",
+   "ko": "센다이",
+   "zh-Hans": "仙台",
+   "zh-Hant": "仙台"
+  }
+ },
+ "prefectures": [
+  "宮城県",
+  "山形県",
+  "福島県"
+ ]
+}

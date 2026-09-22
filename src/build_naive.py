@@ -7,14 +7,14 @@
 덤이 둘 있다. 출발 시각이 의미를 갖게 되고, 대기 시간을 "배차의 절반"
 같은 어림값이 아니라 RAPTOR 가 실제 열차 시각으로 계산한다.
 
-추정하는 것은 둘뿐이고 전부 좌표에서 나온다.
+추정하는 것은 둘이다.
 
-  주행 시간   72.8초 + 거리 x 0.04436     역당 정차 73초, 평균 81km/h
-  배차        구간 주변 역 밀도로 매긴 등급
+  주행 시간   정차당 시간 + 선로 등급(전철화·비전철·도시철도·노면전차)별 속도
+  배차        구간별 실제 운행 횟수(honsu.py), 없으면 주변 역 밀도로 매긴 등급
 
-간토 시각표로 맞춘 값이다. 등급은 노선이 아니라 구간마다 매긴다. 노선
-단위로 매기면 東海道本線 처럼 米原에서 神戸까지 한 관계에 들어 있는
-노선에서 도심과 시골이 한 값으로 뭉개진다.
+둘 다 노선이 아니라 구간마다 매긴다. 노선 단위로 매기면 東海道本線 처럼
+米原에서 神戸까지 한 관계에 들어 있는 노선에서 도심과 시골이 한 값으로
+뭉개진다.
 
 통과 계통(쾌속·급행·특급)은 같은 역 줄 위를 건너뛰며 달리는 별도 운행으로
 깐다. 그래야 라우터가 "쾌속을 기다릴지 각역정차를 탈지" 를 시각으로 푼다.
@@ -39,11 +39,49 @@ RAW = BASE / "raw"
 
 LANGS = ("ja", "en", "ko", "zh-Hans", "zh-Hant")
 
-# 간토 시각표로 맞춘 주행식. 상수항이 정차와 가감속을, 기울기가 순항
-# 속도를 담는다. 통과 열차는 최고속도가 높고 감속이 적어 따로 맞춘다.
-#   각역정차  62.1초 + 74.8km/h        통과  106.0초 + 84.8km/h
-RIDE_LOCAL = (62.1, 1.0 / (74.8 / 3.6))
-RIDE_FAST = (106.0, 1.0 / (84.8 / 3.6))
+# 주행 시간은 역 사이 선로의 등급으로 매긴다(build_track 이 구간마다 남긴
+# track-attrs.json). 간토 도심으로 맞춘 한 가지 식(정차 62.1초 + 74.8km/h)은
+# 지방 완행을 17% 빠르게 봤고 쌍마다 ±23% 어긋났다. 속도 차는 권역보다
+# 선로 사이에서 크다(북도호쿠 東北本線 79km/h, 秋田内陸線 39km/h).
+#
+# 7개 권역의 완행 100쌍(평일 낮 시각표, 2026-09 조사)으로 한 번에 맞췄다.
+# 간선/지선(usage)은 속도를 가르지 못했고 전철화 여부가 갈랐다. 권역 하나를
+# 빼고 맞춘 값으로 그 권역을 예측해도 쌍마다 ±12% 다.
+#   정차당   철도 98.7초, 도시철도(지하철·모노레일·노면전차) 73.3초
+#   순항     전철화 79.3km/h, 비전철 60.0km/h, 지하철·모노레일 87.9km/h
+# 노면전차는 쌍이 2개뿐이라 맞춘 값(77km/h) 대신 법정 최고속도 40km/h 를 쓴다
+# (軌道運転規則, 併用軌道). 한 정거장 약 1.8분으로 熊本市電 조사값(약 2분)과 맞다.
+DWELL = {"rail_e": 98.7, "rail_ne": 98.7, "urban": 73.3, "tram": 73.3}
+CRUISE_KMH = {"rail_e": 79.3, "rail_ne": 60.0, "urban": 87.9, "tram": 40.0}
+# 통과 계통은 간토에서 맞춘 비율을 그대로 쓴다. 정차 한 번에 106초, 순항은
+# 완행보다 13% 빠르다(간토 84.8 / 74.8).
+DWELL_FAST = 106.0
+FAST_MULT = 84.8 / 74.8
+
+
+def seg_class(v):
+    """track-attrs 한 구간 -> 속도 등급."""
+    kind = v.get("kind")
+    if kind == "tram":
+        return "tram"
+    if kind in ("subway", "monorail", "light_rail"):
+        return "urban"
+    return "rail_e" if v.get("elec", 1.0) >= 0.5 else "rail_ne"
+
+
+def leg_seconds(parts, fast=False):
+    """한 번 서고 달리는 구간의 시간. parts 는 (길이 m, 등급) 목록."""
+    if not parts:
+        return 0
+    main = max(parts, key=lambda p: p[0])[1]
+    dwell = DWELL_FAST if fast else DWELL[main]
+    mult = FAST_MULT if fast else 1.0
+    run = sum(m / (CRUISE_KMH[c] * mult / 3.6) for m, c in parts)
+    return int(round(dwell + run))
+
+
+_META_PATH = BASE / "region.json"
+_META = json.loads(_META_PATH.read_text(encoding="utf-8")) if _META_PATH.exists() else {}
 # 선로 기하가 없는 구간만 직선거리에 이 배수를 곱해 어림한다. 기하가
 # 있으면 실제 선로를 따라 잰다. 오사카-교토는 직선 41.9km 에 실제 선로
 # 42.8km 라 배수가 1.02 인데, 1.15 를 곱하면 48km 가 되어 7분이 붙는다.
@@ -54,6 +92,14 @@ REP = [5.0, 8.8, 17.8, 39.3]
 GRADE_NAMES = ["도심", "장거리통근", "적당한로컬", "한적한로컬"]
 HEADWAY_CAP = 60.0          # 한 시간 넘는 배차는 여기서 자른다
 EXP_MULT = 2.0              # 통과 계통은 각역정차보다 드물다
+# 운행 횟수 데이터(honsu.py)로 배차를 정할지. 파일이 있으면 기본으로 쓴다.
+# region.json 의 "headways": "rule" 이나 NAIVE_HONSU=0 이면 규칙만 쓴다.
+# 간토 실제 시각표와 견준 소요 시간 비가 규칙 0.98(사분위 0.90-1.08)에서
+# 1.00(0.93-1.05)이 됐다.
+_HONSU_FILE = ROOT / "data" / "honsu" / "unkohonsu2026_kukan.txt"
+USE_HONSU = (os.environ.get("NAIVE_HONSU", "1") == "1"
+             and _META.get("headways", "honsu") == "honsu" and _HONSU_FILE.exists())
+HONSU_CAP = 240.0           # 실제 횟수가 있으면 한 시간 넘는 배차도 둔다
 
 SERVICE_FROM, SERVICE_TO = 5 * 3600, 24 * 3600
 
@@ -113,7 +159,78 @@ def _line_headways():
     return {k: v for k, v in got.items() if isinstance(v, dict)}
 
 
-def grade_segments(railways, pos, scale):
+def _honsu_rates(railways, express, pos, scale):
+    """(노선, 역, 역) -> 그 노선 완행의 시간당 대수. 짝이 없는 구간은 빠진다.
+
+    구간 횟수는 그 선로를 지나는 계통을 다 합친 것이라, 같은 구간에
+    짝지어진 우리 노선 수로 나눈다(広島電鉄 은 한 선로를 계통 넷이 쓴다).
+    통과 계통이 함께 달리면 그 몫도 뺀다. 통과 계통 하나는 완행의
+    1/EXP_MULT 로 깔리므로, 완행 몫은 합계를 (1 + m/EXP_MULT) 로 나눈 것이다.
+    """
+    from honsu import Honsu
+    from operators import RAIL_OPERATORS, _canon_operator, operator_in_name
+
+    xs = [p[0] for p in pos.values()]
+    ys = [p[1] for p in pos.values()]
+    hs = Honsu(scale, (min(xs) - 0.05, min(ys) - 0.05,
+                             max(xs) + 0.05, max(ys) + 0.05))
+    jr = {k for k in RAIL_OPERATORS if k.endswith("旅客鉄道")}
+
+    def op_of(r):
+        got = _canon_operator(r.get("operator") or "")
+        if got in RAIL_OPERATORS:
+            return got
+        got = operator_in_name(r["title"].get("ja", ""))
+        return _canon_operator(got) if got else ""
+
+    from build_rail import kind_of
+
+    matched = {}
+    share = defaultdict(set)
+    for r in railways:
+        # 이 데이터는 특급을 세지 않았다. 특급이 노선으로 선 것(いなば)은
+        # 규칙대로 두고, 선로를 나눠 쓰는 계통 수에도 넣지 않는다.
+        if kind_of(r["title"].get("ja", "")) == "특급":
+            continue
+        cs = [c for c in r["clusters"] if c in pos]
+        op = op_of(r)
+        is_jr = r["title"].get("ja", "").startswith("JR") or op in jr
+        for a, b in zip(cs, cs[1:]):
+            k = hs.section(pos[a], pos[b], op or None)
+            if k is None and not op:
+                continue
+            if k is not None and not op and is_jr and hs.ops[k] not in jr:
+                continue
+            if k is None:
+                continue
+            matched[(r["id"], a, b)] = k
+            share[(k, frozenset((a, b)))].add(r["id"])
+
+    over = defaultdict(int)
+    order = {r["id"]: {c: i for i, c in reversed(list(enumerate(r["clusters"])))}
+             for r in railways}
+    clusters = {r["id"]: r["clusters"] for r in railways}
+    for e in express:
+        if e["kind"] in ("부분", "특급") or e["railway"] not in order:
+            continue
+        idx = [order[e["railway"]][c] for c in e["clusters"] if c in order[e["railway"]]]
+        if len(idx) < 2:
+            continue
+        cs = clusters[e["railway"]]
+        for i in range(min(idx), max(idx)):
+            over[(e["railway"], cs[i], cs[i + 1])] += 1
+
+    rates = {}
+    for key, k in matched.items():
+        rid, a, b = key
+        n = len(share[(k, frozenset((a, b)))])
+        m = over.get(key, 0)
+        rates[key] = hs.per_hour(k) / n / (1.0 + m / EXP_MULT)
+    print(f"  운행 횟수 데이터와 짝지은 구간 {len(matched):,}개", flush=True)
+    return rates
+
+
+def grade_segments(railways, pos, scale, express=()):
     """구간마다 등급을 매겨 배차를 정한다. 좌표만 쓴다."""
     cl = sorted(pos)
     gx = np.array([pos[c][0] for c in cl]) * scale * 111.320
@@ -128,6 +245,7 @@ def grade_segments(railways, pos, scale):
         return float(np.hypot((x2 - x1) * scale * 111.320, (y2 - y1) * 111.132))
 
     hand = _line_headways()
+    rates = _honsu_rates(railways, express, pos, scale) if USE_HONSU else {}
     seg_head, seg_km, line_grade = {}, {}, {}
     for r in railways:
         cs = [c for c in r["clusters"] if c in pos]
@@ -159,12 +277,16 @@ def grade_segments(railways, pos, scale):
                 g = 2
             grades.append(g)
             h = min(REP[g] * (EXP_MULT if fast else 1.0), HEADWAY_CAP)
+            rate = rates.get((r["id"], a, b))
+            if rate:
+                h = min(max(60.0 / rate, 1.5), HONSU_CAP)
             # 실제 운행량으로 확인한 노선은 그 값으로 누르거나 올린다.
             # 하한은 이보다 잦게 매긴 구간(도심 쪽)을 건드리지 않는다.
-            if spec.get("min_per_hour"):
-                h = min(h, 60.0 / spec["min_per_hour"])
-            if spec.get("max_per_hour"):
-                h = max(h, 60.0 / spec["max_per_hour"])
+            elif spec.get("min_per_hour") or spec.get("max_per_hour"):
+                if spec.get("min_per_hour"):
+                    h = min(h, 60.0 / spec["min_per_hour"])
+                if spec.get("max_per_hour"):
+                    h = max(h, 60.0 / spec["max_per_hour"])
             key = (a, b)
             if h < seg_head.get(key, np.inf):
                 seg_head[key] = seg_head[(b, a)] = h
@@ -244,12 +366,25 @@ def build(railways, express, pos, seg_head, seg_km, km, scale):
                 rows.append(key)
 
     seg_km = track_lengths(rows, row_of, railways, pos, scale, km)
+    attrs_path = RAW / "track-attrs.json"
+    attrs = (json.loads(attrs_path.read_text(encoding="utf-8"))
+             if attrs_path.exists() else {})
+
+    def parts(rid, a, b):
+        """역 묶음 a->b 구간의 (길이 m, 등급). 선로 등급이 없으면 전철화로 본다."""
+        sa, sb = f"{rid}.{a}", f"{rid}.{b}"
+        v = attrs.get(f"{rid}|{sa}|{sb}") or attrs.get(f"{rid}|{sb}|{sa}")
+        if v:
+            return [(float(v["len"]), seg_class(v))]
+        return [(seg_km.get((a, b), km(a, b) * DETOUR) * 1000.0, "rail_e")]
 
     ev_stop, ev_arr, ev_dep, trip_start = [], [], [], []
 
-    def lay(line_key, rid, cs, headway_min, spans_km, fast=False):
-        """cs 를 순서대로 도는 운행을 배차 간격으로 깐다."""
-        ride_a, ride_b = RIDE_FAST if fast else RIDE_LOCAL
+    def lay(line_key, rid, cs, headway_min, spans, fast=False):
+        """cs 를 순서대로 도는 운행을 배차 간격으로 깐다.
+
+        spans 는 정차 사이마다 (길이 m, 등급) 목록이다."""
+        secs = [leg_seconds(p, fast) for p in spans]
         step = max(int(round(headway_min * 60)), 60)
         offset = phase_of(line_key, step)
         # 왕복 모두 깐다. 한 방향만 깔면 되돌아오는 경로가 없어진다.
@@ -257,9 +392,9 @@ def build(railways, express, pos, seg_head, seg_km, km, scale):
         # 출발역에서 05:00 에 처음 떠나게 두면 긴 노선의 먼 끝은 한낮에야
         # 첫 차가 온다. 日豊本線(小倉-鹿児島中央 462km)은 宮崎 에 11시 반에
         # 첫 차가 와서 宮崎-都城 이 271분으로 나왔다.
-        whole = sum(int(round(ride_a + ride_b * km * 1000.0)) for km in spans_km)
+        whole = sum(secs)
         lead = -(-whole // step) * step
-        for seq, legs in ((cs, spans_km), (cs[::-1], spans_km[::-1])):
+        for seq, legs in ((cs, secs), (cs[::-1], secs[::-1])):
             t0 = SERVICE_FROM + offset - lead
             while t0 <= SERVICE_TO:
                 trip_start.append(len(ev_stop))
@@ -269,7 +404,7 @@ def build(railways, express, pos, seg_head, seg_km, km, scale):
                     ev_arr.append(t)
                     ev_dep.append(t)
                     if i < len(legs):
-                        t += int(round(ride_a + ride_b * legs[i] * 1000.0))
+                        t += legs[i]
                 t0 += step
             # 반대 방향은 위상을 절반 어긋나게 둔다
             offset = (offset + step // 2) % step
@@ -280,13 +415,15 @@ def build(railways, express, pos, seg_head, seg_km, km, scale):
         cs = [c for c in r["clusters"] if c in pos]
         if len(cs) < 2:
             continue
-        legs = [seg_km.get((a, b), km(a, b) * DETOUR) for a, b in zip(cs, cs[1:])]
+        legs = [parts(r["id"], a, b) for a, b in zip(cs, cs[1:])]
         heads = [seg_head.get((a, b), HEADWAY_CAP) for a, b in zip(cs, cs[1:])]
+        cap = HONSU_CAP if USE_HONSU else HEADWAY_CAP
         # 구간 배차는 노선끼리 나눠 쓰므로(가장 잦은 값), 상한은 여기서 노선마다
         # 다시 건다. 上飯田線 은 같은 구간을 지나는 小牧線 의 배차를 받아 상한을
         # 넘었다. 상한을 둔 노선은 한적한 노선이라 통과 계통도 깔지 않는다.
         # 瀬戸線 은 한낮에 普通 만 다니는데 급행 계통이 얹혀 1.5배가 됐다.
-        spec = hand.get(r["title"].get("ja", "")) or {}
+        # 운행 횟수 데이터를 쓰면 손으로 적은 값은 짝이 없는 구간에만 쓴다.
+        spec = {} if USE_HONSU else (hand.get(r["title"].get("ja", "")) or {})
         if spec.get("max_per_hour"):
             heads = [max(h, 60.0 / spec["max_per_hour"]) for h in heads]
             capped.add(r["id"])
@@ -301,7 +438,7 @@ def build(railways, express, pos, seg_head, seg_km, km, scale):
             if h >= full - 1e-6:
                 continue
             extra = 1.0 / max(1.0 / h - 1.0 / full, 1e-6)
-            if extra > HEADWAY_CAP:
+            if extra > cap:
                 continue
             lay(f"{r['id']}|{i}", r["id"], cs[i:j + 1], extra, legs[i:j], fast=fast)
 
@@ -332,12 +469,13 @@ def build(railways, express, pos, seg_head, seg_km, km, scale):
             if a in ord_ and b in ord_:
                 i, j = sorted((ord_[a], ord_[b]))
                 span = list(zip(full_cs[i:j], full_cs[i + 1:j + 1]))
-                legs.append(sum(seg_km.get(p, km(*p) * DETOUR) for p in span))
+                legs.append([x for p in span for x in parts(rid, *p)])
                 unders += [seg_head[p] for p in span if p in seg_head]
             else:
-                legs.append(km(a, b) * DETOUR)
+                legs.append([(km(a, b) * DETOUR * 1000.0, "rail_e")])
         base = float(np.median(unders)) if unders else 20.0
-        lay(f"{rid}|exp{n}", rid, cs, min(base * EXP_MULT, HEADWAY_CAP), legs, fast=True)
+        lay(f"{rid}|exp{n}", rid, cs,
+            min(base * EXP_MULT, HONSU_CAP if USE_HONSU else HEADWAY_CAP), legs, fast=True)
         n_exp += 1
 
     trip_start.append(len(ev_stop))
@@ -389,7 +527,7 @@ def main():
     scale = float(np.cos(np.radians(lat0)))
     print(f"[{REGION}] 노선 {len(railways):,}개, 역 묶음 {len(pos):,}개", flush=True)
 
-    seg_head, seg_km, line_grade, km = grade_segments(railways, pos, scale)
+    seg_head, seg_km, line_grade, km = grade_segments(railways, pos, scale, express)
     counts = defaultdict(int)
     for g in line_grade.values():
         counts[g] += 1

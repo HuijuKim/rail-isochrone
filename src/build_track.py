@@ -23,6 +23,7 @@ from __future__ import annotations
 import json
 import os
 import re
+from collections import defaultdict
 import sys
 from pathlib import Path
 
@@ -89,6 +90,7 @@ class Tracks(osmium.SimpleHandler):
         super().__init__()
         self.ways = []
         self.names = []
+        self.attrs = []
         self.pos = {}
 
     def way(self, w):
@@ -104,6 +106,20 @@ class Tracks(osmium.SimpleHandler):
         if len(refs) >= 2:
             self.ways.append(refs)
             self.names.append(w.tags.get("name:ja") or w.tags.get("name") or "")
+            self.attrs.append(_way_attrs(w.tags))
+
+
+def _way_attrs(tags):
+    """주행 속도를 가늠할 선로 등급. 없는 태그는 None."""
+    def num(v):
+        m = re.match(r"\s*(\d+(?:\.\d+)?)", v or "")
+        return float(m.group(1)) if m else None
+    tracks = num(tags.get("tracks"))
+    elec = tags.get("electrified")
+    return (tags.get("railway"), tags.get("usage"), tags.get("service"),
+            num(tags.get("maxspeed")),
+            None if elec is None else elec != "no",
+            None if tracks is None else tracks >= 2)
 
 
 def build_edges(ways, pos, scale):
@@ -284,6 +300,53 @@ def main() -> None:
     # 노선끼리 서로 덮어쓴다. 日暮里-西日暮里 를 京浜東北線·山手線·
     # 日暮里舅人ライナー 셋이 쓰는데, kanto_osm 에서 그런 역 쌓이 436개다.
     segments = {}
+    attrs_out = {}
+    # 구간이 지나간 선로 웨이의 등급을 길이 비율로 모은다. build_naive 가
+    # 구간마다 주행 속도를 달리 매기는 데 쓴다. 간선과 로컬선의 속도 차가
+    # 권역 사이 차이보다 크다(북도호쿠 완행 東北本線 79km/h, 秋田内陸線 39).
+    node_of = {(round(float(p[0]), 6), round(float(p[1]), 6)): i
+               for i, p in enumerate(xy)}
+    er, ec, _ew, eo = edges
+    way_of = {}
+    for u, v, k in zip(er.tolist(), ec.tolist(), eo.tolist()):
+        way_of.setdefault((u, v), k)
+        way_of.setdefault((v, u), k)
+
+    def seg_attrs(seg):
+        tot = 0.0
+        acc = {"main": 0.0, "main_n": 0.0, "vmax": 0.0, "vmax_n": 0.0,
+               "elec": 0.0, "elec_n": 0.0, "double": 0.0, "double_n": 0.0}
+        kinds = defaultdict(float)
+        for p, q in zip(seg, seg[1:]):
+            u, v = node_of.get(tuple(p)), node_of.get(tuple(q))
+            k = way_of.get((u, v)) if u is not None and v is not None else None
+            L = _length_m([p, q], scale)
+            if k is None or L <= 0:
+                continue
+            rail, usage, _svc, vmax, elec, dbl = tr.attrs[k]
+            tot += L
+            kinds[rail] += L
+            if usage:
+                acc["main_n"] += L
+                acc["main"] += L * (usage == "main")
+            if vmax:
+                acc["vmax_n"] += L
+                acc["vmax"] += L * vmax
+            if elec is not None:
+                acc["elec_n"] += L
+                acc["elec"] += L * elec
+            if dbl is not None:
+                acc["double_n"] += L
+                acc["double"] += L * dbl
+        if tot <= 0:
+            return None
+        out = {"len": round(tot), "kind": max(kinds, key=kinds.get)}
+        for key in ("main", "elec", "double"):
+            if acc[key + "_n"] > tot * 0.5:
+                out[key] = round(acc[key] / acc[key + "_n"], 2)
+        if acc["vmax_n"] > tot * 0.5:
+            out["vmax"] = round(acc["vmax"] / acc["vmax_n"])
+        return out
     shapes, done, failed, own_hit = [], 0, 0, 0
     fail_len = []
     for r in railways:
@@ -423,6 +486,9 @@ def main() -> None:
                     seg.append(pair)
             if len(seg) >= 2:
                 segments[f"{r['id']}|{sa}|{sb}"] = seg
+                got_attrs = seg_attrs(seg)
+                if got_attrs:
+                    attrs_out[f"{r['id']}|{sa}|{sb}"] = got_attrs
             for pair in seg:
                 if not path or path[-1] != pair:
                     path.append(pair)
@@ -459,6 +525,8 @@ def main() -> None:
     seg_out = RAW / "track-segments.json"
     seg_out.write_text(json.dumps(segments, ensure_ascii=False),
                        encoding="utf-8")
+    (RAW / "track-attrs.json").write_text(json.dumps(attrs_out, ensure_ascii=False),
+                                          encoding="utf-8")
     total = done + failed
     print("")
     print(f"  구간 {total:,}개 중 선로를 따라 이은 것 {done:,}개 "

@@ -69,7 +69,51 @@ CATCHMENT_SEC = None
 BRIDGE_M = 1000.0
 
 
-def _pieces_in_region(rings, pts):
+def _walk_reach(walk):
+    """역에서 보행망으로 이어진 노드들의 위치 색인. 한 번만 만든다.
+
+    다리·방파제로 이어진 땅은 보행망이 이어져 있고, 배로만 가는 섬은
+    제 보행망이 따로 떨어져 있다. 거리로 가르면 1km 안의 섬이 다리가
+    없어도 딸려 왔다.
+    """
+    got = getattr(walk, "_reach_tree", None)
+    if got is not None:
+        return got
+    from scipy.sparse import csr_matrix
+    from scipy.sparse.csgraph import connected_components
+    from scipy.spatial import cKDTree
+
+    n = len(walk.indptr) - 1
+    g = csr_matrix((np.ones(len(walk.indices), dtype=np.int8), walk.indices,
+                    walk.indptr), shape=(n, n))
+    _, comp = connected_components(g, directed=False)
+    st = walk.station_node[walk.station_node >= 0]
+    ok = np.isin(comp, np.unique(comp[st]))
+    scale = float(np.cos(np.radians(float(np.median(walk.node_lat)))))
+    xy = np.stack([walk.node_lon[ok] * scale * 111_320.0,
+                   walk.node_lat[ok] * 111_132.0], axis=1)
+    got = (cKDTree(xy), walk.node_lon[ok], walk.node_lat[ok], scale)
+    walk._reach_tree = got
+    return got
+
+
+def _ring_reached(ring, reach) -> bool:
+    """이 땅 조각 안에 역과 보행망으로 이어진 노드가 있는가."""
+    from matplotlib.path import Path as MplPath
+
+    tree, lon, lat, scale = reach
+    r = np.asarray(ring, dtype=np.float64)
+    cx, cy = r[:, 0].mean(), r[:, 1].mean()
+    half = float(np.hypot((r[:, 0].max() - r[:, 0].min()) * scale * 111_320.0,
+                          (r[:, 1].max() - r[:, 1].min()) * 111_132.0))
+    idx = tree.query_ball_point([cx * scale * 111_320.0, cy * 111_132.0], half)
+    if not idx:
+        return False
+    pts = np.stack([lon[idx], lat[idx]], axis=1)
+    return bool(MplPath(r).contains_points(pts).any())
+
+
+def _pieces_in_region(rings, pts, reach=None):
     """역이 든 땅과, 거기서 다리로 건너갈 만큼 가까운 땅을 고른다.
 
     역만으로 거르면 에노시마·조가시마·중앙방파제처럼 역은 없지만 걸어
@@ -89,6 +133,10 @@ def _pieces_in_region(rings, pts):
         keep[i] = bool(box.any() and MplPath(r).contains_points(pts[box]).any())
     if not any(keep):
         return keep
+    # 보행망이 있으면 거리 대신 실제로 걸어서 이어졌는지를 본다.
+    if reach is not None:
+        return [ok or (len(usable[i]) >= 4 and _ring_reached(usable[i], reach))
+                for i, ok in enumerate(keep)]
 
     scale = float(np.cos(np.radians(float(np.median(pts[:, 1])))))
 
@@ -127,6 +175,7 @@ class Coverage:
 
     def __init__(self, walk, land_npz=None, catchment_sec: float | None = CATCHMENT_SEC,
                  stations=None, line_ends=None):
+        self._walk = walk
         self.lon0, self.lat0 = walk.lon0, walk.lat0
         self.m_lon, self.m_lat = walk.m_per_deg_lon, walk.m_per_deg_lat
         self.cell = CELL_M
@@ -226,7 +275,8 @@ class Coverage:
 
         kept = [np.asarray(r, dtype=np.float64) for r in rings if len(r) >= 4]
         if stations is not None and len(stations):
-            keep = _pieces_in_region(kept, np.asarray(stations, dtype=np.float64))
+            reach = _walk_reach(self._walk) if self._walk is not None else None
+            keep = _pieces_in_region(kept, np.asarray(stations, dtype=np.float64), reach)
             if any(keep):
                 kept = [r for r, ok in zip(kept, keep) if ok]
         if not kept:
@@ -244,7 +294,7 @@ class Coverage:
             # 역이 하나도 없는 아와지시마가 그려지면서, 선 안인데 클릭이
             # 안 되는 곳이 됐다.
             pts = np.asarray(stations, dtype=np.float64)
-            keep = _pieces_in_region(lines, pts)
+            keep = _pieces_in_region(lines, pts, reach)
             # 안쪽 구멍(호수나 만)은 역이 없지만, 품은 고리를 그리면
             # 같이 그려야 테두리가 맞는다.
             paths = [MplPath(l) if len(l) >= 4 else None for l in lines]

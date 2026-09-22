@@ -221,6 +221,7 @@ def test_follows_track_trusts_an_order_along_a_loop():
         ("고리야마역", "고리야마"),
         ("도스 시", "도스"),
         ("후쿠오카시", "후쿠오카시"),                       # 붙여 쓴 시는 이름이다
+        ("鷹ノ巣;鷹巣", "鷹ノ巣"),                         # OSM 여러 값 표기
     ],
 )
 def test_clean_station_name(raw, name):

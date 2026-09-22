@@ -1,0 +1,79 @@
+{
+ "id": "hokuriku",
+ "center": [
+  136.648,
+  36.578
+ ],
+ "zoom": 11,
+ "names": {
+  "ja": "北陸",
+  "en": "Hokuriku",
+  "ko": "호쿠리쿠",
+  "zh-Hans": "北陆",
+  "zh-Hant": "北陸"
+ },
+ "model": "naive",
+ "timetable": null,
+ "rail": {
+  "source": "OpenStreetMap",
+  "license": "ODbL 1.0",
+  "express_source": "ja.wikipedia.org",
+  "express_license": "CC BY-SA 4.0"
+ },
+ "osm_extracts": [
+  "chubu"
+ ],
+ "osm_files": [
+  "chubu-latest.osm.pbf"
+ ],
+ "grid": {
+  "lon0": 135.4,
+  "lat0": 35.3,
+  "lat_ref": 36.5,
+  "span_x": 216000.0,
+  "span_y": 256000.0,
+  "ocean_seeds": [
+   [
+    137.3,
+    36.85
+   ],
+   [
+    136.4,
+    36.7
+   ],
+   [
+    135.9,
+    36.2
+   ],
+   [
+    135.7,
+    35.65
+   ],
+   [
+    137.0,
+    37.6
+   ],
+   [
+    136.6,
+    37.4
+   ]
+  ]
+ },
+ "note": "시각표가 없어 나이브 모델로 돈다. 권역은 도야마·이시카와·후쿠이 3현이고, 경계는 현 경계를 해안선으로 자른 것이다. 시가·니가타·기후로 넘어가는 노선은 현 경계에서 끊긴다.",
+ "start": {
+  "lon": 136.648,
+  "lat": 36.578,
+  "names": {
+   "ja": "金沢",
+   "en": "Kanazawa",
+   "ko": "가나자와",
+   "zh-Hans": "金泽",
+   "zh-Hant": "金澤"
+  }
+ },
+ "prefectures": [
+  "富山県",
+  "石川県",
+  "福井県"
+ ]
+}

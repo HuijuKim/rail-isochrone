@@ -1,0 +1,75 @@
+{
+ "id": "tohoku_n",
+ "center": [
+  141.1363,
+  39.7016
+ ],
+ "zoom": 11,
+ "names": {
+  "ja": "北東北",
+  "en": "Northern Tohoku",
+  "ko": "북도호쿠",
+  "zh-Hans": "北东北",
+  "zh-Hant": "北東北"
+ },
+ "model": "naive",
+ "timetable": null,
+ "rail": {
+  "source": "OpenStreetMap",
+  "license": "ODbL 1.0",
+  "express_source": "ja.wikipedia.org",
+  "express_license": "CC BY-SA 4.0"
+ },
+ "osm_extracts": [
+  "tohoku"
+ ],
+ "osm_files": [
+  "tohoku-latest.osm.pbf"
+ ],
+ "grid": {
+  "lon0": 139.55,
+  "lat0": 38.72,
+  "lat_ref": 40.1,
+  "span_x": 218000.0,
+  "span_y": 320000.0,
+  "ocean_seeds": [
+   [
+    142.05,
+    39.0
+   ],
+   [
+    141.8,
+    40.8
+   ],
+   [
+    139.7,
+    40.3
+   ],
+   [
+    139.8,
+    39.4
+   ],
+   [
+    140.5,
+    41.45
+   ]
+  ]
+ },
+ "note": "시각표가 없어 나이브 모델로 돈다. 권역은 아오모리·이와테·아키타 3현이고, 경계는 현 경계를 해안선으로 자른 것이다. 홋카이도로 건너가는 노선은 없다(해협선은 신칸센 전용).",
+ "start": {
+  "lon": 141.1363,
+  "lat": 39.7016,
+  "names": {
+   "ja": "盛岡",
+   "en": "Morioka",
+   "ko": "모리오카",
+   "zh-Hans": "盛冈",
+   "zh-Hant": "盛岡"
+  }
+ },
+ "prefectures": [
+  "青森県",
+  "岩手県",
+  "秋田県"
+ ]
+}

@@ -7,58 +7,101 @@
 올려두고 다대다 도달시간을 직접 계산한다. 호출 제한이 없고 한 번 계산에
 역 전부의 도착 시각이 한꺼번에 나온다.
 
+## 권역
+
+일본을 권역 열 곳으로 나눠 다룬다(간토는 실제 시각표판과 OSM 판 둘). 권역마다
+데이터가 따로 있고, 화면에서 권역을 골라 쓴다. 홋카이도와 오키나와는 철도망이
+성겨 뺐다.
+
+| 권역 | 범위 | 시각표 |
+|---|---|---|
+| `kanto` | 수도권 | 실제 시각표(ODPT, mini-tokyo-3d) |
+| `kanto_osm` | 간토 1도 6현 | 추정(아래 "시각표가 없는 권역") |
+| `kansai` | 간사이 2부 4현 | 추정 |
+| `tokai` | 아이치·기후·시즈오카·미에 | 추정 |
+| `hokuriku` | 도야마·이시카와·후쿠이 | 추정 |
+| `koshinetsu` | 야마나시·나가노·니가타 | 추정 |
+| `chugoku` | 주고쿠 5현 | 추정 |
+| `shikoku` | 시코쿠 4현 | 추정 |
+| `kyushu` | 규슈 7현 + 야마구치 | 추정 |
+| `tohoku_s` | 미야기·야마가타·후쿠시마 | 추정 |
+| `tohoku_n` | 아오모리·이와테·아키타 | 추정 |
+
+신칸센은 다루지 않는다. 권역 사이를 잇는 이동은 계산하지 않는다.
+
 ## 빠른 시작
 
+### 미리 빌드한 데이터를 받아 쓰기
+
+빌드 없이 바로 띄울 수 있다. 권역별 데이터를
+[GitHub Releases](https://github.com/HuijuKim/rail-isochrone/releases) 에 올려 두었다
+(태그 `data-날짜`, 권역 하나가 zip 하나, 64-245 MB).
+
 ```
-python src/fetch_data.py     # 시각표 원본 수집 (약 111 MB, 최초 1회)
+python -m pip install numpy scipy matplotlib flask
+python src/fetch_release.py              # 받을 수 있는 권역 전부 (약 1.3 GB)
+python src/fetch_release.py kyushu       # 고른 권역만
+python src/fetch_release.py --list       # 무엇이 있는지
+python src/server.py                     # http://127.0.0.1:5173
+```
+
+간토 실제 시각표 권역(`kanto`)은 들어 있지 않다. 시각표 재배포 조건을 확인하지
+못했다(아래 라이선스). 같은 범위를 OSM 으로 만든 `kanto_osm` 이 들어 있고,
+`kanto` 가 필요하면 아래처럼 직접 받아 빌드한다.
+
+데이터는 그것을 만든 코드와 짝이 맞아야 한다. 오래된 체크아웃이면 먼저 코드를
+최신으로 받는다. **서버를 멈춘 뒤에 받는다.** 서버가 보행망 파일을 열어 두면
+윈도우가 덮어쓰기를 막는다.
+
+### 직접 빌드하기
+
+OSM 추출본을 [Geofabrik](https://download.geofabrik.de/asia/japan.html) 에서 받아
+`data/osm/` 에 둔다. 권역이 읽는 추출본은 `data/regions/<권역>/region.json` 의
+`osm_files` 에 적혀 있다. 필요한 패키지에 `osmium` 이 더해진다.
+
+시각표가 없는 권역은 이 순서로 돌린다. `REGION` 환경변수로 권역을 고른다.
+
+```
+REGION=<권역> python src/build_walk.py      # 보행망·해안선·육지 마스크
+REGION=<권역> python src/build_admin.py     # 행정경계 -> 권역 경계
+REGION=<권역> python src/build_rail.py      # OSM 노선 관계 -> 노선·역
+REGION=<권역> python src/build_express.py   # 위키백과에서 통과 계통 정차역 (받을 표가 없으면 건너뛴다)
+REGION=<권역> python src/build_track.py     # 역 사이 선로 선형과 선로 등급
+REGION=<권역> python src/build_naive.py     # 배차·주행 시간을 추정해 시각표를 짓는다
+REGION=<권역> python src/build_admin.py     # 역에 현 붙이기
+REGION=<권역> WALK_REUSE=1 python src/build_walk.py   # 역별 도보권
+python src/build_colors.py                  # 노선 색
+```
+
+처음 만드는 권역은 `build_walk` 와 `build_admin` 이 `stops.json` 을 요구해서 역
+하나짜리 임시 목록을 먼저 둔다. 캐시(`RAIL_REUSE`, `ADMIN_REUSE`, `WALK_REUSE`),
+순서의 이유, 사전 파일은 [HANDOVER.md](HANDOVER.md) 에 적었다.
+
+배차는 [全国鉄道運行本数データ](https://gtfs-gis.jp/railway_honsu/) 의
+`unkohonsu2026_kukan.txt` 를 `data/honsu/` 에 두면 그것으로 정한다. 없으면 역
+밀도로 어림한다.
+
+간토 실제 시각표 권역은 이렇다.
+
+```
+python src/fetch_data.py     # 시각표 원본 수집 (약 111 MB)
 python src/build_graph.py    # 라우팅용 배열로 변환 (약 40초)
-python src/build_walk.py     # 보행 네트워크 구축 (선택, 아래 참고)
-python src/server.py         # http://127.0.0.1:5173
+python src/build_walk.py     # 보행 네트워크 (kanto·chubu 추출본)
+python src/build_admin.py
 ```
 
-데이터는 `data/regions/<권역>/` 아래에 모인다. 저장소에는 코드만 들어 있고
-데이터는 위 순서대로 돌리면 그대로 만들어진다 (약 680 MB).
-
-필요한 패키지: `numpy`, `scipy`, `matplotlib`, `flask` (+ 보행망을 쓰면 `osmium`)
+빌드한 데이터를 릴리스로 묶는 것은 `python src/pack_release.py` 다(`dist/` 에 zip).
 
 ### 테스트
 
 ```
-python -m pytest tests/ -q      # 3초
+python -m pytest tests/ -q      # 권역 데이터까지 보면 2분 남짓
 ```
 
-상수를 만졌을 때 무엇이 움직이는지 보려고 기준선을 박아둔 회귀 테스트다.
-값이 달라지면 고장이 아니라 "의도한 변화인지" 확인하고 기준선을 갱신하면 된다.
-`tests/test_regression.py` 상단에 그 취지를 적어뒀다.
-
-### 보행 네트워크 (선택)
-
-`build_walk.py` 를 돌리지 않아도 앱은 동작한다. 그때 도보는 직선거리에 1.3배
-우회 보정을 한 근사다. 실제 보행로를 따르게 하려면 OSM 추출본을 받아서
-한 번 빌드하면 된다.
-
-추출본이 둘인 이유가 있다. 야마나시와 이즈 반도는 Geofabrik 이 주부로
-분류해서 간토 추출본에 없다. 그런데 주오선(고후까지), 후지큐, 이즈큐,
-이즈하코네, 고텐바선은 시각표가 이미 있어 열차로는 닿는다. 보행망만 빠지면
-그 역들이 "지원 역" 에서 빠지고 경계 밖으로 나간다.
-
-```
-curl -L -o data/osm/kanto-latest.osm.pbf  https://download.geofabrik.de/asia/japan/kanto-latest.osm.pbf  # 483 MB
-curl -L -o data/osm/chubu-latest.osm.pbf  https://download.geofabrik.de/asia/japan/chubu-latest.osm.pbf  # 486 MB
-python -m pip install osmium
-python src/build_walk.py                                          # 10분 안팎
-python src/build_admin.py                                         # 역마다 도도부현 붙이기, 1분
-```
-
-읽을 추출본은 `data/regions/<권역>/region.json` 의 `osm_files` 에 적는다.
-격자 밖의 점은 읽으면서 버리므로 주부 추출본의 나고야는 들어오지 않는다.
-
-**서버를 멈춘 뒤에 돌려야 한다.** 서버는 원본 기하 파일을 mmap 으로 열어 두는데
-윈도우에서는 그게 파일 잠금이라 덮어쓰기가 막힌다. 빌드 시작 시점에 검사해서
-막혀 있으면 바로 멈추고 알려준다.
-
-`data/regions/<권역>/walk/` 가 생기면 서버가 자동으로 그쪽을 쓴다. 지우면
-다시 직선거리 근사로 돌아간다.
+기준선을 박아둔 회귀 테스트다. 값이 달라지면 고장이 아니라 "의도한 변화인지"
+확인하고 `UPDATE_BASELINE=1` 로 기준선을 갱신한다. 권역 데이터 검사
+(`tests/test_regions.py`)는 경계가 닫혔는지, 알려진 지점이 안팎에 제대로 놓이는지,
+이웃 역 간격이 터무니없는 노선이 늘었는지, 지도 선이 끊기는지를 본다.
 
 ### 지도 바꾸기 (선택)
 
@@ -70,33 +113,23 @@ set GOOGLE_MAPS_API_KEY=AIza...        # 환경변수
 ```
 
 ```json
-// config.json  (프로젝트 루트)
+// config.json  (프로젝트 루트, 저장소에 올리지 않는다)
 { "google_maps_api_key": "AIza..." }
 ```
 
 키가 있으면 구글 지도로, 없거나 불러오기에 실패하면 OpenStreetMap으로
-자동으로 돌아간다. 일본은 한국과 달리 지도 데이터 반출 제한이 없어서
-구글 지도가 정상 동작한다.
-
-과금은 Dynamic Maps SKU에 걸린다. 월 1만 회까지 무료, 넘으면 1,000회당
-$7이다. 이 앱은 화면을 한 번 띄울 때 1회를 쓰므로 혼자 쓰는 수준에서는
-무료 한도 안에서 끝난다.
+자동으로 돌아간다. 과금은 Dynamic Maps SKU에 걸린다. 월 1만 회까지 무료다.
 
 ## 데이터
 
-| 항목 | 값 |
+| 항목 | 출처 |
 |---|---|
-| 시각표 출처 | [mini-tokyo-3d](https://github.com/nagix/mini-tokyo-3d) (코드 MIT) / 원 데이터 [ODPT](https://www.odpt.org/) |
-| 보행망·해안선 | [OpenStreetMap](https://www.openstreetmap.org/copyright) 기여자 ([ODbL](https://opendatacommons.org/licenses/odbl/)) |
-| 범위 | 수도권 철도 179개 노선 (JR동일본 56, 도쿄메트로 10, 도에이 6, 사철 전부) |
-| 역 | 노선별 2,610행. 같은 역을 묶으면 1,939개 (신주쿠 하나가 11행이다) |
-| 지원 역 | 그중 도보권이 있어 실제로 쓸 수 있는 역. 지도에 점으로 찍는 수다 |
-| 운행 | 평일 48,709편 / 토·휴일 42,840편 |
-| 다이어 | 평일, 토·휴일 2종 |
-
-ODPT API 키는 필요 없다. mini-tokyo-3d 가 시각표를 자기 리포지토리에
-커밋해 두었고 `fetch_data.py` 는 거기서 받아온다. 이 리포지토리에는
-시각표를 담지 않는다 (아래 라이선스 참고).
+| 노선·역·선로(시각표 없는 권역) | [OpenStreetMap](https://www.openstreetmap.org/copyright) 기여자 ([ODbL](https://opendatacommons.org/licenses/odbl/)) |
+| 보행망·해안선·행정경계 | OpenStreetMap 기여자 (ODbL) |
+| 구간별 운행 횟수(배차) | [全国鉄道運行本数データ](https://gtfs-gis.jp/railway_honsu/) 2026년판 (CC BY 4.0 / ODbL) |
+| 통과 계통 정차역 일부 | [ja.wikipedia.org](https://ja.wikipedia.org/) 각 노선 문서의 駅一覧 (CC BY-SA 4.0) |
+| 간토 실제 시각표 | [mini-tokyo-3d](https://github.com/nagix/mini-tokyo-3d) / 원 데이터 [ODPT](https://www.odpt.org/) |
+| 주행 속도 보정 | 7개 권역 평일 낮 시각표 185쌍 (2026-09 조사, Yahoo!路線情報·ekitan) |
 
 ## 계산 방식
 
@@ -175,11 +208,37 @@ RAPTOR를 numpy로 벡터화했다. 한 라운드마다 63만 개 정차 이벤�
 matplotlib으로 등고선을 뽑고, 고리들의 포함 관계를 검사해 외곽선과 구멍으로
 분류한 뒤 GeoJSON MultiPolygon으로 내보낸다.
 
+### 6. 시각표가 없는 권역 (`build_naive.py`)
+
+시각표가 공개되지 않은 권역은 배차와 주행 시간을 추정해 가상 시각표를 짓는다.
+그 뒤로는 간토와 똑같이 RAPTOR 가 돈다. 둘 다 노선이 아니라 역 사이 구간마다
+매긴다. 東海道本線 처럼 도심과 시골을 한 관계에 담은 노선이 한 값으로 뭉개지지
+않게 하려는 것이다.
+
+- **배차**는 구간별 평일 운행 횟수를 18시간으로 나눠 쓴다. 한 선로를 여러 계통이
+  나눠 쓰면 계통 수로 나누고, 통과 계통이 함께 달리면 그 몫을 뺀다. 운행 횟수
+  데이터에 짝이 없는 구간은 주변 역 밀도로 등급을 매긴다.
+- **주행 시간**은 정차 한 번의 시간과 선로 등급별 순항 속도로 짓는다. 등급은 OSM
+  선로 태그에서 온다. 7개 권역의 완행 100쌍으로 맞춘 값이다.
+
+  | 등급 | 정차 | 순항 |
+  |---|---|---|
+  | 전철화 철도 | 98.7초 | 79.3 km/h |
+  | 비전철 철도 | 98.7초 | 60.0 km/h |
+  | 지하철·모노레일 | 73.3초 | 87.9 km/h |
+  | 노면전차 | 73.3초 | 40 km/h (법정 최고속도) |
+
+  권역 하나를 빼고 맞춘 값으로 그 권역을 예측해도 쌍마다 ±12% 다. 권역마다 속도
+  하나를 두는 방식은 ±26% 였다. 간선(79 km/h)과 로컬선(39 km/h)이 한 권역에
+  섞이기 때문이다. 쾌속·특급은 정차 106초, 순항은 완행의 1.13배다.
+- 간토 실제 시각표 281쌍과 견주면 모델/실제 소요 시간이 중앙 1.04 (사분위 0.96-1.11).
+
 ## 권역 범위
 
-앱이 동작하는 범위는 데이터에서 직접 뽑는다. 행정구역 경계는 쓸 수 없다.
-도쿄도가 오가사와라까지 포함해서 간토 추출본 폴리곤이 태평양을 통째로
-감싸기 때문이다.
+시각표가 없는 권역은 현 경계를 해안선으로 자른 것이 곧 권역이다(`build_admin.py`).
+간토 실제 시각표 권역은 행정구역 경계를 쓸 수 없어서 데이터에서 직접 뽑는다.
+도쿄도가 오가사와라까지 포함해 간토 추출본 폴리곤이 태평양을 통째로 감싸기
+때문이다. 그 방식은 이렇다.
 
 - 역마다 **옆 역까지의 절반**을 반경으로 잡는다. 도심은 작게, 외곽은 크게
   잡히고 다음 역이 있는 방향으로는 그 중간에서 끊긴다.
@@ -188,6 +247,8 @@ matplotlib으로 등고선을 뽑고, 고리들의 포함 관계를 검사해 �
   있는 지도가 없는" 곳이 생긴다.
 - OSM 해안선으로 구운 육지 마스크(250 m)로 깎는다. 바다에 막혀 끝나는
   육지 조각은 통째로 넣는다.
+- 역이 없는 섬은 역에서 보행망으로 이어진 것(다리·방파제)만 넣는다. 배로만 가는
+  섬(宮島, 答志島 등)은 빠지고, 天草·しまなみ海道 의 섬은 들어온다.
 - 판정과 지도에 그리는 선이 **같은 마스크**를 쓴다. 둘이 갈리면 선 밖인데
   클릭은 되는 상태가 된다.
 
@@ -270,6 +331,10 @@ matplotlib으로 등고선을 뽑고, 고리들의 포함 관계를 검사해 �
 
 ## 알려진 한계
 
+- **시각표가 없는 권역의 쾌속·특급이 부족하다.** 통과 계통 정차역을 위키백과
+  駅一覧 표에서 읽는데, 주고쿠·시코쿠·도호쿠의 JR 문서는 표 모양이 달라 거의
+  못 읽는다. 그래서 그 권역의 쾌속·특급 구간은 실제보다 5-24% 느리다.
+- **신칸센이 없다.** 권역 사이 이동도 계산하지 않는다.
 - **철도만 다룬다.** 버스가 빠져 있어 역세권 밖 지역은 실제보다 도달권이
   좁게 나온다. 수도권 시내버스 GTFS는 ODPT 키가 있어야 받을 수 있다.
 - **혼잡과 지연을 반영하지 않는다.** 시각표대로 움직인다고 본다.
@@ -286,7 +351,14 @@ src/fetch_data.py    시각표 원본 수집
 src/build_graph.py   직통 병합, 정차 이벤트 평탄화, 환승 간선 생성
 src/router.py        RAPTOR 벡터화 구현 (도달시간 계산)
 src/build_walk.py    OSM 보행망 추출 + 역별 도보권 + 원본 기하 + 육지 마스크
-src/build_admin.py   OSM 행정경계에서 역마다 도도부현 붙이기
+src/build_admin.py   OSM 행정경계에서 역마다 도도부현 붙이기, 권역 경계
+src/build_rail.py    OSM 노선 관계에서 노선과 정차 순서 (시각표 없는 권역)
+src/build_express.py 위키백과 駅一覧 에서 통과 계통 정차역
+src/build_track.py   역 사이 선로 선형과 선로 등급
+src/build_naive.py   배차·주행 시간을 추정해 가상 시각표
+src/honsu.py         구간별 운행 횟수 데이터 짝짓기
+src/pack_release.py  빌드한 권역 데이터를 릴리스 zip 으로
+src/fetch_release.py 릴리스에서 권역 데이터 받기
 src/walknet.py       실행 중 보행망 조회 (역 도보권, 임의 지점 다익스트라)
 src/finegeom.py      그린 도보선을 원본 도로 위로 다시 얹기
 src/geometry.py      역 사이를 실제 선로 모양으로 (경로 표시, 노선 표시)
@@ -312,26 +384,19 @@ tests/               기준선 회귀 테스트 + 경계 회귀 테스트
 개인 학습, 취미, 연구, 교육기관·공공기관의 사용은 허용 범위에 든다.
 오픈소스 정의(OSI)를 만족하는 라이선스는 아니다.
 
-### 데이터는 포함하지 않는다
+### 데이터 릴리스
 
-시각표와 보행망은 저장소에 담지 않고 `fetch_data.py`, `build_walk.py` 로
-각자 받는다. 코드만 올리고 데이터를 빼는 이유는 출처마다 재배포 조건이
-다르고, 그중 일부를 확인할 수 없었기 때문이다.
+저장소에는 코드와 손으로 적은 사전(`data/*.json`)만 들어 있다. 빌드한 권역 데이터는
+GitHub Releases 에 따로 올린다. 이 데이터는 코드와 다른 조건을 따른다.
 
-| 출처 | 확인된 것 | 확인 못 한 것 |
-|---|---|---|
-| mini-tokyo-3d | 저장소 LICENSE 는 MIT. `data/` 에 별도 라이선스 파일이 없다 | README 는 데이터를 "ODPT 에서 받았다" 고만 적고, 재배포를 허락하는 문구가 없다 |
-| ODPT | 데이터셋마다 라이선스가 다르다. CC BY 4.0, CC0, 공공교통 오픈데이터 기본 라이선스, 챌린지 한정 라이선스가 섞여 있다 | 우리가 쓰는 철도 시각표가 어느 쪽인지. 챌린지 한정 라이선스 전문은 계정이 있어야 볼 수 있다 |
-| OpenStreetMap | ODbL. 파생 DB 를 배포하려면 같은 조건으로 공개하고 출처를 밝혀야 한다 | - |
+- OpenStreetMap 에서 뽑은 파생 데이터베이스다. **ODbL 1.0** 으로 배포하고,
+  "© OpenStreetMap contributors" 출처를 밝힌다. 이것을 가공해 다시 배포하면 같은
+  조건을 따라야 한다.
+- 배차에 全国鉄道運行本数データ(西澤明 작성, https://gtfs-gis.jp/railway_honsu/ ,
+  "データのライセンスはCC-BY 4.0、ODbLとします")를 가공해 썼다.
+- 통과 계통 정차역 일부는 ja.wikipedia.org 에서 읽었다(CC BY-SA 4.0).
 
-mini-tokyo-3d 의 README 는 빌드에 ODPT Center 토큰과 Challenge 토큰을 둘 다
-요구한다. 챌린지 한정 라이선스는 대개 기간과 용도를 묶어두므로, 시각표를
-그대로 재배포하는 것은 조건을 확인하기 전에는 하지 않는 편이 안전하다.
-
-데이터를 저장소에 같이 넣고 싶어지면 먼저 이것부터 할 것:
-
-1. developer.odpt.org 에 가입해 우리가 쓰는 노선 데이터셋의 라이선스를 확인한다
-2. 챌린지 한정 라이선스가 섞여 있으면 그 부분은 빼거나 ODPT 에 문의한다
-3. OSM 파생물(보행망, 육지 마스크)을 넣는다면 ODbL 조건을 함께 명시한다
-
-지금 구조에서는 이 셋 중 어느 것도 걸리지 않는다. 받는 코드만 올라가 있다.
+간토 실제 시각표 권역은 넣지 않는다. mini-tokyo-3d 저장소 LICENSE 는 MIT 지만
+`data/` 에 별도 라이선스가 없고, ODPT 데이터셋은 CC BY 4.0, CC0, 공공교통
+오픈데이터 기본 라이선스, 챌린지 한정 라이선스가 섞여 있어 우리가 쓰는 철도
+시각표가 어느 쪽인지 확인하지 못했다. 그 권역은 `fetch_data.py` 로 각자 받는다.

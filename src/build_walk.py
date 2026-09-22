@@ -817,6 +817,11 @@ def build_land_mask() -> dict:
         print(f"  !! 바다를 하나도 못 찾았습니다. region.json 의 "
               f"grid.ocean_seeds 가 이 격자 안의 바다를 가리키는지 "
               f"확인하세요. 지금 시드: {OCEAN_SEEDS}", flush=True)
+    # 반대로 시드 하나가 육지에 찍히면 본토가 통째로 바다가 된다. 북도호쿠의
+    # 陸奥湾 시드가 夏泊半島 위에 놓여 육지가 1% 로 나왔다.
+    elif ratio < 0.05:
+        print(f"  !! 육지가 거의 없습니다. 바다 시드가 육지에 찍혔을 수 있습니다. "
+              f"지금 시드: {OCEAN_SEEDS}", flush=True)
     return {
         "land": land,
         "grid": np.array([lon0, lat0, LAND_CELL_M, w, hgt, m_lon, M_PER_DEG_LAT]),
