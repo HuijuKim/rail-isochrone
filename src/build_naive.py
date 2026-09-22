@@ -100,6 +100,19 @@ def cluster_table(stations):
     return pos, title
 
 
+def _line_headways():
+    """data/line-headways.json. 권역 -> 노선 일본어 이름 -> 한낮 한 방향 편수.
+
+    규칙(역 밀도·간격)으로 매긴 배차가 실제와 크게 어긋나는 노선만 적는다.
+    출처를 함께 적는다. min_per_hour 는 하한, max_per_hour 는 상한이다.
+    """
+    path = ROOT / "data" / "line-headways.json"
+    if not path.exists():
+        return {}
+    got = json.loads(path.read_text(encoding="utf-8")).get(REGION) or {}
+    return {k: v for k, v in got.items() if isinstance(v, dict)}
+
+
 def grade_segments(railways, pos, scale):
     """구간마다 등급을 매겨 배차를 정한다. 좌표만 쓴다."""
     cl = sorted(pos)
@@ -114,12 +127,14 @@ def grade_segments(railways, pos, scale):
         (x1, y1), (x2, y2) = pos[a], pos[b]
         return float(np.hypot((x2 - x1) * scale * 111.320, (y2 - y1) * 111.132))
 
+    hand = _line_headways()
     seg_head, seg_km, line_grade = {}, {}, {}
     for r in railways:
         cs = [c for c in r["clusters"] if c in pos]
         if len(cs) < 2:
             continue
         title = r["title"].get("ja", "")
+        spec = hand.get(title) or {}
         sub = bool(SUBWAY.search(title + " " + (r.get("operator") or "")))
         fast = bool(FAST_NAME.search(title))
         grades = []
@@ -133,7 +148,10 @@ def grade_segments(railways, pos, scale):
                 g = 0 if d5 >= 40 else 1 if d5 >= 15 else 2 if d5 >= 8 else 3
             elif sub or (L < 2.0 and d5 >= 40):
                 g = 0
-            elif d5 < 8 or L >= 4.0:
+            elif d5 < 8:
+                # 예전에는 역 간격 4km 넘는 구간도 여기로 보냈다. 역이
+                # 듬성한 간선(시즈오카의 東海道本線)이 시골 노선이 됐다.
+                # 빼도 간토 실측과의 소요 시간 비는 0.99 -> 0.98 로 같다.
                 g = 3
             elif L < 3.0 and d5 >= 15:
                 g = 1
@@ -141,6 +159,12 @@ def grade_segments(railways, pos, scale):
                 g = 2
             grades.append(g)
             h = min(REP[g] * (EXP_MULT if fast else 1.0), HEADWAY_CAP)
+            # 실제 운행량으로 확인한 노선은 그 값으로 누르거나 올린다.
+            # 하한은 이보다 잦게 매긴 구간(도심 쪽)을 건드리지 않는다.
+            if spec.get("min_per_hour"):
+                h = min(h, 60.0 / spec["min_per_hour"])
+            if spec.get("max_per_hour"):
+                h = max(h, 60.0 / spec["max_per_hour"])
             key = (a, b)
             if h < seg_head.get(key, np.inf):
                 seg_head[key] = seg_head[(b, a)] = h
@@ -229,8 +253,14 @@ def build(railways, express, pos, seg_head, seg_km, km, scale):
         step = max(int(round(headway_min * 60)), 60)
         offset = phase_of(line_key, step)
         # 왕복 모두 깐다. 한 방향만 깔면 되돌아오는 경로가 없어진다.
+        # 첫 차는 운행 시작 시각에 이미 노선 전체를 달리고 있어야 한다.
+        # 출발역에서 05:00 에 처음 떠나게 두면 긴 노선의 먼 끝은 한낮에야
+        # 첫 차가 온다. 日豊本線(小倉-鹿児島中央 462km)은 宮崎 에 11시 반에
+        # 첫 차가 와서 宮崎-都城 이 271분으로 나왔다.
+        whole = sum(int(round(ride_a + ride_b * km * 1000.0)) for km in spans_km)
+        lead = -(-whole // step) * step
         for seq, legs in ((cs, spans_km), (cs[::-1], spans_km[::-1])):
-            t0 = SERVICE_FROM + offset
+            t0 = SERVICE_FROM + offset - lead
             while t0 <= SERVICE_TO:
                 trip_start.append(len(ev_stop))
                 t = t0
@@ -244,12 +274,22 @@ def build(railways, express, pos, seg_head, seg_km, km, scale):
             # 반대 방향은 위상을 절반 어긋나게 둔다
             offset = (offset + step // 2) % step
 
+    hand = _line_headways()
+    capped = set()
     for r in railways:
         cs = [c for c in r["clusters"] if c in pos]
         if len(cs) < 2:
             continue
         legs = [seg_km.get((a, b), km(a, b) * DETOUR) for a, b in zip(cs, cs[1:])]
         heads = [seg_head.get((a, b), HEADWAY_CAP) for a, b in zip(cs, cs[1:])]
+        # 구간 배차는 노선끼리 나눠 쓰므로(가장 잦은 값), 상한은 여기서 노선마다
+        # 다시 건다. 上飯田線 은 같은 구간을 지나는 小牧線 의 배차를 받아 상한을
+        # 넘었다. 상한을 둔 노선은 한적한 노선이라 통과 계통도 깔지 않는다.
+        # 瀬戸線 은 한낮에 普通 만 다니는데 급행 계통이 얹혀 1.5배가 됐다.
+        spec = hand.get(r["title"].get("ja", "")) or {}
+        if spec.get("max_per_hour"):
+            heads = [max(h, 60.0 / spec["max_per_hour"]) for h in heads]
+            capped.add(r["id"])
 
         # 노선 전체는 가장 드문 구간에 맞춰 깐다. 그보다 잦은 구간에는
         # 짧게 도는 운행을 덧댄다. 빈도는 더해지므로 덧대는 간격은
@@ -281,7 +321,7 @@ def build(railways, express, pos, seg_head, seg_km, km, scale):
         if e["kind"] == "부분":
             continue
         rid = e["railway"]
-        if rid not in order_of:
+        if rid not in order_of or rid in capped:
             continue
         cs = [c for c in e["clusters"] if c in pos and (rid, c) in row_of]
         if len(cs) < 2:

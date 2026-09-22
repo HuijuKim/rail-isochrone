@@ -83,9 +83,14 @@ SHINKANSEN = re.compile(
 # 남았다. OSM 에 종별 태그가 없어 이름으로 본다. 뒤에 구분 기호가 와야
 # 한다. しなの鉄道線 은 しなの 가 아니다.
 _LTD_EXPRESS_NAMES = (r"ひだ|しなの|南紀|ふじかわ|伊那路|踊り子|ミュースカイ|"
-                      r"しらさぎ|サンダーバード|はまかぜ|こうのとり")
+                      r"しらさぎ|サンダーバード|はまかぜ|こうのとり|"
+                      r"ソニック|にちりん|ゆふいんの森|ゆふ|きらめき|みどり|"
+                      r"ハウステンボス|有明|きりしま|ひゅうが|海幸山幸|"
+                      r"指宿のたまて箱|あそ|九州横断特急|かわせみ やませみ|"
+                      r"いさぶろう|スーパーおき|おき")
+# 「にちりん」 처럼 낫표로 싸 적기도 한다.
 LTD_EXPRESS = re.compile(
-    r"^(?:" + _LTD_EXPRESS_NAMES + r")(?:$|[\s(（:：・=>＞、,])")
+    r"^「?(?:" + _LTD_EXPRESS_NAMES + r")(?:$|[\s\d０-９(（:：・=>＞、,」])")
 
 PAREN_RE = re.compile(r"[（(][^）)]*[）)]")
 DIR_RE = re.compile(r"(上り|下り|内回り|外回り|環状)")
@@ -108,6 +113,10 @@ DUP_LINE = 0.90             # 이만큼 같으면 중복 노선
 MIN_BRANCH = 1
 # 같은 노선으로 묶인 계통 끝에서 지선을 세울 때 역 사이 상한
 BRANCH_GAP_M = 5000.0
+ALIAS_M = 100.0             # 이보다 가까운 다른 이름의 역은 표기만 다른 같은 역
+# 완행 노선의 이웃 역이 이보다 떨어져 있으면 그 사이 선로는 남의 것이다.
+# 특급을 빼면 네 권역에서 가장 긴 간격이 20km 남짓이다.
+SPLIT_GAP_M = 40_000.0
 MIN_WAYS = 5                # 선로에서 역을 찾아볼 최소 웨이 수
 # 정차 순서에서 이 정도로 튀는 자리는 순서가 틀린 것으로 보고 다시 잇는다
 # 5.0 으로 두었더니 남부선이 안 걸렸다. 가와사키-무카이가하라 5.3km 인데
@@ -294,6 +303,7 @@ class Relations(osmium.SimpleHandler):
             "operator": t.get("operator", "") or t.get("network", ""),
             "ref": t.get("ref", ""),
             "colour": t.get("colour", ""),
+            "wikipedia": t.get("wikipedia", ""),
             "kind": kind_of(name),
             "stops": stops,
             "ways": ways,
@@ -327,6 +337,9 @@ class Ways(osmium.SimpleHandler):
 # 간사이에서 107개가 이렇게 갈라져 있었다.
 _TAIL = re.compile(r"(?:\s*\d+\s*番(?:のりば|線)|\s*のりば|\s*ホーム)$")
 _NUM = re.compile(r"[\s._-]*\d+(?:[.\-_]\d+)*$")
+_DIRECTION = re.compile(r"^(.+?)駅.+方面$")
+_STN_TAIL = re.compile(r"駅[\d０-９\s･・.\-_]+$")
+_KO_TAIL = re.compile(r"(?<=[가-힣])\s*역$|(?<=[가-힣])\s+시$")
 
 
 def clean_station_name(nm: str) -> str:
@@ -336,9 +349,21 @@ def clean_station_name(nm: str) -> str:
         if br in nm:
             nm = nm.split(br)[0].strip()
     nm = _TAIL.sub("", nm).strip()
+    # 방면별 승강장 노드. 叡山電鉄 은 "一乗寺駅八瀬比叡山口・貴船口・鞍馬方面"
+    # 처럼 적어 두어 그대로 역 이름이 됐다. 역 이름 없이 방면만 적힌 것은
+    # 비워 둔다. 이름 없는 정차 노드는 옆 역 노드의 이름을 물려받는다.
+    m = _DIRECTION.match(nm)
+    if m:
+        nm = m.group(1)
+    elif nm.endswith("方面"):
+        return ""
+    nm = _STN_TAIL.sub("", nm).strip()     # 谷上駅4･
     nm = _NUM.sub("", nm).strip()
     if nm.endswith("駅") and len(nm) > 1:
         nm = nm[:-1]
+    # name:ko 도 같은 꼬리가 붙어 있다("하카타 역", "사카에마치 역").
+    # 도시 문서의 이름을 옮겨 온 "도스 시" 도 있다.
+    nm = _KO_TAIL.sub("", nm).strip()
     return nm
 
 
@@ -1042,10 +1067,19 @@ def _same_station(a: set, b: set) -> bool:
     안이면 build_naive 가 환승 간선을 따로 놓아 준다.
 
     이름이 없는 정차 노드는 가릴 재료가 없으니 거리만 보고 합친다.
+
+    부역명은 떼고도 견준다. 괄호로 적은 것은 clean_station_name 이 이미
+    떼는데, "・" 로 이어 적은 것도 있다. 叡山電鉄 은 역 노드가
+    茶山・京都芸術大学, 승강장이 옛 이름 茶山 이라 한 역이 둘로 갈려
+    부분 계통이 지선으로 따로 섰다.
     """
     if not a or not b:
         return True
-    return bool(a & b)
+    return bool(_with_heads(a) & _with_heads(b))
+
+
+def _with_heads(names: set) -> set:
+    return names | {v.split("・", 1)[0] for v in names if "・" in v[1:]}
 
 
 def merge_nearby(of, members, pos, routes, scale):
@@ -1166,10 +1200,13 @@ def _cache_stamp(pbfs):
             return [p.name, st.st_size, int(st.st_mtime)]
         except OSError:
             return [str(p), 0, 0]
-    extra = [ROOT / "data" / "excluded-lines.json",
-             ROOT / "data" / "regions" / REGION / "region.json",
+    # 제외 목록은 도장에 넣지 않는다. 캐시를 읽을 때 다시 걸러서, 제외를
+    # 늘리는 것만으로는 다시 훑을 필요가 없다. 제외를 풀었을 때는 캐시에 그
+    # 노선이 없으니 raw/osm-extract.* 를 지우고 다시 훑는다.
+    extra = [ROOT / "data" / "regions" / REGION / "region.json",
              OUT / "prefecture-rings.json"]
-    return {"pbf": [of(p) for p in pbfs], "extra": [of(p) for p in extra]}
+    # 형식 판. 캐시에 담는 것이 바뀌면 올린다. 2: 관계의 위키 태그.
+    return {"v": 2, "pbf": [of(p) for p in pbfs], "extra": [of(p) for p in extra]}
 
 
 def save_osm_cache(pbfs, rel, ways, nodes):
@@ -1214,7 +1251,11 @@ def load_osm_cache(pbfs):
         return None
     try:
         meta = json.loads(_CACHE_JSON.read_text(encoding="utf-8"))
-        if meta.get("stamp") != _cache_stamp(pbfs):
+        old = meta.get("stamp") or {}
+        # 제외 목록을 도장에 넣던 때 만든 캐시도 받는다.
+        old = dict(old, extra=[e for e in old.get("extra", [])
+                               if e[0] != "excluded-lines.json"])
+        if old != _cache_stamp(pbfs):
             print("  (저장해 둔 OSM 추출이 지금 파일과 안 맞아 다시 훑는다)",
                   flush=True)
             return None
@@ -1224,7 +1265,7 @@ def load_osm_cache(pbfs):
         return None
 
     rel = _Bag()
-    rel.routes = meta["routes"]
+    rel.routes = [r for r in meta["routes"] if not _excluded(r["name"])]
     # 종별은 이름에서 다시 매긴다. 종별 규칙만 고쳤을 때 PBF 를 다시
     # 훑지 않아도 되게.
     for r in rel.routes:
@@ -1248,9 +1289,15 @@ def load_osm_cache(pbfs):
     for i, n in enumerate(nid):
         n = int(n)
         titles, nm = names[str(n)]
+        # 이름 다듬기 규칙이 바뀌었을 수 있어 한 번 더 거친다. 두 번 거쳐도
+        # 결과가 같은 함수다.
+        titles = {g: clean_station_name(v) for g, v in titles.items()}
+        nm = clean_station_name(nm)
         rec = (float(nxy[i, 0]), float(nxy[i, 1]), titles, nm)
         nodes.pos[n] = rec
-        if st[i]:
+        # 다시 다듬어 이름이 빈 것(방면만 적힌 승강장)은 훑을 때처럼 뺀다.
+        # 남기면 이름 없는 정차 노드가 저 자신에게서 빈 이름을 물려받는다.
+        if st[i] and (titles.get("ja") or nm):
             nodes.stations[n] = rec
         if ra[i]:
             nodes.rail.add(n)
@@ -1299,6 +1346,139 @@ def main():
     return _build(pbfs, rel, ways, nodes)
 
 
+def _false_close(seq, cpos, scale) -> bool:
+    """처음으로 돌아오는 마지막 간격이 그 노선의 보통 간격보다 튀는가."""
+    if len(seq) < 4 or seq[0] != seq[-1]:
+        return False
+    if any(c not in cpos for c in seq):
+        return False
+    p = np.array([[cpos[c][0] * scale * 111_320.0, cpos[c][1] * 111_132.0]
+                  for c in seq])
+    d = np.hypot(*np.diff(p, axis=0).T)
+    return bool(d[-1] > max(float(np.median(d[:-1])) * OUTLIER_MULT, OUTLIER_M))
+
+
+def _far_from(p, clusters, xy, dist_m=None) -> bool:
+    """p 가 clusters 의 어느 역에서도 dist_m 넘게 떨어져 있는가."""
+    dist_m = ALIAS_M if dist_m is None else dist_m
+    if p is None:
+        return False
+    for c in clusters:
+        q = xy(c)
+        if q is not None and np.hypot(p[0] - q[0], p[1] - q[1]) <= dist_m:
+            return False
+    return True
+
+
+def _bridge(line, other, xy, named, detour=1.3, slack_m=2000.0):
+    """line 에서 이웃한 두 역 사이에 other 가 더 적어 둔 역을 끼운다.
+
+    other 에서 a, x1..xk, b 가 이어지고 a, b 가 line 에서 바로 이웃이면
+    x 들을 그 사이에 넣는다. 돌아가는 길이가 a-b 직선의 detour 배와
+    slack_m 을 더한 것보다 길면 넣지 않는다. 바뀐 것이 없으면 None.
+    """
+    out = list(line)
+    changed = False
+    i = 0
+    while i < len(other):
+        a = other[i]
+        if a not in out:
+            i += 1
+            continue
+        j = i + 1
+        while j < len(other) and other[j] not in out:
+            j += 1
+        if j >= len(other) or j == i + 1:
+            i = j
+            continue
+        b = other[j]
+        run = [c for c in other[i + 1:j] if named(c)]
+        ia, ib = out.index(a), out.index(b)
+        pts = [xy(c) for c in [a] + run + [b]]
+        if run and abs(ia - ib) == 1 and all(p is not None for p in pts):
+            direct = float(np.hypot(pts[0][0] - pts[-1][0], pts[0][1] - pts[-1][1]))
+            path = sum(float(np.hypot(p[0] - q[0], p[1] - q[1]))
+                       for p, q in zip(pts, pts[1:]))
+            if path <= direct * detour + slack_m:
+                ins = run if ia < ib else run[::-1]
+                lo = min(ia, ib)
+                out[lo + 1:lo + 1] = ins
+                changed = True
+        i = j
+    return out if changed else None
+
+
+def split_far(lines, patterns, xy):
+    """선로 관계가 뼈대인 완행 노선을 너무 먼 이웃 역 사이에서 가른다.
+
+    鹿児島本線 의 선로 관계는 JR 이 굴리는 두 토막(門司港-八代,
+    川内-鹿児島)을 함께 담고 있다. 사이는 肥薩おれんじ鉄道 로 넘어갔다.
+    한 줄로 두면 JR 완행이 川内-八代 82km 를 한 번에 달린다. 떨어져 나온
+    토막은 맨 뒤에 새 노선으로 붙여, 계통이 가리키는 번호가 안 바뀌게
+    한다. 계통은 더 많이 겹치는 토막으로 옮긴다.
+    """
+    moved = {}
+    for k in range(len(lines)):
+        ln = lines[k]
+        # 선로 관계만 본다. 계통 관계는 한 열차가 실제로 도는 길이라, 먼
+        # 간격은 특급 애칭 목록에 없는 특급(ひたち, スーパーはこね)이다.
+        if (ln["rep"]["kind"] not in (None, "각역정차")
+                or ln["rep"].get("rtype") != "railway"):
+            continue
+        seq = ln["seq"]
+        pts = [xy(c) for c in seq]
+        if any(p is None for p in pts):
+            continue
+        cut = [i + 1 for i, (p, q) in enumerate(zip(pts, pts[1:]))
+               if np.hypot(p[0] - q[0], p[1] - q[1]) > SPLIT_GAP_M]
+        if not cut:
+            continue
+        parts = [seq[a:b] for a, b in zip([0] + cut, cut + [len(seq)])]
+        ln["seq"] = parts[0]
+        ids = [k]
+        for part in parts[1:]:
+            ids.append(len(lines))
+            lines.append({"seq": part, "rep": ln["rep"], "rels": ln["rels"]})
+        moved[k] = ids
+    out = []
+    for k, r in patterns:
+        if k in moved:
+            k = max(moved[k], key=lambda j: overlap(r["seq"], lines[j]["seq"]))
+        out.append((k, r))
+    return out
+
+
+DROP_KEY = "빼는 역"
+
+
+def trim_lines(lines, members, pos):
+    """data/line-extensions.json 의 "빼는 역" 을 노선에서 뺀다.
+
+    선로 관계가 두 갈래 선로를 함께 담으면 한 줄로 세울 수 없다. 長崎本線 은
+    浦上-喜々津 사이가 신선(現川·肥前古賀·市布)과 구선(長与 등)으로 갈리는데,
+    순서를 되살리며 구선을 따라가다 신선으로 건너뛰어 지도가 끊겼다. 어느
+    갈래가 본선인지는 데이터로 못 가리므로 손으로 적는다. 뺀 역은 뒤의
+    합치기·끼우기·지선 세우기에서도 다시 들이지 않는다.
+    """
+    path = ROOT / "data" / "line-extensions.json"
+    if not path.exists():
+        return
+    book = json.loads(path.read_text(encoding="utf-8")).get(REGION) or {}
+    names = {}
+    for cl, ns in enumerate(members):
+        if ns:
+            v = pos[ns[0]]
+            names[cl] = (v[2].get("ja") or v[3] or "").strip()
+    for ln in lines:
+        rep = ln["rep"]["name"]
+        want = set((book.get(rep) or book.get(base_name(rep)) or {}).get(DROP_KEY, ()))
+        if not want:
+            continue
+        ln["drop"] = {c for c in ln["seq"] if names.get(c) in want}
+        ln["seq"] = [c for c in ln["seq"] if c not in ln["drop"]]
+        print(f"  {rep}: {len(ln['drop'])}역을 뺐다", flush=True)
+
+
 def extend_lines(lines, members, pos):
     """data/line-extensions.json 에 적은 대로 노선 끝을 이어 붙인다.
 
@@ -1324,6 +1504,8 @@ def extend_lines(lines, members, pos):
         if not ext:
             continue
         for end, names in ext.items():
+            if end == DROP_KEY:
+                continue
             cls = []
             for nm in names:
                 got = by_name.get(nm) or []
@@ -1361,6 +1543,8 @@ def _build(pbfs, rel, ways, nodes):
     # 山陰本線 은 웨이가 1,820개인데 정차 노드가 5개뿐이라, 그대로 믿으면
     # 소노베 위쪽 교토 산간이 통째로 사라진다. 이런 관계는 정차역이
     # 있어도 선로에서 되살린다.
+    for r in rel.routes:
+        r["listed"] = set(r["stops"])
     recovered, by_node, picked_up = 0, 0, 0
     # 빠진 역을 메울 후보. 어느 관계도 정차역으로 가리키지 않은 역
     # 노드만 남긴다. 남의 노선 역과 같은 역의 다른 노드를 빼는 거름이다.
@@ -1482,6 +1666,12 @@ def _build(pbfs, rel, ways, nodes):
             c = of.get(nid)
             if c is not None and (not seq or seq[-1] != c):
                 seq.append(c)
+        # 편도 계통 끝에 출발역이 한 번 더 적힌 것은 순환선이 아니다.
+        # 西鉄天神大牟田線 은 西鉄福岡 … 大牟田 西鉄福岡, JR福北ゆたか線 은
+        # 黒崎 … 博多 黒崎 로 적혀 있어, 닫힌 관계로 읽고 62km·44km 를
+        # 되돌아가는 선을 그었다. 닫는 간격만 유독 튀면 그 꼬리를 뗀다.
+        if _false_close(seq, cpos, scale):
+            seq = seq[:-1]
         fixed = repair_order(seq, cpos, scale)
         # 역들이 제 선로 위에 차례대로 놓여 있으면 그 순서는 선로가
         # 보증한다. 길이로 옮기지 않는다. 선로가 고리처럼 도는 노선은 틀린
@@ -1536,6 +1726,7 @@ def _build(pbfs, rel, ways, nodes):
                 patterns.append((best, r))
             continue
         lines.append({"seq": r["seq"], "rep": r, "rels": [r]})
+    trim_lines(lines, members, pos)
     # 같은 노선으로 묶인 계통 중 가장 긴 것의 역만 쓰면 다른 계통에만 있는
     # 역이 빠진다. 近鉄山田線 은 선로 관계가 뼈대가 되며 완행 계통에만
     # 있는 종점 宇治山田 를 잃었다. 노선 끝에만 붙인다. 한가운데까지 받으면
@@ -1548,9 +1739,32 @@ def _build(pbfs, rel, ways, nodes):
     for ln in lines:
         for r in ln["rels"][1:]:
             for c in r["seq"]:
-                if c not in ln["seq"] and _name_key(pos[members[c][0]]):
+                if (c not in ln["seq"] and c not in ln.get("drop", ())
+                        and _name_key(pos[members[c][0]])):
                     ln["seq"] = list(ln["seq"])
                     _insert_cheapest(ln["seq"], c, cxy, ends_only=True)
+    # 완행 계통이 뼈대의 이웃한 두 역 사이에 역을 더 적어 두었으면 그
+    # 사이에 끼운다. 선로 관계는 웨이 노드에서 역을 줍는데 그 노드가 빠진
+    # 역이 있다. 日豊本線 은 都城·五十市 등 6역이 그랬고,
+    # 그 역들은 완행 계통이 불러 빠진 역 후보에서도 빠졌다. 宮崎=>鹿児島中央
+    # 계통은 본선과 78% 만 겹쳐 묶이지도 않았다. 양쪽을 뼈대의 이웃 역이
+    # 붙들어야 하므로 끝이나 가지로 뻗는 역(関西空港, 西舞鶴)은 안 들어온다.
+    # 끼우는 역은 그 계통이 OSM 에 직접 적은 정차역이어야 한다. 선로 옆에서 주워 넣은 역까지
+    # 옮기면 生駒ケーブル 의 鳥居前 가 近鉄奈良線 에, 역 태그가 달린
+    # "特急サザン…停車位置" 노드가 南海本線 에 들어왔다.
+    for k, ln in enumerate(lines):
+        extra = [r for r in ln["rels"][1:]]
+        extra += [r for kk, r in patterns
+                  if kk == k and r["kind"] in (None, "각역정차")]
+        for r in extra:
+            listed = r["listed"]
+            drop = ln.get("drop", ())
+            seq = _bridge(ln["seq"], r["seq"], cxy,
+                          lambda c: (c not in drop
+                                     and bool(_name_key(pos[members[c][0]]))
+                                     and any(n in listed for n in members[c])))
+            if seq is not None:
+                ln["seq"] = seq
     # 끝에 못 붙은 역이 그 계통의 한쪽 끝에 이어져 있으면 지선이다.
     # 豊橋鉄道東田本線 의 運動公園前 는 井原 에서 갈라지는 한 정거장짜리
     # 지선인데, 그 계통이 본선과 90% 넘게 겹쳐 한 노선으로 묶이며 버려졌다.
@@ -1558,7 +1772,7 @@ def _build(pbfs, rel, ways, nodes):
     # 있는 역(近鉄奈良線 계통에 잘못 실린 鳥居前)이나 멀리 튀는 역
     # (きのさき 가 품은 西舞鶴, 城崎温泉 에서 60km)은 넘기지 않는다.
     for k, ln in enumerate(lines):
-        have_seq = set(ln["seq"])
+        have_seq = set(ln["seq"]) | set(ln.get("drop", ()))
         for r in ln["rels"][1:]:
             seq_r = [c for c in r["seq"] if _name_key(pos[members[c][0]])]
             out_at = [i for i, c in enumerate(seq_r) if c not in have_seq]
@@ -1567,9 +1781,22 @@ def _build(pbfs, rel, ways, nodes):
             n = len(seq_r)
             tail = out_at == list(range(n - len(out_at), n))
             head = out_at == list(range(len(out_at)))
-            if not (tail or head) or len(out_at) == n:
+            # 가운데 한 토막만 빠지고 그 역들을 계통이 직접 적었으면 우회
+            # 구간이다. 長崎電気軌道 3号系統 은 市役所-桜町-長崎駅前 로 2号系統
+            # 과 다른 선로를 가는데, 23/24 가 겹쳐 묶이며 桜町 가 사라졌다.
+            # 주워 넣은 역(近鉄奈良線 계통의 鳥居前)은 여전히 넘기지 않는다.
+            # 뼈대의 역과 붙어 있는 것은 표기만 다른 같은 역이다(伊太祈曽/
+            # 伊太祁曽, 北茅ヶ崎/北茅ケ崎, 柴原/柴原阪大前 가 8-11m). 桜町 는
+            # 가장 가까운 역에서 412m 다.
+            mid = (out_at == list(range(out_at[0], out_at[-1] + 1))
+                   and all(any(x in r["listed"] for x in members[seq_r[i]])
+                           and _far_from(cxy(seq_r[i]), have_seq, cxy)
+                           for i in out_at))
+            if not (tail or head or mid) or len(out_at) == n:
                 continue
-            part = (seq_r[out_at[0] - 1:] if tail else seq_r[:out_at[-1] + 2])
+            part = (seq_r[out_at[0] - 1:] if tail
+                    else seq_r[:out_at[-1] + 2] if head
+                    else seq_r[out_at[0] - 1:out_at[-1] + 2])
             gaps = [float(np.hypot(*(np.asarray(cxy(x)) - np.asarray(cxy(y)))))
                     for x, y in zip(part, part[1:])]
             if max(gaps) <= BRANCH_GAP_M:
@@ -1611,6 +1838,7 @@ def _build(pbfs, rel, ways, nodes):
           f"통과·부분 계통 {len(patterns):,}개", flush=True)
 
     extend_lines(lines, members, pos)
+    patterns = split_far(lines, patterns, cxy)
 
     railways, stations, express = [], [], []
     used_ids, seen_sid = set(), set()
@@ -1659,9 +1887,10 @@ def _build(pbfs, rel, ways, nodes):
                     titles[g] = r["titles"][g]
         titles["ja"] = titles["ja"] or base
 
+        wiki = next((r.get("wikipedia") for r in ln["rels"] if r.get("wikipedia")), "")
         railways.append({"id": lid, "title": titles, "stations": order,
                          "operator": rep["operator"], "colour": rep["colour"],
-                         "clusters": ln["seq"]})
+                         "clusters": ln["seq"], "wikipedia": wiki})
         ln["lid"] = lid
 
     for k, r in patterns:

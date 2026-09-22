@@ -205,6 +205,32 @@ def test_follows_track_trusts_an_order_along_a_loop():
     assert not _follows_track([0, 3, 1, 2, 4], cpos, [10], {10: chain}, 0.81)
 
 
+@pytest.mark.parametrize(
+    "raw, name",
+    [
+        ("一乗寺駅八瀬比叡山口・貴船口・鞍馬方面", "一乗寺"),   # 방면별 승강장
+        ("茶山駅出町柳方面", "茶山"),
+        ("八瀬比叡山口･貴船口・鞍馬方面", ""),              # 방면만. 옆 역 이름을 받는다
+        ("谷上駅4･", "谷上"),
+        ("柘植駅1番のりば", "柘植"),
+        ("北千住01", "北千住"),
+        # 진짜 이름이다
+        ("天王寺駅前", "天王寺駅前"),
+        ("駅前", "駅前"),
+        ("하카타 역", "하카타"),                           # name:ko 꼬리
+        ("고리야마역", "고리야마"),
+        ("도스 시", "도스"),
+        ("후쿠오카시", "후쿠오카시"),                       # 붙여 쓴 시는 이름이다
+    ],
+)
+def test_clean_station_name(raw, name):
+    """승강장·방면 표기를 떼고 역 이름만 남긴다. 두 번 거쳐도 같다."""
+    from build_rail import clean_station_name
+
+    assert clean_station_name(raw) == name
+    assert clean_station_name(clean_station_name(raw)) == name
+
+
 def test_join_runs_flips_and_places_fragments():
     """토막은 끝 역이 가까운 쪽으로, 방향까지 맞춰 붙인다."""
     from build_rail import join_runs
@@ -399,3 +425,56 @@ def test_short_stub_is_not_a_loop():
     stub = [(139.700 + 0.002 * k, 35.700) for k in range(8)]   # 약 1.3 km
     geo = _geometry(stub, "stub")
     assert not geo.closed["stub"]
+
+
+def test_bridge_fills_between_neighbours_only():
+    """뼈대의 이웃한 두 역 사이에 다른 계통이 적어 둔 역만 끼운다.
+
+    日豊本線 의 都城·五十市 가 그랬다. 끝으로 뻗는 역(関西空港)과
+    크게 돌아가는 역은 넣지 않는다.
+    """
+    from build_rail import _bridge
+
+    xy = {0: (0, 0), 1: (1000, 0), 2: (2000, 0), 3: (3000, 0),
+          9: (1500, 50), 8: (4000, 0), 7: (1500, 5000)}.get
+    yes = lambda c: True
+    assert _bridge([0, 1, 2, 3], [1, 9, 2], xy, yes) == [0, 1, 9, 2, 3]
+    assert _bridge([0, 1, 2, 3], [2, 9, 1], xy, yes) == [0, 1, 9, 2, 3]
+    assert _bridge([0, 1, 2, 3], [2, 3, 8], xy, yes) is None       # 끝으로 뻗는다
+    assert _bridge([0, 1, 2, 3], [1, 7, 2], xy, yes) is None       # 크게 돈다
+    assert _bridge([0, 1, 2, 3], [0, 9, 2], xy, yes) is None       # 이웃이 아니다
+    assert _bridge([0, 1, 2, 3], [1, 9, 2], xy, lambda c: c != 9) is None
+
+
+def test_false_close_only_when_the_closing_gap_jumps():
+    """편도 계통 끝에 출발역이 또 적힌 것만 떼고 순환선은 둔다."""
+    from build_rail import _false_close
+
+    line = {i: (i * 0.01, 35.0) for i in range(6)}           # 약 900m 간격
+    assert _false_close([0, 1, 2, 3, 4, 5, 0], line, 1.0)       # 4.5km 되돌아감
+    ring = {0: (0, 0), 1: (0.01, 0), 2: (0.01, 0.01), 3: (0, 0.01)}
+    assert not _false_close([0, 1, 2, 3, 0], ring, 1.0)
+    assert not _false_close([0, 1, 2, 3], line, 1.0)
+
+
+def test_split_far_cuts_local_lines_at_long_gaps():
+    """완행 노선만 40km 넘는 간격에서 가르고, 계통은 겹치는 쪽으로 간다."""
+    from build_rail import split_far
+
+    xy = {0: (0, 0), 1: (3000, 0), 2: (85000, 0), 3: (88000, 0)}.get
+    local = {"seq": [0, 1, 2, 3], "rep": {"kind": None, "rtype": "railway"}, "rels": []}
+    ltd = {"seq": [0, 1, 2, 3], "rep": {"kind": "특급", "rtype": "railway"}, "rels": []}
+    train = {"seq": [0, 1, 2, 3], "rep": {"kind": None, "rtype": "train"}, "rels": []}
+    lines = [local, ltd, train]
+    pats = split_far(lines, [(0, {"seq": [2, 3]}), (1, {"seq": [0, 3]})], xy)
+    assert [ln["seq"] for ln in lines] == [[0, 1], [0, 1, 2, 3], [0, 1, 2, 3], [2, 3]]
+    assert [k for k, _ in pats] == [3, 1]
+
+
+def test_far_from_tells_aliases_from_real_stations():
+    """표기만 다른 같은 역(8-11m)과 이웃 역(桜町-市役所 412m)을 가른다."""
+    from build_rail import _far_from
+
+    xy = {1: (0.0, 0.0), 2: (1000.0, 0.0)}.get
+    assert not _far_from((8.0, 0.0), [1, 2], xy)
+    assert _far_from((412.0, 0.0), [1, 2], xy)

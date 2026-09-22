@@ -1,0 +1,161 @@
+{
+ "note": "규칙(역 밀도·간격)으로 매긴 배차가 실제와 1.5배 넘게 어긋나는 노선만 적는다. 값은 평일 한낮(10~15시) 한 방향 시간당 편수, 요금 없이 탈 수 있는 열차 기준. min_per_hour 는 하한(이보다 잦게 매긴 구간은 그대로), max_per_hour 는 상한. build_naive.py 가 읽는다. 2026-09 에 위키백과·시각표 사이트로 확인했다.",
+ "tokai": {
+  "静岡鉄道静岡清水線 (新清水=>新静岡)": {
+   "min_per_hour": 7.5,
+   "source": "ja.wikipedia 静岡鉄道静岡清水線 (日中 8分間隔)"
+  },
+  "遠州鉄道鉄道線 (新浜松=>西鹿島)": {
+   "min_per_hour": 5,
+   "source": "ja.wikipedia 遠州鉄道鉄道線 (12分間隔)"
+  },
+  "伊豆箱根鉄道駿豆線 (三島->修善寺)": {
+   "min_per_hour": 3,
+   "source": "ja.wikipedia 伊豆箱根鉄道駿豆線 (10-14時 約20分間隔)"
+  },
+  "伊豆急行線 (伊東->伊豆急下田)": {
+   "max_per_hour": 1.2,
+   "source": "Yahoo!路線情報 伊東, ekitan 伊豆高原 (普通のみ, 特急は料金が要る)"
+  },
+  "岳南電車岳南線 (吉原->岳南江尾)": {
+   "max_per_hour": 2,
+   "source": "gakutetsu.jp 時刻表 (約30分間隔)"
+  },
+  "大井川鐵道大井川本線": {
+   "max_per_hour": 0.4,
+   "source": "ja.wikipedia 大井川鐵道大井川本線, Yahoo!路線情報 金谷 (川根温泉笹間渡-千頭 運休中)"
+  },
+  "大井川鐵道井川線: 井川 => 千頭": {
+   "max_per_hour": 0.5,
+   "source": "ja.wikipedia 大井川鐵道井川線 (1日5往復, 2026年から予約制)"
+  },
+  "天竜浜名湖鉄道天竜浜名湖線": {
+   "max_per_hour": 1,
+   "source": "ekitan 掛川・天竜二俣 (毎時1本)"
+  },
+  "樽見鉄道樽見線": {
+   "max_per_hour": 0.67,
+   "source": "ja.wikipedia 樽見鉄道樽見線 (大垣-本巣 90分間隔)"
+  },
+  "長良川鉄道越美南線": {
+   "max_per_hour": 1,
+   "source": "Yahoo!路線情報 関, ja.wikipedia 長良川鉄道越美南線"
+  },
+  "明知鉄道明知線": {
+   "max_per_hour": 0.6,
+   "source": "ja.wikipedia 明知鉄道明知線 (1-2時間に1本)"
+  },
+  "三岐鉄道三岐線 (近鉄富田->西藤原)": {
+   "max_per_hour": 1.7,
+   "source": "Yahoo!路線情報 近鉄富田"
+  },
+  "三岐鉄道北勢線 (西桑名->阿下喜)": {
+   "max_per_hour": 2,
+   "source": "ja.wikipedia 三岐鉄道北勢線 (西桑名-楚原 2, 楚原-阿下喜 1)"
+  },
+  "伊賀鉄道伊賀線": {
+   "max_per_hour": 2,
+   "source": "Yahoo!路線情報 茅町"
+  },
+  "伊勢鉄道伊勢線": {
+   "max_per_hour": 2,
+   "source": "ja.wikipedia 伊勢鉄道伊勢線 (普通 1 + 快速みえ 1)"
+  },
+  "四日市あすなろう鉄道内部線 (内部->あすなろう四日市)": {
+   "max_per_hour": 4,
+   "source": "ja.wikipedia 四日市あすなろう鉄道内部線 (四日市-日永 4, 日永-内部 2)"
+  },
+  "四日市あすなろう鉄道八王子線 (あすなろう四日市->西日野)": {
+   "min_per_hour": 2,
+   "source": "ja.wikipedia 四日市あすなろう鉄道内部線 (日永-西日野 2)"
+  },
+  "名古屋鉄道空港線 (中部国際空港 => 常滑)": {
+   "min_per_hour": 4,
+   "source": "ja.wikipedia 名鉄空港線 (特急 2 + 準急 2, ミュースカイ 別)"
+  },
+  "名古屋鉄道瀬戸線 (栄町=>尾張瀬戸)": {
+   "max_per_hour": 6,
+   "source": "ja.wikipedia 名鉄瀬戸線 (日中 普通 毎時6本)"
+  },
+  "名古屋鉄道竹鼻線": {
+   "max_per_hour": 2,
+   "source": "ja.wikipedia 2005年からの名古屋鉄道ダイヤ改正 (2026-03 から 毎時2本)"
+  },
+  "名古屋鉄道豊川線": {
+   "max_per_hour": 2,
+   "source": "ja.wikipedia 名鉄豊川線 (日中 線内 普通 毎時2本)"
+  },
+  "東海道本線": {
+   "min_per_hour": 3,
+   "source": "ja.wikipedia 東海道線 (静岡地区)・(名古屋地区): 静岡 부근 6, 熱海-三島·沼津-興津·島田-掛川·浜松-豊橋 3, 名古屋 부근 8"
+  },
+  "中央本線": {
+   "min_per_hour": 2,
+   "source": "ja.wikipedia 中央線 (名古屋地区): 名古屋-高蔵寺 6, 瑞浪-中津川 2"
+  },
+  "JR関西本線": {
+   "min_per_hour": 1,
+   "source": "Yahoo!路線情報 蟹江·井田川 (名古屋-四日市 普通 2, 四日市-亀山 1)"
+  },
+  "JR名松線": {
+   "max_per_hour": 0.4,
+   "source": "ja.wikipedia 名松線: 松阪-家城 1日 8往復"
+  },
+  "JR御殿場線 (沼津->国府津)": {
+   "max_per_hour": 1.8,
+   "source": "Yahoo!路線情報 沼津 (10-15時 9本), 裾野 2"
+  },
+  "JR武豊線 (大府->武豊)": {
+   "max_per_hour": 2,
+   "source": "ja.wikipedia 武豊線 (30分間隔)"
+  },
+  "飯田線": {
+   "max_per_hour": 1.4,
+   "source": "Yahoo!路線情報 豊川: 豊川-新城 1.4, 本長篠 以北 0.5~1"
+  },
+  "JR飯田線 (豊橋=>豊川)": {
+   "max_per_hour": 2.4,
+   "source": "Yahoo!路線情報 豊橋 (10-15時 12本)"
+  },
+  "紀勢本線": {
+   "max_per_hour": 1,
+   "source": "ja.wikipedia 紀勢本線: 亀山-津 1, 多気-新宮 0.3~0.4"
+  },
+  "近畿日本鉄道志摩線": {
+   "max_per_hour": 1,
+   "source": "ja.wikipedia 近鉄志摩線 (2021-07 から 普通 毎時1本)"
+  },
+  "近畿日本鉄道鈴鹿線": {
+   "max_per_hour": 2,
+   "source": "ja.wikipedia 近鉄鈴鹿線"
+  },
+  "名古屋市営3号線鶴舞線 (上小田井=>赤池)": {
+   "max_per_hour": 6,
+   "source": "ja.wikipedia 名古屋市営地下鉄鶴舞線 (10分間隔)"
+  },
+  "名古屋市営6号線桜通線 (中村区役所 --> 徳重)": {
+   "max_per_hour": 6,
+   "source": "ja.wikipedia 名古屋市営地下鉄桜通線 (2023-09 から 10分間隔)"
+  },
+  "名古屋市営名港線 (名古屋港→金山)": {
+   "max_per_hour": 6,
+   "source": "ja.wikipedia 名古屋市営地下鉄名港線"
+  },
+  "名古屋市営上飯田線": {
+   "max_per_hour": 4,
+   "source": "ja.wikipedia 名古屋市営地下鉄上飯田線 (15分間隔)"
+  },
+  "あおなみ線": {
+   "max_per_hour": 4,
+   "source": "ja.wikipedia 名古屋臨海高速鉄道あおなみ線"
+  },
+  "愛知高速交通株式会社 Linimo (藤が丘=>八草)": {
+   "min_per_hour": 7.5,
+   "source": "linimo.jp (8分間隔)"
+  },
+  "東海交通事業城北線 (枇杷島=>勝川)": {
+   "max_per_hour": 1,
+   "source": "ja.wikipedia JR東海交通事業城北線 (毎時1本)"
+  }
+ }
+}

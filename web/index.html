@@ -349,14 +349,23 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 }
 .far-list button:hover { background: var(--surface-2); }
 .far-list button:hover .go-hint { opacity: 1; }
-/* 이름은 한 줄로 묶어 둔다. 현지어 이름이 길어 줄바꿈되면 행 높이가
-   흔들려 오른쪽 숫자 칸의 기준선까지 어긋난다. */
+/* 이름이 길면 말줄임하지 않고 아랫줄로 넘긴다. 잘리면 어느 역인지 알 수
+   없다. 일본어 이름과 현지어 이름을 각각 한 덩어리로 두어, 둘이 한 줄에
+   안 들어가면 현지어 이름이 통째로 다음 줄로 간다. 이름 하나가 칸보다 길
+   때만 그 안에서 줄을 바꾼다. 버튼이 기준선으로 맞추므로 숫자 칸은 이름의
+   첫 줄에 선다. */
 .far-list .label {
-  min-width: 0; overflow: hidden;
-  white-space: nowrap; text-overflow: ellipsis;
+  flex: 1 1 auto; min-width: 0;
+  display: flex; flex-wrap: wrap; align-items: baseline; column-gap: .45em;
+}
+/* 한국어는 띄어쓰기에서만 줄을 바꾼다. 그래도 칸보다 길면 그때만 자른다.
+   간격은 여백이 아니라 gap 으로 준다. 여백이면 줄이 바뀐 이름이 들여쓰인다. */
+.far-list .label b, .far-list .label .ko {
+  max-width: 100%; word-break: keep-all; overflow-wrap: anywhere;
 }
 .far-list .ko { color: var(--muted); }
 .far-list .nums {
+  position: relative;
   display: flex; gap: 9px; flex: none; align-items: baseline;
   font-family: var(--mono); font-variant-numeric: tabular-nums;
 }
@@ -369,9 +378,14 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 .far-list .m { color: var(--muted); min-width: 7ch; text-align: end; flex: none; }
 /* 안내 문구는 언어마다 폭이 크게 다르다. 숫자 왼쪽에 두어야 숫자가
    오른쪽 끝에 붙은 채로 있는다. */
+/* 자리를 차지하지 않는다. 늘 투명하게 네 글자만큼 비워 두면 이름 칸이
+   그만큼 좁아져 긴 이름이 괜히 줄바꿈된다. 마우스를 올리면 숫자 칸 왼쪽,
+   이름의 끝 위에 겹쳐 뜬다. 밑의 글자가 비치지 않게 배경을 깐다. */
 .far-list .go-hint {
+  position: absolute; inset-inline-end: 100%; top: 50%; transform: translateY(-50%);
+  padding-inline: 6px 8px; white-space: nowrap;
+  background: var(--surface-2); pointer-events: none;
   font-size: var(--step-2); color: var(--dest); opacity: 0;
-  flex: none; align-self: center; margin-inline-end: 2px;
 }
 
 .source { padding: 22px var(--pad) 0; font-size: var(--step-1); color: var(--muted); }
@@ -2910,7 +2924,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       ja.textContent = s.ja;
       var local = document.createElement("span");
       local.className = "ko";
-      local.textContent = (LANG === "ja" || localName(s) === s.ja) ? "" : "  " + localName(s);
+      local.textContent = (LANG === "ja" || localName(s) === s.ja) ? "" : localName(s);
+      local.hidden = !local.textContent;
       label.appendChild(ja);
       label.appendChild(local);
 
@@ -2994,7 +3009,9 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 
         var st = document.createElement("div");
         st.className = "stations";
-        st.textContent = leg.from.ja + " → " + leg.to.ja;
+        // 화살표로 잇는 짧은 줄이라 화면 언어 이름만 적는다. 일본어는
+        // 위 제목과 도착지 줄에 함께 나온다.
+        st.textContent = localName(leg.from) + " → " + localName(leg.to);
 
         var clock = document.createElement("div");
         clock.className = "clock";

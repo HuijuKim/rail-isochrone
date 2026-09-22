@@ -1,7 +1,19 @@
 {
+ "A系統": {
+  "color": "#F00",
+  "source": "ODPT:A系統"
+ },
+ "B系統": {
+  "color": "#00F",
+  "source": "ODPT:B系統"
+ },
  "JR-East|中央・総武各駅停車": {
   "color": "#ffd400",
   "source": "권역 맞춤:JR中央・総武緩行線 (三鷹 → 千葉)"
+ },
+ "JRあまくさみすみ線 (三角 => 熊本)": {
+  "color": "#0095d9",
+  "source": "ja.wikipedia:あまくさみすみ線"
  },
  "JRおおさか東線 (久宝寺 => 大阪)": {
   "color": "#347293",
@@ -14,6 +26,10 @@
  "JR中央線JC": {
   "color": "#F15620",
   "source": "ODPT:JR中央線JC"
+ },
+ "JR久大本線": {
+  "color": "#36b558",
+  "source": "ja.wikipedia:久大本線"
  },
  "JR五日市線": {
   "color": "#f15a22",
@@ -59,9 +75,17 @@
   "color": "#FFD700",
   "source": "ODPT:JR南武線浜川崎支線 普通 (尻手 => 浜川崎)"
  },
+ "JR博多南線": {
+  "color": "#0072ba",
+  "source": "ja.wikipedia:博多南線"
+ },
  "JR参宮線": {
   "color": "#f77321",
   "source": "ja.wikipedia:参宮線"
+ },
+ "JR吉都線": {
+  "color": "#36b558",
+  "source": "ja.wikipedia:吉都線"
  },
  "JR名松線": {
   "color": "#f77321",
@@ -71,6 +95,10 @@
   "color": "#f79fba",
   "source": "ja.wikipedia:和歌山線"
  },
+ "JR唐津線 (佐賀=>西唐津)": {
+  "color": "#0095d9",
+  "source": "ja.wikipedia:唐津線"
+ },
  "JR埼京線 (大崎 → 大宮)": {
   "color": "#00ac9a",
   "source": "ja.wikipedia:埼京線"
@@ -78,6 +106,10 @@
  "JR外房線 (千葉 → 安房鴨川)": {
   "color": "#db4028",
   "source": "ja.wikipedia:外房線"
+ },
+ "JR大村線 普通 (佐世保 => 長与 => 長崎)": {
+  "color": "#0095d9",
+  "source": "ja.wikipedia:大村線"
  },
  "JR大阪環状線": {
   "color": "#e80000",
@@ -99,17 +131,49 @@
   "color": "#ff593e",
   "source": "ja.wikipedia:姫新線"
  },
+ "JR宇部線 (宇部 => 新山口)": {
+  "color": "#a52f5d",
+  "source": "ja.wikipedia:宇部線"
+ },
  "JR宝塚線・福知山線 普通 (大阪 => 福知山)": {
   "color": "#ffba00",
   "source": "ja.wikipedia:JR宝塚線"
+ },
+ "JR宮崎空港線 (宮崎空港->宮崎)": {
+  "color": "#36b558",
+  "source": "ja.wikipedia:宮崎空港線"
  },
  "JR小浜線 (敦賀 => 西舞鶴)": {
   "color": "#0072ba",
   "source": "ja.wikipedia:小浜線"
  },
+ "JR小野田線": {
+  "color": "#776493",
+  "source": "ja.wikipedia:小野田線"
+ },
+ "JR山口線": {
+  "color": "#e86c4c",
+  "source": "ja.wikipedia:山口線"
+ },
+ "JR山口線 (山口 => 新山口)": {
+  "color": "#e86c4c",
+  "source": "ja.wikipedia:山口線"
+ },
  "JR山手線 (外回り)": {
   "color": "#9acd32",
   "source": "ja.wikipedia:JR山手線"
+ },
+ "JR山陽本線 (岩国=>広島)": {
+  "color": "#E7311B",
+  "source": "ODPT:JR山陽本線 (岩国=>広島)"
+ },
+ "JR岩徳線": {
+  "color": "#008f65",
+  "source": "ja.wikipedia:岩徳線"
+ },
+ "JR後藤寺線": {
+  "color": "#8f3e97",
+  "source": "ja.wikipedia:後藤寺線"
  },
  "JR御殿場線 (沼津->国府津)": {
   "color": "#40743c",
@@ -135,6 +199,10 @@
   "color": "#008080",
   "source": "ODPT:JR成田線 我孫子支線 (成田 → 我孫子)"
  },
+ "JR指宿枕崎線": {
+  "color": "#faaf18",
+  "source": "ja.wikipedia:指宿枕崎線"
+ },
  "JR播但線": {
   "color": "#a52f5d",
   "source": "ja.wikipedia:播但線"
@@ -142,6 +210,22 @@
  "JR日光線": {
   "color": "#880022",
   "source": "ja.wikipedia:JR日光線"
+ },
+ "JR日南線": {
+  "color": "#faaf18",
+  "source": "ja.wikipedia:日南線"
+ },
+ "JR日田彦山線": {
+  "color": "#b96f30",
+  "source": "ja.wikipedia:日田彦山線"
+ },
+ "JR日豊本線": {
+  "color": "#0095d9",
+  "source": "ja.wikipedia:日豊本線"
+ },
+ "JR日豊本線 (宮崎=>鹿児島中央)": {
+  "color": "#0095d9",
+  "source": "ja.wikipedia:日豊本線"
  },
  "JR東西線": {
   "color": "#ff1493",
@@ -211,6 +295,26 @@
   "color": "#0072ba",
   "source": "ja.wikipedia:JR神戸線"
  },
+ "JR福北ゆたか線": {
+  "color": "#faaf18",
+  "source": "ja.wikipedia:福北ゆたか線"
+ },
+ "JR福北ゆたか線 (黒崎=>折尾=>博多)": {
+  "color": "#faaf18",
+  "source": "ja.wikipedia:福北ゆたか線"
+ },
+ "JR筑肥線": {
+  "color": "#8f3e97",
+  "source": "ja.wikipedia:筑肥線"
+ },
+ "JR美祢線": {
+  "color": "#dc208f",
+  "source": "ja.wikipedia:美祢線"
+ },
+ "JR肥薩線": {
+  "color": "#8f3e97",
+  "source": "ja.wikipedia:肥薩線"
+ },
  "JR舞鶴線 (東舞鶴 => 綾部)": {
   "color": "#ff8e1f",
   "source": "ja.wikipedia:舞鶴線"
@@ -218,6 +322,10 @@
  "JR草津線": {
   "color": "#5a9934",
   "source": "ja.wikipedia:草津線"
+ },
+ "JR豊肥本線 (大分->熊本)": {
+  "color": "#b96f30",
+  "source": "ja.wikipedia:豊肥本線"
  },
  "JR赤穂線 (岡山=>東岡山->播州赤穂": {
   "color": "#E73042",
@@ -230,6 +338,10 @@
  "JR身延線 (西富士宮=>富士)": {
   "color": "#6f2d98",
   "source": "ja.wikipedia:身延線"
+ },
+ "JR長崎本線": {
+  "color": "#faaf18",
+  "source": "ja.wikipedia:長崎本線"
  },
  "JR関西本線": {
   "color": "#ad3e28",
@@ -255,9 +367,17 @@
   "color": "#75a2db",
   "source": "ja.wikipedia:飯田線"
  },
+ "JR香椎線 (西戸崎=>宇美)": {
+  "color": "#0095d9",
+  "source": "ja.wikipedia:JR香椎線"
+ },
  "JR鶴見線": {
   "color": "#ffd400",
   "source": "ja.wikipedia:鶴見線"
+ },
+ "JR鹿児島・豊肥線 普通 (八代 => 肥後大津)": {
+  "color": "#b96f30",
+  "source": "ja.wikipedia:豊肥線"
  },
  "JR鹿島線": {
   "color": "#c56e2e",
@@ -395,6 +515,10 @@
   "color": "#005ba5",
   "source": "권역 맞춤:横浜市営地下鉄ブルーライン(B32:あざみ野=>B01:湘南台)"
  },
+ "「にちりん」": {
+  "color": "#ad2838",
+  "source": "지어냄"
+ },
  "あおなみ線": {
   "color": "#334fa0",
   "source": "ja.wikipedia:あおなみ線"
@@ -425,6 +549,10 @@
  },
  "きぬがわ列車 : 鬼怒川温泉→新宿": {
   "color": "#6d28ad",
+  "source": "지어냄"
+ },
+ "くま川鉄道湯前線": {
+  "color": "#2881ad",
   "source": "지어냄"
  },
  "こうのとり (新大阪 => 城崎温泉)": {
@@ -491,6 +619,10 @@
   "color": "#0067c0",
   "source": "ja.wikipedia:みなとみらい線"
  },
+ "ゆふ (別府=>博多)": {
+  "color": "#ad2897",
+  "source": "지어냄"
+ },
  "ゆりかもめ": {
   "color": "#27404E",
   "source": "ODPT:ゆりかもめ"
@@ -515,8 +647,20 @@
   "color": "#00A15A",
   "source": "ODPT:グリーンライン"
  },
+ "シーサイドライナー 快速 (佐世保 => 長崎)": {
+  "color": "#28ad3a",
+  "source": "지어냄"
+ },
+ "スーパーおき1号 (米子 => 新山口)": {
+  "color": "#9e28ad",
+  "source": "지어냄"
+ },
  "スーパーはこね": {
   "color": "#28ad52",
+  "source": "지어냄"
+ },
+ "ソニック (博多=>大分)": {
+  "color": "#28ad38",
   "source": "지어냄"
  },
  "ディズニーリゾートライン": {
@@ -578,6 +722,10 @@
  "上越線": {
   "color": "#00b3e6",
   "source": "ja.wikipedia:上越線"
+ },
+ "下関 => 小倉": {
+  "color": "#ee3d49",
+  "source": "ODPT:下関 => 小倉"
  },
  "世田谷線": {
   "color": "#fcc70d",
@@ -999,6 +1147,10 @@
   "color": "#727878",
   "source": "ja.wikipedia:南海高師浜線"
  },
+ "南阿蘇鉄道高森線": {
+  "color": "#54ad28",
+  "source": "지어냄"
+ },
  "叡山電鉄叡山本線": {
   "color": "#007f00",
   "source": "ja.wikipedia:叡山電鉄叡山本線"
@@ -1227,6 +1379,10 @@
   "color": "#3B85E0",
   "source": "ODPT:富士急行線"
  },
+ "小倉線": {
+  "color": "#3333FF",
+  "source": "ODPT:小倉線"
+ },
  "小泉線": {
   "color": "#ed1a3d",
   "source": "ja.wikipedia:小泉線"
@@ -1295,6 +1451,10 @@
   "color": "#00BFFF",
   "source": "ODPT:北陸本線・湖西線・東海道本線・山陽本線 新快速 (敦賀 => 網干)"
  },
+ "山陽本線 (南岩国 → 下関)": {
+  "color": "#0073bc",
+  "source": "ODPT:山陽本線 (南岩国 → 下関)"
+ },
  "山陽本線（和田岬線）": {
   "color": "#00BFFF",
   "source": "ODPT:北陸本線・湖西線・東海道本線・山陽本線 新快速 (敦賀 => 網干)"
@@ -1310,6 +1470,10 @@
  "岳南電車岳南線 (吉原->岳南江尾)": {
   "color": "#ff4f00",
   "source": "ja.wikipedia:岳南電車岳南線"
+ },
+ "島原鉄道": {
+  "color": "#ad9e28",
+  "source": "지어냄"
  },
  "嵯峨野観光鉄道嵯峨野観光線": {
   "color": "#b22222",
@@ -1342,6 +1506,22 @@
  "常総線": {
   "color": "#0000ff",
   "source": "ja.wikipedia:常総線"
+ },
+ "平成筑豊鉄道伊田線": {
+  "color": "#2866ad",
+  "source": "지어냄"
+ },
+ "平成筑豊鉄道田川線 (行橋=>田川伊田)": {
+  "color": "#ab28ad",
+  "source": "지어냄"
+ },
+ "平成筑豊鉄道糸田線": {
+  "color": "#92ad28",
+  "source": "지어냄"
+ },
+ "平成筑豊鉄道糸田線 (金田=>田川後藤寺)": {
+  "color": "#A2C90D",
+  "source": "ODPT:平成筑豊鉄道糸田線 (金田=>田川後藤寺)"
  },
  "御殿場線": {
   "color": "#40743c",
@@ -1699,6 +1879,10 @@
   "color": "#005AAA",
   "source": "ODPT:松戸線"
  },
+ "松浦鉄道西九州線": {
+  "color": "#31ad28",
+  "source": "지어냄"
+ },
  "株式会社ゆりかもめ|ゆりかもめ (新橋 → 豊洲)": {
   "color": "#27404E",
   "source": "권역 맞춤:ゆりかもめ"
@@ -1827,6 +2011,14 @@
   "color": "#339966",
   "source": "ja.wikipedia:烏山線"
  },
+ "熊本電気鉄道菊池線": {
+  "color": "#ad286d",
+  "source": "지어냄"
+ },
+ "熊本電気鉄道藤崎線": {
+  "color": "#a928ad",
+  "source": "지어냄"
+ },
  "特急はるか (京都 => 関西空港)": {
   "color": "#9028ad",
   "source": "지어냄"
@@ -1838,6 +2030,10 @@
  "狭山線": {
   "color": "#ef810f",
   "source": "ja.wikipedia:狭山線"
+ },
+ "甘木鉄道甘木線": {
+  "color": "#ffc0cb",
+  "source": "ja.wikipedia:甘木鉄道甘木線"
  },
  "田園都市線": {
   "color": "#20a288",
@@ -1899,6 +2095,18 @@
   "color": "#dd0033",
   "source": "ja.wikipedia:神戸電鉄粟生線"
  },
+ "福岡市地下鉄七隈線": {
+  "color": "#00936b",
+  "source": "ja.wikipedia:福岡市地下鉄七隈線"
+ },
+ "福岡市地下鉄空港線": {
+  "color": "#ee5511",
+  "source": "ja.wikipedia:福岡市地下鉄空港線"
+ },
+ "福岡市地下鉄箱崎線": {
+  "color": "#0077cc",
+  "source": "ja.wikipedia:福岡市地下鉄箱崎線"
+ },
  "秩父本線": {
   "color": "#0054A6",
   "source": "ODPT:秩父本線"
@@ -1914,6 +2122,14 @@
  "競馬場線": {
   "color": "#dd0077",
   "source": "ja.wikipedia:競馬場線"
+ },
+ "筑豊本線": {
+  "color": "#ff0000",
+  "source": "ja.wikipedia:筑豊本線"
+ },
+ "筑豊電気鉄道線": {
+  "color": "#e30075",
+  "source": "ja.wikipedia:筑豊電気鉄道線"
  },
  "箱根登山線": {
   "color": "#f04a00",
@@ -1951,6 +2167,10 @@
   "color": "#003686",
   "source": "ODPT:羽田空港線"
  },
+ "肥薩おれんじ鉄道線 (川内=>八代)": {
+  "color": "#ffa500",
+  "source": "ja.wikipedia:肥薩おれんじ鉄道線"
+ },
  "能勢電鉄妙見線": {
   "color": "#008000",
   "source": "ja.wikipedia:能勢電鉄妙見線"
@@ -1962,6 +2182,26 @@
  "芝山鉄道線": {
   "color": "#00a650",
   "source": "ja.wikipedia:芝山鉄道線"
+ },
+ "西日本鉄道天神大牟田線": {
+  "color": "#1065ab",
+  "source": "ja.wikipedia:西日本鉄道天神大牟田線"
+ },
+ "西日本鉄道天神大牟田線 (西鉄福岡（天神）=>大牟田)": {
+  "color": "#1065ab",
+  "source": "ja.wikipedia:西日本鉄道天神大牟田線"
+ },
+ "西日本鉄道太宰府線": {
+  "color": "#1065ab",
+  "source": "ja.wikipedia:西日本鉄道太宰府線"
+ },
+ "西日本鉄道甘木線": {
+  "color": "#1065ab",
+  "source": "ja.wikipedia:西日本鉄道甘木線"
+ },
+ "西日本鉄道貝塚線 (貝塚->西鉄新宮)": {
+  "color": "#1065ab",
+  "source": "ja.wikipedia:西日本鉄道貝塚線"
  },
  "西武国分寺線 (国分寺=>東村山)": {
   "color": "#00cc66",
@@ -2211,6 +2451,30 @@
   "color": "#a52a2a",
   "source": "ja.wikipedia:銚子電鉄線"
  },
+ "錦川鉄道錦川清流線": {
+  "color": "#87ceeb",
+  "source": "ja.wikipedia:錦川鉄道錦川清流線"
+ },
+ "長崎本線 普通 (鳥栖 => 江北)": {
+  "color": "#faaf18",
+  "source": "ja.wikipedia:長崎本線"
+ },
+ "長崎電気軌道1号系統 (崇福寺 => 赤迫)": {
+  "color": "#0000FF",
+  "source": "ODPT:長崎電気軌道1号系統 (崇福寺 => 赤迫)"
+ },
+ "長崎電気軌道2号系統 (蛍茶屋 => 赤迫)": {
+  "color": "#FFFFFF",
+  "source": "ODPT:長崎電気軌道2号系統 (蛍茶屋 => 赤迫)"
+ },
+ "長崎電気軌道3号系統 (蛍茶屋 => 赤迫)": {
+  "color": "#FF0000",
+  "source": "ODPT:長崎電気軌道3号系統 (蛍茶屋 => 赤迫)"
+ },
+ "長崎電気軌道5号系統 (石橋 => 蛍茶屋)": {
+  "color": "#008000",
+  "source": "ODPT:長崎電気軌道5号系統 (石橋 => 蛍茶屋)"
+ },
  "長良川鉄道越美南線": {
   "color": "#ff1493",
   "source": "ja.wikipedia:長良川鉄道越美南線"
@@ -2346,6 +2610,18 @@
  "鶴見線海芝浦支線": {
   "color": "#FFD400",
   "source": "ODPT:鶴見線海芝浦支線"
+ },
+ "鹿児島市電1系統鹿児島駅前行": {
+  "color": "blue",
+  "source": "ODPT:鹿児島市電1系統鹿児島駅前行"
+ },
+ "鹿児島市電2系統郡元行": {
+  "color": "red",
+  "source": "ODPT:鹿児島市電2系統郡元行"
+ },
+ "鹿児島本線": {
+  "color": "#ee3d49",
+  "source": "ja.wikipedia:鹿児島本線"
  },
  "鹿島線": {
   "color": "#00b2e5",

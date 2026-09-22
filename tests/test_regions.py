@@ -69,6 +69,18 @@ PROBES = {
         ("고후", 138.569, 35.667, False),
         ("오사카", 135.500, 34.702, False),
     ],
+    "kyushu": [
+        ("하카타", 130.4206, 33.5897, True),
+        ("고쿠라", 130.8823, 33.8869, True),
+        ("나가사키", 129.8708, 32.7524, True),
+        ("오이타", 131.6065, 33.2334, True),
+        ("가고시마추오", 130.5413, 31.5838, True),
+        ("미야자키", 131.4309, 31.9160, True),
+        ("시모노세키", 130.9230, 33.9496, True),
+        ("겐카이나다", 130.20, 33.90, False),
+        ("히로시마", 132.475, 34.397, False),
+        ("부산", 129.04, 35.10, False),
+    ],
 }
 
 # 이웃 역 사이가 이보다 벌어지면 순서가 틀렸을 만하다고 본다.
@@ -307,6 +319,50 @@ def test_station_count_does_not_drop(loaded, region_id, measured):
     reg = loaded(region_id)
     n = int(np.isfinite(reg.coords[:, 0]).sum())
     check(measured, region_id, "stations", n, limit_is_max=False, slack=5)
+
+
+def test_osm_station_order_matches_odpt(measured):
+    """OSM 에서 뽑은 역 순서를 ODPT 공식 순서와 견준다.
+
+    간토는 같은 지역을 OSM(kanto_osm)과 ODPT(kanto) 두 벌로 들고 있어,
+    build_rail 의 역 순서 규칙을 정답에 대어 볼 수 있는 유일한 곳이다.
+    노선마다 역 이름이 60% 넘게 겹치는 ODPT 노선에 짝짓고, 두 노선에
+    공통인 역만 남겨 OSM 이웃 쌍 중 ODPT 에서도 이웃인 비율을 잰다.
+    선로가 고리처럼 도는 ゆりかもめ·ユーカリが丘線 을 길이로 옮겨 틀렸던
+    것을 이걸로 잡았다(99.76% -> 99.95%).
+    """
+    root = Path(__file__).resolve().parent.parent / "data" / "regions"
+    need = [root / "kanto" / "stops.json", root / "kanto" / "raw" / "railways.json",
+            root / "kanto_osm" / "raw" / "railways.json"]
+    if not all(p.exists() for p in need):
+        pytest.skip("간토 두 벌이 다 빌드돼 있어야 한다")
+    s = json.loads(need[0].read_text(encoding="utf-8"))
+    ja = dict(zip(s["ids"], s["ja"]))
+    truth = [[ja.get(x, "") for x in r["stations"]]
+             for r in json.loads(need[1].read_text(encoding="utf-8"))]
+    st = {x["id"]: x["title"]["ja"] for x in json.loads(
+        (root / "kanto_osm" / "raw" / "stations.json").read_text(encoding="utf-8"))}
+    lines = [[st[x] for x in r["stations"]]
+             for r in json.loads(need[2].read_text(encoding="utf-8"))]
+
+    def pairs(seq):
+        return {frozenset(p) for p in zip(seq, seq[1:]) if p[0] != p[1]}
+
+    hit = total = 0
+    for seq in lines:
+        mine = set(seq)
+        if len(mine) < 3:
+            continue
+        best = max(truth, key=lambda t: len(mine & set(t)))
+        if len(mine & set(best)) < 0.6 * len(mine):
+            continue
+        common = mine & set(best)
+        a = pairs([x for x in seq if x in common])
+        b = pairs([x for x in best if x in common])
+        hit += len(a & b)
+        total += len(a)
+    check(measured, "kanto_osm", "order_precision", round(hit / max(total, 1), 4),
+          limit_is_max=False)
 
 
 # --------------------------------------------------------------------------

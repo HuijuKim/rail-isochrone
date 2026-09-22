@@ -13847,5 +13847,779 @@
  },
  "鶴舞": {
   "ko": "쓰루마이"
+ },
+ "たのうら御立岬公園": {
+  "ko": "다노우라오타치미사키코엔",
+  "en": "Tanoura-otachimisakikoen"
+ },
+ "めがね橋": {
+  "ko": "메가네바시",
+  "en": "Meganebashi Bridge"
+ },
+ "スタジアムシティサウス": {
+  "ko": "스타디움시티 사우스",
+  "en": "Stadium City South"
+ },
+ "スタジアムシティノース": {
+  "ko": "스타디움시티 노스",
+  "en": "Stadium City North"
+ },
+ "スペースワールド": {
+  "ko": "스페이스월드",
+  "en": "Space World"
+ },
+ "メディカルセンター": {
+  "ko": "메디컬센터",
+  "en": "Medical Center"
+ },
+ "上三緒": {
+  "ko": "가미미오",
+  "en": "Kami-Mio"
+ },
+ "上伊集院": {
+  "ko": "가미이주인",
+  "en": "Kami-Ijūin"
+ },
+ "上岡": {
+  "ko": "가미오카"
+ },
+ "上川内": {
+  "ko": "가미센다이",
+  "en": "Kami Sendai"
+ },
+ "上田浦": {
+  "ko": "가미타노우라",
+  "en": "Kami-Tanoura"
+ },
+ "下鴨生": {
+  "ko": "시모카모오",
+  "en": "Shimo-Kamoo"
+ },
+ "中津": {
+  "ko": "나카쓰",
+  "en": "Nakatsu"
+ },
+ "中洲川端": {
+  "ko": "나카스카와바타",
+  "en": "Nakasu-Kawabata"
+ },
+ "串木野": {
+  "ko": "구시키노",
+  "en": "Kushikino"
+ },
+ "九品寺交差点": {
+  "ko": "구혼지코사텐",
+  "en": "Kuhonjikosaten"
+ },
+ "九州工大前": {
+  "ko": "규슈코다이마에"
+ },
+ "九州鉄道記念館": {
+  "ko": "규슈테쓰도키넨칸",
+  "en": "Kyushutetsudo-Kinenkan"
+ },
+ "二本木口": {
+  "ko": "니혼기구치",
+  "en": "Nihongiguchi"
+ },
+ "五島町": {
+  "ko": "고토마치",
+  "en": "Goto-machi"
+ },
+ "交通局前": {
+  "ko": "고쓰쿄쿠마에",
+  "en": "Kotsukyoku-mae"
+ },
+ "今池": {
+  "ko": "이마이케",
+  "en": "Imaike"
+ },
+ "仙巌園": {
+  "ko": "센간엔",
+  "en": "Sengan-en"
+ },
+ "令和コスタ行橋": {
+  "ko": "레이와코스타 유쿠하시",
+  "en": "Reiwa Costa Yukuhashi"
+ },
+ "伊集院": {
+  "ko": "이주인",
+  "en": "Ijuin"
+ },
+ "佐伯": {
+  "ko": "사이키"
+ },
+ "健軍交番前": {
+  "ko": "겐군코반마에",
+  "en": "Kengunkoban-mae"
+ },
+ "健軍校前": {
+  "ko": "겐군코마에",
+  "en": "Kengunko-mae"
+ },
+ "健軍町": {
+  "ko": "겐군마치",
+  "en": "Kengunmachi"
+ },
+ "八丁馬場": {
+  "ko": "핫초바바",
+  "en": "Hacchobaba"
+ },
+ "八千代町": {
+  "ko": "야치요마치",
+  "en": "Yachiyo-machi"
+ },
+ "出島": {
+  "ko": "데지마",
+  "en": "Dejima"
+ },
+ "動植物園前": {
+  "ko": "도쇼쿠부쓰엔마에",
+  "en": "Zoological and Botanical Garden"
+ },
+ "勝野": {
+  "ko": "가쓰노",
+  "en": "Katsuno"
+ },
+ "北川": {
+  "ko": "기타가와"
+ },
+ "千丁": {
+  "ko": "센초",
+  "en": "Sencho"
+ },
+ "千代県庁口": {
+  "ko": "지요켄초구치",
+  "en": "Chiyo-Kenchōguchi"
+ },
+ "千歳町": {
+  "ko": "지토세마치",
+  "en": "Chitose-machi"
+ },
+ "千鳥": {
+  "ko": "지도리",
+  "en": "Chidori"
+ },
+ "南瀬高": {
+  "ko": "미나미세타카",
+  "en": "Minami-Setaka"
+ },
+ "南荒尾": {
+  "ko": "미나미아라오",
+  "en": "Minami-Arao"
+ },
+ "原爆資料館": {
+  "ko": "겐바쿠시료칸",
+  "en": "Atomic Bomb Museum"
+ },
+ "吉野": {
+  "ko": "요시노",
+  "en": "Yoshino"
+ },
+ "呉服町": {
+  "ko": "고후쿠마치",
+  "en": "Gofukumachi"
+ },
+ "味噌天神前": {
+  "ko": "미소텐진마에",
+  "en": "Misotenjin-mae"
+ },
+ "唐人町": {
+  "ko": "도진마치",
+  "en": "Tōjinmachi"
+ },
+ "唐津": {
+  "ko": "가라쓰"
+ },
+ "商業高校前": {
+  "ko": "쇼교코코마에",
+  "en": "Shogyokoko-mae"
+ },
+ "国府": {
+  "ko": "고쿠부",
+  "en": "Kokubu"
+ },
+ "多良木青蓮寺": {
+  "ko": "다라기쇼렌지",
+  "en": "Taragi Shōrenji"
+ },
+ "大学病院": {
+  "ko": "다이가쿠뵤인",
+  "en": "University Hospital"
+ },
+ "大波止": {
+  "ko": "오하토",
+  "en": "Ohato"
+ },
+ "大浦天主堂": {
+  "ko": "오우라텐슈도",
+  "en": "Oura Cathedral"
+ },
+ "大浦海岸通り": {
+  "ko": "오우라카이간도리",
+  "en": "Ourakaigan-dori"
+ },
+ "大濠公園": {
+  "ko": "오호리코엔",
+  "en": "Ōhorikōen"
+ },
+ "大野下": {
+  "ko": "오노시모",
+  "en": "Ono-shimo"
+ },
+ "天神": {
+  "ko": "덴진",
+  "en": "Tenjin"
+ },
+ "太宰府": {
+  "ko": "다자이후",
+  "en": "Dazaifu"
+ },
+ "奈多": {
+  "ko": "나타",
+  "en": "Nata"
+ },
+ "宇部": {
+  "ko": "우베",
+  "en": "Ube"
+ },
+ "宇部岬": {
+  "ko": "우베미사키",
+  "en": "Ubemisaki"
+ },
+ "室見": {
+  "ko": "무로미",
+  "en": "Muromi"
+ },
+ "富合": {
+  "ko": "도미아이",
+  "en": "Tomiai"
+ },
+ "小月": {
+  "ko": "오즈키"
+ },
+ "小森江": {
+  "ko": "고모리에",
+  "en": "Komorie"
+ },
+ "小竹": {
+  "ko": "고타케",
+  "en": "Kotake"
+ },
+ "岩屋橋": {
+  "ko": "이와야바시",
+  "en": "Iwayabashi"
+ },
+ "崇城大学前": {
+  "ko": "소조다이가쿠마에",
+  "en": "Sōjōdaigakumae"
+ },
+ "崇福寺": {
+  "ko": "소후쿠지",
+  "en": "Sofukuji Temple"
+ },
+ "川内": {
+  "ko": "센다이",
+  "en": "Sendai"
+ },
+ "川尻": {
+  "ko": "가와시리",
+  "en": "Kawashiri"
+ },
+ "市役所": {
+  "ko": "시야쿠쇼",
+  "en": "City Hall"
+ },
+ "市来": {
+  "ko": "이치키",
+  "en": "Ichiki"
+ },
+ "市棚": {
+  "ko": "이치타나"
+ },
+ "市立体育館前": {
+  "ko": "시리쓰타이이쿠칸마에",
+  "en": "Shiritsutaiikukan-mae"
+ },
+ "幡生": {
+  "ko": "하타부",
+  "en": "Hatabu"
+ },
+ "平和公園": {
+  "ko": "헤이와코엔",
+  "en": "Peace Park"
+ },
+ "思案橋": {
+  "ko": "시안바시",
+  "en": "Shianbashi"
+ },
+ "慶徳校前": {
+  "ko": "게이토쿠코마에",
+  "en": "Keitokuku-mae"
+ },
+ "戸畑": {
+  "ko": "도바타"
+ },
+ "教育大前": {
+  "ko": "교이쿠다이마에",
+  "en": "Kyōikudai-mae"
+ },
+ "新下関": {
+  "ko": "신시모노세키",
+  "en": "Shin-Shimonoseki"
+ },
+ "新中川町": {
+  "ko": "신나카가와마치",
+  "en": "Shinnakagawa-machi"
+ },
+ "新八代": {
+  "ko": "신야쓰시로",
+  "en": "Shin-Yatsushiro"
+ },
+ "新地中華街": {
+  "ko": "신치추카가이",
+  "en": "Shinchi Chinatown"
+ },
+ "新大工町": {
+  "ko": "신다이쿠마치",
+  "en": "Shindaiku-machi"
+ },
+ "新大村": {
+  "ko": "신오무라"
+ },
+ "新水前寺駅前": {
+  "ko": "신스이젠지에키마에",
+  "en": "Shin-suizennji ekimae"
+ },
+ "新飯塚": {
+  "ko": "신이이즈카",
+  "en": "Shin-Iizuka"
+ },
+ "日向長井": {
+  "ko": "휴가나가이"
+ },
+ "昭和町通": {
+  "ko": "쇼와마치도리",
+  "en": "Showamachi-dori"
+ },
+ "有佐": {
+  "ko": "아리사",
+  "en": "Arisa"
+ },
+ "木場茶屋": {
+  "ko": "고반차야",
+  "en": "Kobanchaya"
+ },
+ "木葉": {
+  "ko": "고노하",
+  "en": "Konoha"
+ },
+ "本妙寺前": {
+  "ko": "혼묘지마에",
+  "en": "Honmyoji Temple Entrance"
+ },
+ "杉塘": {
+  "ko": "스기도모",
+  "en": "Sugidomo"
+ },
+ "東市来": {
+  "ko": "히가시이치키",
+  "en": "Higashi-Ichiki"
+ },
+ "東比恵": {
+  "ko": "히가시히에",
+  "en": "Higashi-Hie"
+ },
+ "東開聞": {
+  "ko": "히가시카이몬",
+  "en": "Higashi-Kaimon"
+ },
+ "松橋": {
+  "ko": "마쓰바세",
+  "en": "Matsubase"
+ },
+ "枝光": {
+  "ko": "에다미쓰",
+  "en": "Edamitsu"
+ },
+ "植木": {
+  "ko": "우에키",
+  "en": "Ueki"
+ },
+ "櫛田神社前": {
+  "ko": "구시다진자마에",
+  "en": "Kushida Shrine"
+ },
+ "段山町": {
+  "ko": "니야마마치",
+  "en": "Daniyamamachi"
+ },
+ "水前寺": {
+  "ko": "스이젠지",
+  "en": "Suizenji"
+ },
+ "水前寺公園": {
+  "ko": "스이젠지코엔",
+  "en": "Suizenji Park"
+ },
+ "水巻": {
+  "ko": "미즈마키",
+  "en": "Mizumaki"
+ },
+ "水道町": {
+  "ko": "스이도초",
+  "en": "Suidocho"
+ },
+ "河原町": {
+  "ko": "가와라마치",
+  "en": "Kawaramachi"
+ },
+ "洗馬橋": {
+  "ko": "센바바시",
+  "en": "Senbabashi"
+ },
+ "浅海井": {
+  "ko": "아자무이"
+ },
+ "浜町アーケード": {
+  "ko": "하마노마치 아케이드",
+  "en": "Hamano-machi Arcade"
+ },
+ "浦上": {
+  "ko": "우라카미",
+  "en": "Urakami"
+ },
+ "浦上車庫": {
+  "ko": "우라카미샤코",
+  "en": "Urakami Tram Depot"
+ },
+ "浦上駅前": {
+  "ko": "우라카미에키마에",
+  "en": "Urakami Station"
+ },
+ "海老津": {
+  "ko": "에비쓰",
+  "en": "Ebitsu"
+ },
+ "瀬高": {
+  "ko": "세타카",
+  "en": "Setaka"
+ },
+ "熊本城・市役所前": {
+  "ko": "구마모토조·시야쿠쇼마에",
+  "en": "Kumamoto Castle / City Hall"
+ },
+ "熊本駅前": {
+  "ko": "구마모토에키마에",
+  "en": "Kumamoto Station"
+ },
+ "牛ノ浜": {
+  "ko": "우시노하마",
+  "en": "Ushinohama"
+ },
+ "狩生": {
+  "ko": "가리우"
+ },
+ "玉名": {
+  "ko": "다마나",
+  "en": "Tamana"
+ },
+ "田原坂": {
+  "ko": "다바라자카",
+  "en": "Tabarazaka"
+ },
+ "田崎橋": {
+  "ko": "다사키바시",
+  "en": "Tasakibashi"
+ },
+ "直川": {
+  "ko": "나오카와"
+ },
+ "直見": {
+  "ko": "나오미"
+ },
+ "相良十島": {
+  "ko": "사가라토시마",
+  "en": "Sagara Toshima"
+ },
+ "県立体育館前": {
+  "ko": "겐리쓰타이이쿠칸마에",
+  "en": "Kenritsutaiikukan-mae"
+ },
+ "祗園橋": {
+  "ko": "기온바시",
+  "en": "Gionbashi"
+ },
+ "神村学園前": {
+  "ko": "가미무라가쿠엔마에",
+  "en": "Kamimuragakuen-mae"
+ },
+ "神水交差点": {
+  "ko": "구와미즈코사텐",
+  "en": "Kuwamizu Kosaten"
+ },
+ "福岡空港": {
+  "ko": "후쿠오카쿠코",
+  "en": "Fukuokakūkō"
+ },
+ "穴生": {
+  "ko": "아노",
+  "en": "Anō"
+ },
+ "立野": {
+  "ko": "다테노",
+  "en": "Tateno"
+ },
+ "笹貫": {
+  "ko": "사사누키",
+  "en": "Sasanuki"
+ },
+ "筑前庄内": {
+  "ko": "지쿠젠쇼나이",
+  "en": "Chikuzen-Shōnai"
+ },
+ "筑後船小屋": {
+  "ko": "지쿠고후나고야",
+  "en": "Chikugo Funagoya"
+ },
+ "箱崎九大前": {
+  "ko": "하코자키큐다이마에",
+  "en": "Hakozaki-Kyūdai-mae"
+ },
+ "箱崎宮前": {
+  "ko": "하코자키미야마에",
+  "en": "Hakozaki-Miyamae"
+ },
+ "米ノ津": {
+  "ko": "고메노쓰",
+  "en": "Komenotsu"
+ },
+ "糸島高校前": {
+  "ko": "이토시마코코마에",
+  "en": "Itoshimakōkō-mae"
+ },
+ "純心学園前": {
+  "ko": "준신가쿠엔마에",
+  "en": "Junshingakuen-Mae"
+ },
+ "羽犬塚": {
+  "ko": "하이누즈카",
+  "en": "Hainuzuka"
+ },
+ "肥前旭": {
+  "ko": "히젠아사히",
+  "en": "Hizen Asahi"
+ },
+ "肥後伊倉": {
+  "ko": "히고이쿠라",
+  "en": "Higo-Ikura"
+ },
+ "脇田": {
+  "ko": "와키타",
+  "en": "Wakita"
+ },
+ "花畑町": {
+  "ko": "하나바타초",
+  "en": "Hanabatacho"
+ },
+ "若葉町": {
+  "ko": "와카바마치",
+  "en": "Wakaba-machi"
+ },
+ "茂里町": {
+  "ko": "모리마치",
+  "en": "Mori-machi"
+ },
+ "草道": {
+  "ko": "구사미치",
+  "en": "Kusamichi"
+ },
+ "荒尾": {
+  "ko": "아라오",
+  "en": "Arao"
+ },
+ "荒木": {
+  "ko": "아라키",
+  "en": "Araki"
+ },
+ "萩原": {
+  "ko": "하기와라",
+  "en": "Hagiwara"
+ },
+ "蔚山町": {
+  "ko": "우루산마치",
+  "en": "Urusanmachi"
+ },
+ "薩摩大川": {
+  "ko": "사쓰마오카와",
+  "en": "Satsuma-Okawa"
+ },
+ "薩摩川尻": {
+  "ko": "사쓰마카와시리",
+  "en": "Satsuma-Kawashiri"
+ },
+ "薩摩松元": {
+  "ko": "사쓰마마쓰모토",
+  "en": "Satsuma-Matsumoto"
+ },
+ "薩摩高城": {
+  "ko": "사쓰마타키",
+  "en": "Satsuma-Taki"
+ },
+ "薬院": {
+  "ko": "야쿠인",
+  "en": "Yakuin"
+ },
+ "藤崎": {
+  "ko": "후지사키",
+  "en": "Fujisaki"
+ },
+ "蛍茶屋": {
+  "ko": "호타루자야",
+  "en": "Hotarujaya"
+ },
+ "西唐津": {
+  "ko": "니시카라쓰"
+ },
+ "西大山": {
+  "ko": "니시오야마",
+  "en": "Nishi-Oyama"
+ },
+ "西小倉": {
+  "ko": "니시코쿠라",
+  "en": "Nishi-Kokura"
+ },
+ "西新": {
+  "ko": "니시진",
+  "en": "Nishijin"
+ },
+ "西浜町": {
+  "ko": "니시하마노마치",
+  "en": "Nishihamano-machi"
+ },
+ "西熊本": {
+  "ko": "니시쿠마모토",
+  "en": "Nishi-Kumamoto"
+ },
+ "西牟田": {
+  "ko": "니시무타",
+  "en": "Nishimuta"
+ },
+ "西辛島町": {
+  "ko": "니시카라시마초",
+  "en": "NishiKarashima chou"
+ },
+ "西里": {
+  "ko": "니시사토",
+  "en": "Nishisato"
+ },
+ "観光通": {
+  "ko": "간코도리",
+  "en": "Kanko-dori"
+ },
+ "諏訪神社": {
+  "ko": "스와진자",
+  "en": "Suwajinja Shrine"
+ },
+ "赤迫": {
+  "ko": "아카사코",
+  "en": "Akasako"
+ },
+ "辛島町": {
+  "ko": "가라시마초",
+  "en": "Karashimacho"
+ },
+ "通町筋": {
+  "ko": "도리초스지",
+  "en": "Torichosuji"
+ },
+ "遠賀川": {
+  "ko": "온가가와",
+  "en": "Ongagawa"
+ },
+ "重岡": {
+  "ko": "시게오카",
+  "en": "Shigeoka"
+ },
+ "銀水": {
+  "ko": "긴스이",
+  "en": "Ginsui"
+ },
+ "鍋島": {
+  "ko": "나베시마",
+  "en": "Nabeshima"
+ },
+ "長崎": {
+  "ko": "나가사키",
+  "en": "Nagasaki"
+ },
+ "長崎大学": {
+  "ko": "나가사키다이가쿠",
+  "en": "Nagasaki University"
+ },
+ "長崎駅前": {
+  "ko": "나가사키에키마에",
+  "en": "Nagasaki Station"
+ },
+ "長洲": {
+  "ko": "나가스",
+  "en": "Nagasu"
+ },
+ "門司": {
+  "ko": "모지",
+  "en": "Moji"
+ },
+ "門司港": {
+  "ko": "모지코",
+  "en": "Mojikō"
+ },
+ "開聞": {
+  "ko": "가이몬",
+  "en": "Kaimon"
+ },
+ "関門海峡めかり": {
+  "ko": "간몬카이쿄메카리",
+  "en": "Kanmonkaikyo Mekari"
+ },
+ "陣原": {
+  "ko": "진노하루",
+  "en": "Jin'noharu"
+ },
+ "隈之城": {
+  "ko": "구마노조",
+  "en": "Kumanojo"
+ },
+ "飯塚": {
+  "ko": "이이즈카",
+  "en": "Iizuka"
+ },
+ "馬出九大病院前": {
+  "ko": "마이다시큐다이뵤인마에",
+  "en": "Maidashi-Kyūdai-byōin-mae"
+ },
+ "高橋": {
+  "ko": "다카하시",
+  "en": "Takahashi"
+ },
+ "鹿児島": {
+  "ko": "가고시마",
+  "en": "Kagoshima"
+ },
+ "黒崎": {
+  "ko": "구로사키",
+  "en": "Kurosaki"
+ },
+ "上熊本": {
+  "ko": "가미쿠마모토"
+ },
+ "大橋": {
+  "ko": "오하시"
+ },
+ "湯之元": {
+  "ko": "유노모토"
+ },
+ "茶山": {
+  "ko": "차야마",
+  "en": "Chayama"
  }
 }
