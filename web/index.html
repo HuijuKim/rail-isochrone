@@ -1736,6 +1736,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 
     var iso = L.layerGroup().addTo(map);
     var coverage = L.layerGroup().addTo(map);
+    var pickLayer = L.layerGroup().addTo(map);
     var lines = L.layerGroup().addTo(map);
     var route = L.layerGroup().addTo(map);
     var pins = {};
@@ -1832,6 +1833,14 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
         }).addTo(coverage);
       },
       clearCoverage: function () { coverage.clearLayers(); },
+      drawPick: function (geojson) {
+        pickLayer.clearLayers();
+        L.geoJSON(geojson, {
+          style: { color: css("--accent"), weight: 2, opacity: 0.9,
+                   fillColor: css("--accent"), fillOpacity: 0.12, interactive: false }
+        }).addTo(pickLayer);
+      },
+      clearPick: function () { pickLayer.clearLayers(); },
       onClick: function (fn) {
         map.on("click", function (e) { fn(e.latlng.lat, e.latlng.lng); });
       },
@@ -1915,6 +1924,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     var route = [];
     var stationLayer = null;
     var coverageLayer = null;
+    var pickLayer = null;
     var lineLayer = [];
 
     /* 지원 역 점. Data 레이어에 MultiPoint 로 넘기면 내부에서 점마다 마커를
@@ -2054,6 +2064,19 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
           strokeColor: css("--coverage"), strokeWeight: 1.2, strokeOpacity: 0.75
         });
       },
+      drawPick: function (geojson) {
+        if (pickLayer) pickLayer.setMap(null);
+        pickLayer = new google.maps.Data({ map: map });
+        pickLayer.addGeoJson(geojson);
+        pickLayer.setStyle({
+          clickable: false, zIndex: 2,
+          strokeColor: css("--accent"), strokeWeight: 2, strokeOpacity: 0.9,
+          fillColor: css("--accent"), fillOpacity: 0.12
+        });
+      },
+      clearPick: function () {
+        if (pickLayer) { pickLayer.setMap(null); pickLayer = null; }
+      },
       onClick: function (fn) {
         map.addListener("click", function (e) { fn(e.latLng.lat(), e.latLng.lng()); });
       },
@@ -2177,6 +2200,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   }
 
   function refreshStations() {
+    if (combo && combo.picking) return;
     if (el("toggle-stations").getAttribute("aria-pressed") !== "true") {
       mapView.clearStations();
       return;
@@ -2197,6 +2221,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 
   /* 노선은 여러 현에 걸친다. 고른 현을 하나라도 지나면 보여준다. */
   function refreshLines() {
+    if (combo && combo.picking) return;
     if (el("toggle-lines").getAttribute("aria-pressed") !== "true" || !railwayShapes) {
       mapView.clearLines();
       return;
@@ -3391,6 +3416,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   }
 
   function run() {
+    if (combo && combo.picking) return;
     schedule(runNow);
   }
 
@@ -3422,6 +3448,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   /* 찍기 전에 쓸 수 있는 지점인지 먼저 확인한다. 바다나 권역 밖을 찍어두고
      빈 결과를 보는 것보다, 찍히지 않는 편이 낫다. */
   function handleMapClick(lat, lon, forced) {
+    if (combo && combo.picking) return;
     // 지도를 갈아낀 직후에는 좌표 변환이 어긋나 엉뚱한 값이 온다.
     // 지구 밖 좌표로 서버를 부르면 "범위를 벗어났습니다" 만 뜬다.
     if (!isFinite(lat) || !isFinite(lon)
@@ -3920,10 +3947,10 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     }
     regionInfo = info;
     activeRegion = id;
+    exitPickMode(false);
     // 조합 권역이면 조합 탭을, 아니면 권역 탭을 연다
     if (info && info.custom) {
       selectTab("combo");
-      try { localStorage.setItem("comboRegion", id); } catch (e) { /* 무시 */ }
     } else {
       selectTab("preset");
       el("region").value = id;
@@ -3992,11 +4019,72 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
      현을 골라 권역 하나로 새로 빌드한다(서버가 make_region.py 를 돌린다).
      빌드가 10-40분 걸리므로 진행을 몇 초마다 물어 본다. 만든 조합은 권역
      목록과 섞지 않고 이 탭에 모은다. 탭마다 제 권역을 기억한다. 권역
-     탭으로 돌아오면 드롭다운의 권역을, 조합 탭으로 가면 마지막 조합을 연다. */
+     탭으로 돌아오면 드롭다운의 권역을 연다. 조합 탭은 빈 일본 지도에서 현을
+     고르는 것으로 시작하고, 만든 조합은 목록에서 눌러 연다. */
+  // 현 고르기는 늘 빈 상태로 시작한다.
   var combo = { data: null, pick: [], plan: null, planError: "", seq: 0,
-                poll: null, planTimer: null };
-  try { combo.pick = JSON.parse(localStorage.getItem("comboPick") || "[]") || []; }
-  catch (e) { combo.pick = []; }
+                poll: null, planTimer: null, picking: false, savedView: null,
+                outlineSeq: 0 };
+
+  /* 현을 고르는 동안은 지도에서 권역의 것(등시선, 권역 경계, 노선, 역, 핀)을
+     걷고 일본 전체를 보인다. 고른 현들을 합친 경계만 칠한다. 권역 탭으로
+     돌아가거나 만든 조합을 열면 되돌린다. */
+  var JAPAN = { south: 30.9, west: 128.4, north: 45.6, east: 146.0 };
+
+  function enterPickMode() {
+    if (combo.picking) { drawPickOutline(); return; }
+    combo.picking = true;
+    combo.savedView = mapView.getView();
+    // 도는 계산의 결과가 돌아와 지도에 다시 그려지지 않게 한다
+    seqs.iso++;
+    seqs.point++;
+    mapView.clearIsochrone();
+    mapView.clearCoverage();
+    mapView.clearLines();
+    mapView.clearStations();
+    mapView.clearRoute();
+    mapView.clearPin("origin");
+    mapView.clearPin("dest");
+    el("badge").hidden = true;
+    mapView.fitBounds(JAPAN);
+    drawPickOutline();
+    if (combo.data) renderCombo();
+  }
+
+  // redraw 가 거짓이면 표시만 거둔다. 곧 다른 권역을 올려 새로 그릴 때다.
+  function exitPickMode(redraw) {
+    if (!combo || !combo.picking) return;
+    combo.picking = false;
+    combo.outlineSeq++;
+    mapView.clearPick();
+    if (!redraw) return;
+    if (combo.savedView) mapView.setView(combo.savedView);
+    if (coverageGeo) mapView.drawCoverage(coverageGeo);
+    refreshLines();
+    refreshStations();
+    if (origin) mapView.setPin("origin", origin.lat, origin.lon);
+    if (destination) mapView.setPin("dest", destination.lat, destination.lon);
+    run();
+  }
+
+  function drawPickOutline() {
+    if (!combo.picking) return;
+    var seq = ++combo.outlineSeq;
+    if (!combo.pick.length) {
+      mapView.clearPick();
+      mapView.fitBounds(JAPAN);
+      return;
+    }
+    getJSON("/api/combo/outline?prefs=" + encodeURIComponent(combo.pick.join(",")))
+      .then(function (geo) {
+        if (seq !== combo.outlineSeq || !combo.picking) return;
+        mapView.drawPick(geo);
+        // 일본 전체 축척에서는 고른 영역이 너무 작다. 고른 만큼 당겨 보인다.
+        var b = geojsonBounds(geo.features || []);
+        if (b) mapView.fitBounds(b);
+      })
+      .catch(function () { /* 경계는 보조 표시다. 못 받아도 고르기는 된다 */ });
+  }
 
   function postJSON(url, body) {
     return fetch(url, {
@@ -4078,7 +4166,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       var b = document.createElement("button");
       b.type = "button";
       b.className = "combo-item";
-      if (r.id === activeRegion) b.setAttribute("aria-current", "true");
+      // 빈 지도에서 현을 고르는 동안은 열어 둔 조합이 없는 것으로 보인다
+      if (r.id === activeRegion && !combo.picking) b.setAttribute("aria-current", "true");
       var nm = document.createElement("span");
       nm.textContent = localName(r.names) || r.id;
       var meta = document.createElement("span");
@@ -4089,7 +4178,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
             || "comboStateIncomplete");
       b.appendChild(nm);
       b.appendChild(meta);
-      b.addEventListener("click", function () { openCombo(r); });
+      b.addEventListener("click", function () {
+        // 열어 둔 조합을 한 번 더 누르면 선택을 풀고 빈 일본 지도로 돌아간다
+        if (r.id === activeRegion && !combo.picking) { enterPickMode(); return; }
+        openCombo(r);
+      });
       var row = document.createElement("div");
       row.className = "combo-row";
       row.appendChild(b);
@@ -4142,10 +4235,10 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
         c.addEventListener("click", function () {
           var i = combo.pick.indexOf(p.ja);
           if (i >= 0) combo.pick.splice(i, 1); else combo.pick.push(p.ja);
-          try { localStorage.setItem("comboPick", JSON.stringify(combo.pick)); } catch (e) { /* 무시 */ }
           // 고른 것이 바뀌면 켤 현도 달라진다
           renderCombo();
           schedulePlan();
+          enterPickMode();
         });
         chips.appendChild(c);
       });
@@ -4239,6 +4332,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       combo.pick = (r.prefectures || []).slice();
       renderCombo();
       schedulePlan();
+      enterPickMode();
       return Promise.resolve();
     }
     busy(true);
@@ -4376,14 +4470,17 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   el("tab-preset").addEventListener("click", function () {
     selectTab("preset");
     // 조합을 보던 중이면 드롭다운에 있는 권역으로 돌아간다
-    if (isCustom(activeRegion) && el("region").value) switchRegion(el("region").value);
+    if (isCustom(activeRegion) && el("region").value) {
+      exitPickMode(false);
+      switchRegion(el("region").value);
+    } else {
+      exitPickMode(true);
+    }
   });
   el("tab-combo").addEventListener("click", function () {
     selectTab("combo");
-    if (isCustom(activeRegion)) return;
-    var last = null;
-    try { last = localStorage.getItem("comboRegion"); } catch (e) { /* 무시 */ }
-    if (last && isCustom(last)) switchRegion(last);
+    // 빈 일본 지도에서 현을 고른다. 만든 조합은 목록에서 눌러 연다.
+    enterPickMode();
   });
   el("combo-build").addEventListener("click", function () {
     var plan = combo.plan;
@@ -4402,9 +4499,9 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   });
   el("combo-clear").addEventListener("click", function () {
     combo.pick = [];
-    try { localStorage.setItem("comboPick", "[]"); } catch (e) { /* 무시 */ }
     renderCombo();
     schedulePlan();
+    drawPickOutline();
   });
 
   // 고정 문자열을 먼저 칠한다. 마크업의 한국어는 번역이 없을 때의 대비책이다.
