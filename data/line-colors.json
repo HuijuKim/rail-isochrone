@@ -268,8 +268,8 @@
   "source": "ja.wikipedia:小野田線"
  },
  "JR小野田線 本山支線": {
-  "color": "#ad2860",
-  "source": "지어냄"
+  "color": "#776493",
+  "source": "본선:JR小野田線"
  },
  "JR山口線": {
   "color": "#e86c4c",
@@ -623,6 +623,14 @@
   "color": "#ffd400",
   "source": "ja.wikipedia:鶴見線"
  },
+ "JR鶴見線 大川支線": {
+  "color": "#ffd400",
+  "source": "본선:JR鶴見線"
+ },
+ "JR鶴見線 海芝浦支線": {
+  "color": "#ffd400",
+  "source": "본선:JR鶴見線"
+ },
  "JR鹿児島・豊肥線 普通 (八代 => 肥後大津)": {
   "color": "#b96f30",
   "source": "ja.wikipedia:豊肥線"
@@ -642,6 +650,10 @@
  "OSM|JR水郡線常陸太田支線": {
   "color": "#368C44",
   "source": "권역 맞춤:水郡線常陸太田支線"
+ },
+ "OSM|JR鶴見線 海芝浦支線": {
+  "color": "#FFD400",
+  "source": "권역 맞춤:鶴見線海芝浦支線"
  },
  "OSM|JR鹿島線": {
   "color": "#00b2e5",
@@ -2195,11 +2207,19 @@
   "color": "#8f76d6",
   "source": "ja.wikipedia:東京メトロ半蔵門線"
  },
+ "東京メトロ半蔵門線 : 押上→渋谷": {
+  "color": "#8f76d6",
+  "source": "ja.wikipedia:東京メトロ半蔵門線"
+ },
  "東京メトロ南北線 : 目黒→ 赤羽岩淵": {
   "color": "#00ac9b",
   "source": "ja.wikipedia:東京メトロ南北線"
  },
  "東京メトロ日比谷線 - 東武スカイツリーライン直通運転 : 中目黒→北千住→南栗橋": {
+  "color": "#b5b5ac",
+  "source": "ja.wikipedia:東京メトロ日比谷線"
+ },
+ "東京メトロ日比谷線 : 中目黒→北千住": {
   "color": "#b5b5ac",
   "source": "ja.wikipedia:東京メトロ日比谷線"
  },
@@ -2275,9 +2295,17 @@
   "color": "#8a1186",
   "source": "ja.wikipedia:東急新横浜線"
  },
+ "東急東横線 : 横浜→渋谷": {
+  "color": "#da0442",
+  "source": "ja.wikipedia:東急東横線"
+ },
  "東急池上線 (五反田 -> 蒲田)": {
   "color": "#ee86a7",
   "source": "ja.wikipedia:東急池上線"
+ },
+ "東急田園都市線 (中央林間 -> 渋谷)": {
+  "color": "#20a288",
+  "source": "ja.wikipedia:東急田園都市線"
  },
  "東急目黒線 (日吉=>目黒)": {
   "color": "#009cd2",
@@ -2836,6 +2864,10 @@
   "source": "ja.wikipedia:西武新宿線"
  },
  "西武有楽町線": {
+  "color": "#ef810f",
+  "source": "ja.wikipedia:西武有楽町線"
+ },
+ "西武有楽町線 (練馬=>小竹向原)": {
   "color": "#ef810f",
   "source": "ja.wikipedia:西武有楽町線"
  },

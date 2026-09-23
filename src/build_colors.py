@@ -81,6 +81,10 @@ def norm(name: str) -> str:
     return PUNCT.sub("", s)
 
 
+# 따로 세운 지선의 이름 꼴. line-extensions.json 의 "갈래" 가 이렇게 짓는다.
+BRANCH = re.compile(r"^(.+?)\s+\S+支線$")
+
+
 def made_up(name: str) -> str:
     """못 찾았을 때 쓸 색. 늘 같은 값이 나온다."""
     h = int(hashlib.md5(name.encode("utf-8")).hexdigest()[:8], 16)
@@ -339,12 +343,22 @@ def main() -> None:
             lines[ja] = r["id"]
     print(f"노선 {len(lines)}개 (원본에 색이 있는 것 {len(official)}개)", flush=True)
 
-    from_have = from_wiki = invented = kept = 0
+    from_have = from_wiki = invented = kept = from_main = 0
     for ja in sorted(lines):
         have = table.get(ja)
         if have and str(have.get("source", "")).startswith("손으로"):
             kept += 1
             continue
+        # 따로 세운 지선("JR鶴見線 海芝浦支線")은 본선 색을 쓴다. 지선 이름으로는
+        # 위키·원본에서 색을 못 찾아 이름으로 색을 지어냈고, 노란 쓰루미선 밑에
+        # 초록 지선이 붙었다. 이름순이라 본선이 먼저 정해져 있다.
+        main = BRANCH.match(ja)
+        if main and (have is None or have.get("source") == "지어냄"):
+            got = table.get(main.group(1))
+            if got and got.get("source") != "지어냄":
+                table[ja] = {"color": got["color"], "source": "본선:" + main.group(1)}
+                from_main += 1
+                continue
         if have and (not refresh or have.get("source") != "지어냄"):
             kept += 1
             continue
@@ -396,7 +410,8 @@ def main() -> None:
     OUT.write_text(json.dumps(dict(sorted(table.items())), ensure_ascii=False,
                               indent=1), encoding="utf-8")
     print(f"  그대로 둔 것 {kept}개, 원본 색을 쓴 것 {from_have}개, "
-          f"위키에서 찾은 것 {from_wiki}개, 지어낸 것 {invented}개")
+          f"위키에서 찾은 것 {from_wiki}개, 본선 색을 쓴 지선 {from_main}개, "
+          f"지어낸 것 {invented}개")
     print(f"  노선 색 {len(table)}개 -> {OUT} "
           f"({OUT.stat().st_size / 1024:.0f} KB)")
     left = sorted(k for k, v in table.items() if v.get("source") == "지어냄")
