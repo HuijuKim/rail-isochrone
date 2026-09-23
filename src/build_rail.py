@@ -402,6 +402,23 @@ _STN_TAIL = re.compile(r"駅[\d０-９\s･・.\-_]+$")
 _KO_TAIL = re.compile(r"(?<=[가-힣])\s*역$|(?<=[가-힣])\s+시$")
 
 
+def not_train(tags) -> bool:
+    """버스 정류장·나루터·삭도 승강장인가.
+
+    public_transport=stop_position/station 은 열차만 쓰는 태그가 아니다.
+    시코쿠 추출본에서 그렇게 잡히는 노드 2,538개 가운데 1,410개가 버스·배·
+    삭도다. 高松 의 버스 정류장 瀬戸内町 이 역이 되는 바람에, 정차역을 하나만
+    적어 둔 高徳線 관계가 高松-瀬戸内町 두 역짜리 가짜 노선이 됐다. 경로는
+    거기서 내려 昭和町 까지 1.2km 를 걸으라고 했다.
+
+    railway 태그가 붙은 것은 건드리지 않는다. 버스와 함께 쓰는 노면전차
+    정류장이 있다.
+    """
+    return (tags.get("bus") == "yes" or tags.get("highway") == "bus_stop"
+            or tags.get("ferry") == "yes" or tags.get("aerialway") is not None
+            or tags.get("amenity") in ("bus_station", "ferry_terminal"))
+
+
 def clean_station_name(nm: str) -> str:
     """승강장·출입구 표기를 떼어 역 이름 하나로 만든다.
 
@@ -457,7 +474,8 @@ class StationNodes(osmium.SimpleHandler):
             return
         t = n.tags
         is_station = (t.get("railway") in STATION_TAGS
-                      or t.get("public_transport") in ("station", STOP_POSITION))
+                      or (t.get("public_transport") in ("station", STOP_POSITION)
+                          and not not_train(t)))
         if not is_station and n.id not in self.want:
             return
         rec = (n.location.lon, n.location.lat,
