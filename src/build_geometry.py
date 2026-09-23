@@ -217,17 +217,62 @@ def main() -> None:
         cb = sb.rsplit(".", 1)[-1]
         by_pair.setdefault((ca, cb), []).append((orid, arc))
 
-    def find_arc(osm_rid, ca, cb):
+    row_of = {sid: i for i, sid in enumerate(stops["ids"])}
+
+    def gap_m(p, q):
+        return float(np.hypot((p[0] - q[0]) * scale * 111_320.0, (p[1] - q[1]) * 111_132.0))
+
+    def arc_len(arc):
+        return sum(gap_m(p, q) for p, q in zip(arc, arc[1:]))
+
+    def u_turn(arc):
+        """선형 안에 되꺾이는 자리(150도 넘게 도는 곳)가 있는가. 아주 짧은
+        걸음은 방향이 흔들리므로 3m 넘는 걸음만 본다."""
+        steps = [(p, q) for p, q in zip(arc, arc[1:]) if gap_m(p, q) > 3.0]
+        for (p0, p1), (q0, q1) in zip(steps, steps[1:]):
+            ax, ay = (p1[0] - p0[0]) * scale, p1[1] - p0[1]
+            bx, by = (q1[0] - q0[0]) * scale, q1[1] - q0[1]
+            na, nb = np.hypot(ax, ay), np.hypot(bx, by)
+            if na and nb and (ax * bx + ay * by) / (na * nb) < -0.866:
+                return True
+        return False
+
+    # 스위치백 역. 이 역에 닿는 구간은 되꺾이는 것이 실제 선로다.
+    sb_path = ROOT / "data" / "switchbacks.json"
+    switchback = {n for k, v in (json.loads(sb_path.read_text(encoding="utf-8"))
+                                 if sb_path.exists() else {}).items()
+                  if isinstance(v, list) for n in v}
+
+    def find_arc(osm_rid, ca, cb, pa=None, pb=None, turns_ok=False):
+        """역 쌍 사이 선로. 두 방향에 적힌 것을 다 후보로 놓고 고른다.
+
+        예전에는 한 방향에서 짝 노선을 못 찾으면 그 방향의 첫 선형을 바로
+        가져왔다. 常磐線快速 의 新橋-東京 은 新橋->東京 방향으로 横須賀線 만
+        있어(지하 승강장에서 끝난다), 도쿄역 앞에서 150m 를 가로질러 꺾였다.
+        그렇다고 짝 노선을 무조건 먼저 쓰면 ODPT 가 도쿄역을 지상 한 점으로
+        두는 탓에 横須賀線 이 같은 식으로 꺾이고, 짝 노선 선형에 되꺾임이
+        든 곳(総武線 四街道-物井)도 있다.
+
+        되꺾이며 가장 짧은 후보보다 10% 넘게 긴 것은 다른 후보가 있으면 빼고,
+        양 끝이 이쪽 역 좌표에 가장 가까운 것을 고른다. 거리가 10m 안에서
+        같으면 짝 노선, 그다음 짧은 것이다. 길이를 함께 보는 것은 선로가
+        역 앞에서 잠깐 지그재그 하는 것까지 되꺾임으로 걸리기 때문이다
+        (小田急小田原線 海老名-厚木 은 끝이 8m·11m 로 맞는데 한 점이 튀었다).
+        """
+        cands = []
         for a_, b_, flip in ((ca, cb, False), (cb, ca, True)):
-            got = by_pair.get((str(a_), str(b_)))
-            if not got:
-                continue
-            for orid, arc in got:
-                if orid == osm_rid:
-                    return arc[::-1] if flip else arc
-            orid, arc = got[0]
-            return arc[::-1] if flip else arc
-        return None
+            for orid, arc in by_pair.get((str(a_), str(b_))) or ():
+                cands.append((orid, arc[::-1] if flip else arc))
+        if not cands:
+            return None
+        if pa is None or pb is None:
+            return next((arc for orid, arc in cands if orid == osm_rid), cands[0][1])
+        shortest = min(arc_len(arc) for _, arc in cands)
+        ok = cands if turns_ok else [
+            c for c in cands
+            if not (u_turn(c[1]) and arc_len(c[1]) > 1.1 * shortest)] or cands
+        return min(ok, key=lambda c: (round((gap_m(c[1][0], pa) + gap_m(c[1][-1], pb)) / 10),
+                                      c[0] != osm_rid, arc_len(c[1])))[1]
 
     segments = {}
     borrowed = 0
@@ -238,7 +283,12 @@ def main() -> None:
             ca, cb = near.get(a), near.get(b)
             if ca is None or cb is None:
                 continue
-            arc = find_arc(osm_rid, ca, cb)
+            ia, ib = row_of.get(a), row_of.get(b)
+            pa = coords[ia] if ia is not None else None
+            pb = coords[ib] if ib is not None else None
+            # 스위치백 역에 닿는 구간은 되꺾임을 걸러내지 않는다
+            names = {stops["ja"][i] for i in (ia, ib) if i is not None}
+            arc = find_arc(osm_rid, ca, cb, pa, pb, turns_ok=bool(names & switchback))
             if arc is not None:
                 segments[f"{r['id']}|{a}|{b}"] = arc
                 if not osm_rid:
