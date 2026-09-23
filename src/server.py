@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import signal
 import subprocess
 import sys
 import threading
@@ -423,8 +424,26 @@ def regions():
 # ---------------------------------------------------------------------------
 COMBO_JOB = {"id": None, "prefectures": [], "names": None, "k": 0,
              "n": len(make_region.STEPS), "step": "", "detail": "",
-             "started": None, "ended": None, "ok": None, "error": None}
+             "started": None, "ended": None, "ok": None, "error": None,
+             "cancelled": False}
 COMBO_LOCK = threading.Lock()
+# 도는 make_region 프로세스. 빌드를 멈출 때 쓴다.
+COMBO_PROC = {"proc": None}
+
+
+def _kill_tree(proc) -> None:
+    """빌드 프로세스와 그 밑에서 도는 단계 프로세스를 함께 끝낸다.
+
+    make_region 만 끝내면 그 밑의 build_*.py 가 남아 계속 돈다.
+    """
+    if os.name == "nt":
+        subprocess.run(["taskkill", "/PID", str(proc.pid), "/T", "/F"],
+                       capture_output=True)
+        return
+    try:
+        os.killpg(proc.pid, signal.SIGTERM)
+    except OSError:
+        proc.kill()
 
 
 def _from_this_machine() -> bool:
@@ -483,7 +502,10 @@ def _run_combo(rid: str, prefs: list[str]) -> None:
     try:
         proc = subprocess.Popen(cmd, cwd=ROOT, env=env, stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT, text=True,
-                                encoding="utf-8", errors="replace")
+                                encoding="utf-8", errors="replace",
+                                # 멈출 때 밑의 단계까지 한 번에 끝내려고 묶는다
+                                start_new_session=(os.name != "nt"))
+        COMBO_PROC["proc"] = proc
         for line in proc.stdout:
             line = line.strip()
             if not line:
@@ -495,6 +517,10 @@ def _run_combo(rid: str, prefs: list[str]) -> None:
             else:
                 COMBO_JOB["detail"] = line
         code = proc.wait()
+        if COMBO_JOB.get("cancelled"):
+            # 멈춘 것이다. 만들다 만 폴더는 남아 다시 만들거나 지울 수 있다.
+            COMBO_JOB["ok"] = False
+            return
         if code != 0:
             raise RuntimeError(last or f"make_region.py 종료 코드 {code}")
         COMBO_JOB.update(step="서버에 올리는 중", detail="")
@@ -504,6 +530,7 @@ def _run_combo(rid: str, prefs: list[str]) -> None:
         print(f"!! 현 조합 {rid} 빌드 실패: {err}", flush=True)
         COMBO_JOB.update(ok=False, error=str(err))
     finally:
+        COMBO_PROC["proc"] = None
         COMBO_JOB["ended"] = time.time()
 
 
@@ -573,9 +600,24 @@ def combo_build():
         if rid in REGIONS:
             return jsonify({"id": rid, "state": "ready"})
         COMBO_JOB.update(id=rid, prefectures=prefs, names=info["names"], k=0, step="준비",
-                         detail="", started=time.time(), ended=None, ok=None, error=None)
+                         detail="", started=time.time(), ended=None, ok=None, error=None,
+                         cancelled=False)
         threading.Thread(target=_run_combo, args=(rid, prefs), daemon=True).start()
     return jsonify({"id": rid, "state": "building", "job": _combo_status()})
+
+
+@app.post("/api/combo/cancel")
+def combo_cancel():
+    """도는 빌드를 멈춘다. 만들다 만 권역은 남아 다시 만들거나 지울 수 있다."""
+    if not _from_this_machine():
+        return jsonify({"error": "서버를 띄운 컴퓨터에서만 할 수 있습니다"}), 403
+    with COMBO_LOCK:
+        proc = COMBO_PROC["proc"]
+        if not _combo_running() or proc is None:
+            return jsonify({"error": "도는 빌드가 없습니다", "job": _combo_status()}), 409
+        COMBO_JOB["cancelled"] = True
+        _kill_tree(proc)
+    return jsonify({"ok": True, "job": _combo_status()})
 
 
 @app.post("/api/combo/delete")

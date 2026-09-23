@@ -1007,7 +1007,9 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       comboMissing: "추출본 {ex} 을 먼저 내려받습니다(수백 MB).",
       comboLocalOnly: "빌드는 서버를 띄운 컴퓨터에서만 할 수 있습니다.",
       comboStep: "{k}/{n} 단계 · {min}분째", comboDone: "다 만들었습니다 ({min}분)",
-      comboFailed: "빌드 실패: {msg}", comboListFailed: "현 목록을 받지 못했습니다: {msg}",
+      comboFailed: "빌드 실패: {msg}", comboCancel: "빌드 멈추기",
+      comboCancelAsk: "빌드를 멈출까요? 지금까지 만든 것은 남아서 다시 만들거나 지울 수 있습니다.",
+      comboCancelled: "멈췄습니다", comboCancelFailed: "빌드를 멈추지 못했습니다", comboListFailed: "현 목록을 받지 못했습니다: {msg}",
       comboStateBuilt: "빌드됨", comboStateIncomplete: "미완성", comboStateBuilding: "만드는 중",
       comboAdjacent: "고른 현과 이어진 현만 켜집니다. 다리로 이어진 곳(岡山·香川)도 이어진 것으로 봅니다.",
       comboDelete: "지우기", comboDeleteAsk: "{name} 을(를) 지울까요? 만들어 둔 데이터가 사라집니다.",
@@ -1112,7 +1114,9 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       comboMissing: "先に抽出データ {ex} をダウンロードします（数百MB）。",
       comboLocalOnly: "ビルドはサーバーを起動したパソコンでのみ行えます。",
       comboStep: "{k}/{n} 段階 · {min}分経過", comboDone: "完成しました（{min}分）",
-      comboFailed: "ビルド失敗: {msg}", comboListFailed: "県の一覧を取得できませんでした: {msg}",
+      comboFailed: "ビルド失敗: {msg}", comboCancel: "ビルドを中止",
+      comboCancelAsk: "ビルドを中止しますか？途中まで作ったものは残り、作り直すか削除できます。",
+      comboCancelled: "中止しました", comboCancelFailed: "ビルドを中止できませんでした", comboListFailed: "県の一覧を取得できませんでした: {msg}",
       comboStateBuilt: "ビルド済み", comboStateIncomplete: "未完成", comboStateBuilding: "作成中",
       comboAdjacent: "選んだ県と隣り合う県だけ選べます。橋でつながる県（岡山・香川）も隣として扱います。",
       comboDelete: "削除", comboDeleteAsk: "{name} を削除しますか？ 作成したデータは消えます。",
@@ -1218,6 +1222,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       comboLocalOnly: "Builds can only be started on the computer running the server.",
       comboStep: "Step {k}/{n} · {min} min", comboDone: "Done ({min} min)",
       comboFailed: "Build failed: {msg}", comboListFailed: "Could not get the prefecture list: {msg}",
+      comboCancel: "Stop build", comboCancelAsk: "Stop the build? What has been built so far stays; you can rebuild or delete it.", comboCancelled: "Stopped", comboCancelFailed: "Could not stop the build",
       comboStateBuilt: "built", comboStateIncomplete: "incomplete", comboStateBuilding: "building",
       comboAdjacent: "Only prefectures next to your picks stay enabled. Bridge links (Okayama-Kagawa) count as adjacent.",
       comboDelete: "Delete", comboDeleteAsk: "Delete {name}? The built data is removed.",
@@ -1323,6 +1328,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       comboLocalOnly: "只能在运行服务器的电脑上构建。",
       comboStep: "第 {k}/{n} 步 · 已 {min} 分钟", comboDone: "已完成（{min} 分钟）",
       comboFailed: "构建失败: {msg}", comboListFailed: "无法取得县列表: {msg}",
+      comboCancel: "停止构建", comboCancelAsk: "要停止构建吗？已完成的部分会保留，可以重新构建或删除。", comboCancelled: "已停止", comboCancelFailed: "无法停止构建",
       comboStateBuilt: "已构建", comboStateIncomplete: "未完成", comboStateBuilding: "建立中",
       comboAdjacent: "只能选择与已选县相邻的县。由桥梁连接的（冈山·香川）也算相邻。",
       comboDelete: "删除", comboDeleteAsk: "要删除 {name} 吗？已建的数据会消失。",
@@ -1428,6 +1434,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       comboLocalOnly: "只能在執行伺服器的電腦上建置。",
       comboStep: "第 {k}/{n} 步 · 已 {min} 分鐘", comboDone: "已完成（{min} 分鐘）",
       comboFailed: "建置失敗: {msg}", comboListFailed: "無法取得縣列表: {msg}",
+      comboCancel: "停止建置", comboCancelAsk: "要停止建置嗎？已完成的部分會保留，可以重新建置或刪除。", comboCancelled: "已停止", comboCancelFailed: "無法停止建置",
       comboStateBuilt: "已建置", comboStateIncomplete: "未完成", comboStateBuilding: "建立中",
       comboAdjacent: "只能選擇與已選縣相鄰的縣。由橋樑連接的（岡山·香川）也算相鄰。",
       comboDelete: "刪除", comboDeleteAsk: "要刪除 {name} 嗎？已建的資料會消失。",
@@ -4241,6 +4248,13 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       .then(function () { busy(false); });
   }
 
+  function cancelCombo() {
+    if (!window.confirm(t("comboCancelAsk"))) return;
+    postJSON("/api/combo/cancel", {})
+      .then(function () { pollCombo(); })
+      .catch(function (err) { notice(t("comboCancelFailed"), err.message); });
+  }
+
   function pollCombo() {
     clearTimeout(combo.poll);
     getJSON("/api/combo/status").then(function (job) {
@@ -4264,9 +4278,10 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     }
     var running = !job.ended;
     box.textContent = "";
-    box.classList.toggle("failed", !running && !job.ok);
+    box.classList.toggle("failed", !running && !job.ok && !job.cancelled);
     var head = document.createElement("b");
     head.textContent = localName(job.names) + " · " + (running ? t("comboBuilding")
+      : job.cancelled ? t("comboCancelled")
       : job.ok ? t("comboDone", { min: Math.round(job.elapsed_min || 0) })
       : t("comboFailed", { msg: job.error || "" }));
     box.appendChild(head);
@@ -4289,6 +4304,15 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
         det.textContent = job.detail;
         det.title = job.detail;
         box.appendChild(det);
+      }
+      // 빌드는 서버를 띄운 컴퓨터에서만 멈출 수 있다(만들기와 같다)
+      if (combo.data && combo.data.can_build) {
+        var stop = document.createElement("button");
+        stop.type = "button";
+        stop.className = "linkish";
+        stop.textContent = t("comboCancel");
+        stop.addEventListener("click", cancelCombo);
+        box.appendChild(stop);
       }
     } else if (job.ok && job.id !== activeRegion) {
       var open = document.createElement("button");
