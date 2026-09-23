@@ -107,6 +107,11 @@ LTD_EXPRESS = re.compile(
 
 PAREN_RE = re.compile(r"[（(][^）)]*[）)]")
 DIR_RE = re.compile(r"(上り|下り|内回り|外回り|環状)")
+# 이름 끝의 방향 괄호. 묶은 노선에는 뜻이 없다.
+DIR_PAREN_RE = re.compile(
+    r"\s*[(（]\s*(?:内回り|外回り|右回り|左回り|上り|下り|内回|外回"
+    r"|inner|outer|inbound|outbound|clockwise|counterclockwise)\s*[)）]\s*$",
+    re.I)
 ANGLE_RE = re.compile(r"[〈《<][^〉》>]*[〉》>]")
 
 SAME_STATION_M = 400.0      # 이 안에 있고 이름이 같으면 한 역으로 본다
@@ -2019,6 +2024,9 @@ def _build(pbfs, rel, ways, nodes):
                 if not titles[g] and r["titles"].get(g):
                     titles[g] = r["titles"][g]
         titles["ja"] = titles["ja"] or base
+        # 안팎으로 도는 계통을 한 노선으로 묶었으니 방향 표기는 뗀다.
+        titles = {g: DIR_PAREN_RE.sub("", v).strip() if v else v
+                  for g, v in titles.items()}
 
         wiki = next((r.get("wikipedia") for r in ln["rels"] if r.get("wikipedia")), "")
         railways.append({"id": lid, "title": titles, "stations": order,

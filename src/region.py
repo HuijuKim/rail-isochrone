@@ -209,6 +209,20 @@ def load(region_id: str) -> Region:
                 if v.strip():
                     title[lang] = v
 
+    # 안팎으로 도는 두 계통을 한 노선으로 묶었으니 이름에 방향을 남기지
+    # 않는다. OSM 이름이 "JR大阪環状線 (内回り)" 라, 묶은 뒤에도 안쪽으로만
+    # 도는 노선처럼 보였다. 구간을 적은 괄호는 아래에서 따로 다룬다.
+    _dir_paren = _re.compile(
+        r"\s*[(（]\s*(?:内回り|外回り|右回り|左回り|上り|下り|内回|外回"
+        r"|내부|외부|내선|외선|상행|하행"
+        r"|inner|outer|inbound|outbound|clockwise|counterclockwise"
+        r"|内环|外环|內環|外環)\s*[)）]\s*$", _re.I)
+    for r in railways.values():
+        title = r.get("title") or {}
+        for lang, v in list(title.items()):
+            if isinstance(v, str) and v:
+                title[lang] = _dir_paren.sub("", v).strip()
+
     # 이름 끝에 붙은 경로 설명을 뗀다. "(오사키 → 신키바)", ": 메구로→
     # 니시타카시마다이라" 같은 것들이다. 어느 구간인지는 노선별 보기 패널이
     # span 으로 따로 적으므로 이름에 또 적으면 두 번 적힌 꼴이 된다.

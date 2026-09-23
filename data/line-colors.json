@@ -63,6 +63,10 @@
   "color": "#f15a22",
   "source": "ja.wikipedia:JR五日市線"
  },
+ "JR京浜東北線・根岸線 各駅停車 (南浦和 → 大船)": {
+  "color": "#00b2e5",
+  "source": "ja.wikipedia:根岸線"
+ },
  "JR京浜東北線・根岸線 各駅停車 (大宮 → 大船)": {
   "color": "#00b2e5",
   "source": "ja.wikipedia:根岸線"
@@ -171,6 +175,10 @@
   "color": "#aa731c",
   "source": "ja.wikipedia:因美線"
  },
+ "JR埼京線 (大宮 → 大崎)": {
+  "color": "#00ac9a",
+  "source": "ja.wikipedia:埼京線"
+ },
  "JR埼京線 (大崎 → 大宮)": {
   "color": "#00ac9a",
   "source": "ja.wikipedia:埼京線"
@@ -267,7 +275,7 @@
   "color": "#e86c4c",
   "source": "ja.wikipedia:山口線"
  },
- "JR山手線 (外回り)": {
+ "JR山手線": {
   "color": "#9acd32",
   "source": "ja.wikipedia:JR山手線"
  },
@@ -298,6 +306,10 @@
  "JR左沢線": {
   "color": "#0073bf",
   "source": "ja.wikipedia:左沢線"
+ },
+ "JR常磐緩行線 （取手=>綾瀬）": {
+  "color": "#808080",
+  "source": "ja.wikipedia:常磐緩行線"
  },
  "JR後藤寺線": {
   "color": "#8f3e97",
@@ -487,6 +499,10 @@
   "color": "#9e7eb9",
   "source": "ja.wikipedia:米坂線"
  },
+ "JR総武快速線": {
+  "color": "#ffc20d",
+  "source": "ja.wikipedia:JR総武線"
+ },
  "JR美祢線": {
   "color": "#dc208f",
   "source": "ja.wikipedia:美祢線"
@@ -582,6 +598,10 @@
  "JR香椎線 (西戸崎=>宇美)": {
   "color": "#0095d9",
   "source": "ja.wikipedia:JR香椎線"
+ },
+ "JR高崎線 (上り)": {
+  "color": "#f68b1e",
+  "source": "ja.wikipedia:高崎線"
  },
  "JR鶴見線": {
   "color": "#ffd400",
@@ -686,6 +706,10 @@
  "Subway 神戸市営地下鉄西神・山手線/北神線 (西神中央=>谷上)": {
   "color": "#00AE8E",
   "source": "ODPT:Subway 神戸市営地下鉄西神・山手線/北神線 (西神中央=>谷上)"
+ },
+ "TJライナー (小川町=>池袋)": {
+  "color": "#99ad28",
+  "source": "지어냄"
  },
  "TamaMonorail|多摩モノレール": {
   "color": "#2288cc",
@@ -1135,6 +1159,10 @@
   "color": "#005aaa",
   "source": "ja.wikipedia:京成本線"
  },
+ "京成本線 普通 (京成上野 => 京成津田沼)": {
+  "color": "#005aaa",
+  "source": "ja.wikipedia:京成本線"
+ },
  "京成本線・千葉線・千原線 普通 (ちはら台 => 京成上野)": {
   "color": "#005aaa",
   "source": "ja.wikipedia:京成本線"
@@ -1375,6 +1403,10 @@
   "color": "#a8a39d",
   "source": "ja.wikipedia:八高線"
  },
+ "八高線 (八王子->高麗川)": {
+  "color": "#a8a39d",
+  "source": "ja.wikipedia:八高線"
+ },
  "八高線 (古い)": {
   "color": "#a8a39d",
   "source": "ja.wikipedia:八高線"
@@ -1551,7 +1583,7 @@
   "color": "#ea7ab2",
   "source": "ODPT:名古屋市営上飯田線"
  },
- "名古屋市営名城線 (右回り)": {
+ "名古屋市営名城線": {
   "color": "#B074D6",
   "source": "ODPT:名古屋市営名城線 (右回り)"
  },
