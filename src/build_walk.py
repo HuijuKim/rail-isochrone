@@ -709,33 +709,48 @@ def _coastline():
                 return
             self.bounds.append(self.bounds[-1] + n)
 
-    npz_path, json_path = osmcache.files("coast", PBFS)
-    if os.environ.get("COAST_RESCAN") != "1" and npz_path.exists():
-        meta = osmcache.read_meta(json_path, PBFS, Coast)
-        if meta is not None:
-            try:
-                z = np.load(npz_path)
-                lon, lat, bounds = z["lon"], z["lat"], z["bounds"].tolist()
-                print(f"  저장해 둔 해안선을 다시 쓴다 (점 {len(lon):,}개)", flush=True)
-                return lon, lat, bounds
-            except (OSError, ValueError) as e:
-                print(f"  (저장해 둔 해안선을 못 읽었다: {e})", flush=True)
+    def part(path):
+        """추출본 하나의 해안선. 캐시에 있으면 그것을, 없으면 훑어 저장한다."""
+        npz_path, json_path = osmcache.files("coast", [path])
+        if os.environ.get("COAST_RESCAN") != "1" and npz_path.exists():
+            meta = osmcache.read_meta(json_path, [path], Coast)
+            if meta is not None:
+                try:
+                    z = np.load(npz_path)
+                    print(f"  저장해 둔 해안선을 다시 쓴다: {path.name} "
+                          f"(점 {len(z['lon']):,}개)", flush=True)
+                    return z["lon"], z["lat"], z["bounds"].tolist()
+                except (OSError, ValueError) as e:
+                    print(f"  (저장해 둔 해안선을 못 읽었다: {e})", flush=True)
 
-    print("  해안선 추출 중...", flush=True)
-    h = Coast()
-    for path in PBFS:
+        print(f"  해안선 추출 중: {path.name}", flush=True)
+        h = Coast()
         h.apply_file(str(path), locations=True, idx="flex_mem")
-    lon = np.array(h.lon)
-    lat = np.array(h.lat)
+        lon, lat = np.array(h.lon), np.array(h.lat)
+        try:
+            np.savez_compressed(npz_path, lon=lon, lat=lat,
+                                bounds=np.asarray(h.bounds, dtype=np.int64))
+            json_path.write_text(
+                json.dumps({"stamp": osmcache.stamp([path], Coast)}),
+                encoding="utf-8")
+        except Exception as e:      # 캐시를 못 써도 빌드는 계속한다
+            print(f"  (해안선을 저장하지 못했다: {e})", flush=True)
+        return lon, lat, h.bounds
+
+    # 추출본 하나씩 읽어 잇는다. 핸들러 하나로 여러 파일을 읽을 때와 같이
+    # 읽은 차례대로 붙이고, 겹치는 영역의 해안선이 두 번 들어가는 것도
+    # 그대로 둔다(면을 채울 때 같은 선이 겹쳐도 결과가 같다).
+    lons, lats, bounds = [], [], [0]
+    for path in PBFS:
+        plon, plat, pb = part(path)
+        lons.append(plon)
+        lats.append(plat)
+        base = bounds[-1]
+        bounds.extend(base + int(b) for b in pb[1:])
+    lon = np.concatenate(lons) if lons else np.zeros(0)
+    lat = np.concatenate(lats) if lats else np.zeros(0)
     print(f"  해안선 점 {len(lon):,}개", flush=True)
-    try:
-        np.savez_compressed(npz_path, lon=lon, lat=lat,
-                            bounds=np.asarray(h.bounds, dtype=np.int64))
-        json_path.write_text(json.dumps({"stamp": osmcache.stamp(PBFS, Coast)}),
-                             encoding="utf-8")
-    except Exception as e:          # 캐시를 못 써도 빌드는 계속한다
-        print(f"  (해안선을 저장하지 못했다: {e})", flush=True)
-    return lon, lat, h.bounds
+    return lon, lat, bounds
 
 
 def _sea_by_coast_side(lon, lat, bounds, labels, lon0, lat0, m_lon, w, hgt,
