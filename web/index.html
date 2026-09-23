@@ -2097,8 +2097,13 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       var cb = "__gmapsReady";
       window[cb] = function () { resolve(); };
       var s = document.createElement("script");
+      // 지도 글자는 화면 언어로. 안 주면 브라우저 언어를 따라, 화면을 영어로
+      // 바꿔도 지도는 한국어로 남는다. 도중에 바꾼 언어는 새로고침해야 든다
+      // (지도 스크립트는 한 번만 올릴 수 있다).
+      var gl = { ja: "ja", en: "en", ko: "ko", "zh-Hans": "zh-CN", "zh-Hant": "zh-TW" }[LANG];
       s.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(key) +
-              "&callback=" + cb + "&loading=async&v=weekly";
+              "&callback=" + cb + "&loading=async&v=weekly" +
+              (gl ? "&language=" + gl : "");
       s.async = true;
       s.onerror = function () { reject(new Error(t("googleLoadFailed"))); };
       // 키가 거부되면 콜백이 오지 않으므로 시간 제한을 둔다
@@ -2827,9 +2832,12 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
         var ja = document.createElement("span");
         ja.className = "ja";
         ja.textContent = s.ja;
+        // 둘째 이름은 화면 언어로 적는다. 일본어 화면이거나 글자가 같으면
+        // 붙이지 않는다(가장 멀리 닿는 역 목록과 같은 규칙).
         var ko = document.createElement("span");
         ko.className = "ko";
-        ko.textContent = s.ko || s.en;
+        ko.textContent = (LANG === "ja" || localName(s) === s.ja) ? "" : localName(s);
+        ko.hidden = !ko.textContent;
         name.appendChild(ja);
         name.appendChild(ko);
         b.appendChild(name);
@@ -2838,7 +2846,9 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
         if (s.operators && s.operators.length) {
           var ops = document.createElement("span");
           ops.className = "ops";
-          ops.textContent = s.operators.join(" · ");
+          ops.textContent = s.operators.map(function (o) {
+            return typeof o === "string" ? o : localName(o);
+          }).join(" · ");
           b.appendChild(ops);
         }
 

@@ -400,8 +400,8 @@ def load(region_id: str) -> Region:
 
     index, groups, n_groups = build_search_index(
         base, stops, coords,
-        {rid: ((_operator_label(r) or {}).get("ko") or "")
-         for rid, r in railways.items()})
+        {rid: _operator_label(r) for rid, r in railways.items()
+         if (_operator_label(r) or {}).get("ja")})
     supported = supported_mask(walk, coords, groups, n_groups)
 
     # 역 -> 도도부현. build_admin.py 가 OSM 행정경계로 만들어 둔다.
@@ -553,17 +553,19 @@ def build_search_index(base: Path, stops: dict, coords: np.ndarray,
 
         # OSM 권역은 역 id 접두사가 전부 "OSM" 이라 회사를 알 수 없다.
         # 그 역이 속한 노선의 operator 를 쓴다.
-        got = set()
+        # 운영사 이름은 언어마다 담아 보낸다. 화면이 제 언어를 고른다.
+        got = {}
         for i in members:
             lid = stops["railway"][i]
-            name = (op_of or {}).get(lid)
-            if name:
-                got.add(name)
+            label = (op_of or {}).get(lid)
+            if label:
+                got.setdefault(label["ja"], label)
         if got:
-            prefixes = sorted(got)
+            ops = [got[k] for k in sorted(got)]
         else:
-            prefixes = sorted({operator_of(stops["ids"][i]) for i in members},
-                              key=sort_key)
+            ops = [{lang: operator_title(p, lang) for lang in LANGS}
+                   for p in sorted({operator_of(stops["ids"][i]) for i in members},
+                                   key=sort_key)]
         # 지도에 찍는 자리는 승강장마다 따로 둔다. 검색과 세는 단위는
         # 한 줄이지만, 豊島園 처럼 이름만 같고 승강장이 따로인 역을
         # 한 점으로 묶으면 지도가 거짓말을 한다. 40m 안은 같은 자리로 본다.
@@ -581,8 +583,7 @@ def build_search_index(base: Path, stops: dict, coords: np.ndarray,
                 "spots": [[round(u, 6), round(v, 6)] for u, v in spots],
                 **{lang: (stops[lang][lead] if lang != "ja" else ja)
                    for lang in LANGS if lang in stops},
-                "operators": [p if got else operator_title(p, "ko")
-                          for p in prefixes],
+                "operators": ops,
             }
         )
 
