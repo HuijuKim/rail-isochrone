@@ -1517,7 +1517,7 @@ def is_nickname(name: str) -> bool:
     return bool(LTD_EXPRESS.match((name or "").strip()))
 
 
-def through_route(seq, others):
+def through_route(seq, others, prefer=None):
     """애칭 계통의 역마다 밟을 노선. 하나라도 못 정하면 None.
 
     南風 은 岡山에서 高知까지 瀬戸大橋線·予讃線·土讃線 셋을 이어 달린다.
@@ -1529,7 +1529,7 @@ def through_route(seq, others):
     고른다. 같은 노선을 잇달아 밟을 때는 역 차례가 한 방향이어야 한다.
 
     others 는 (노선 열쇠, 정차역 묶음 목록) 목록이다. 애칭 노선끼리는
-    서로 붙이지 않는다.
+    서로 붙이지 않는다. prefer 를 주면 바꾸는 횟수가 같을 때 그 노선에 남는다.
     """
     idx = {key: {c: i for i, c in enumerate(cs)} for key, cs in others}
     inf = float("inf")
@@ -1541,12 +1541,14 @@ def through_route(seq, others):
             return None
         cur = {}
         for key in opts:
+            # 바꾸는 횟수가 같으면 붙은 노선 쪽. 1 보다 훨씬 작아 횟수는 안 바꾼다.
+            stay = 0 if key == prefer else 1e-3
             if prev is None:
-                cur[key] = (0, None)
+                cur[key] = (stay, None)
                 continue
             best, who = inf, None
             for pkey, (cost, _) in prev.items():
-                add = 0 if pkey == key else 1
+                add = (0 if pkey == key else 1) + stay
                 if pkey == key and idx[key][seq[k - 1]] == idx[key][c]:
                     add = inf          # 같은 자리에 두 번 서지는 않는다
                 if cost + add < best:
@@ -2218,14 +2220,25 @@ def _build(pbfs, rel, ways, nodes):
                          "clusters": ln["seq"], "wikipedia": wiki})
         ln["lid"] = lid
 
+    plain = [(j, lines[j]["seq"]) for j in range(len(lines))
+             if j not in through and len(lines[j]["seq"]) >= 2
+             and not is_nickname(lines[j]["rep"]["name"])]
     for k, r in patterns:
         if k in through:
             # 밑 노선이 계통으로 돌아갔다. 같은 열차의 반대 방향 계통이라
             # 따로 깔 것이 없다(운행은 왕복 모두 깐다).
             continue
-        express.append({"railway": lines[k]["lid"], "kind": r["kind"] or "부분",
-                        "name": base_name(r["name"]) or r["name"],
-                        "clusters": r["seq"]})
+        item = {"railway": lines[k]["lid"], "kind": r["kind"] or "부분",
+                "name": base_name(r["name"]) or r["name"], "clusters": r["seq"]}
+        # 붙은 노선에 없는 역을 품은 특급·쾌속. しおかぜ 는 予讃線 계통으로 붙었는데
+        # 岡山·児島 가 予讃線 에 없어, 운행을 깔 때 그 둘이 떨어져 宇多津 부터만
+        # 달렸다. 역마다 밟을 노선을 정해 여러 노선을 이어 달리게 한다.
+        on_line = set(lines[k]["seq"])
+        if r["kind"] and any(c not in on_line for c in r["seq"]):
+            route = through_route(r["seq"], plain, prefer=k)
+            if route:
+                item["rows"] = [[lines[j]["lid"], c] for j, c in zip(route, r["seq"])]
+        express.append(item)
 
     # 여러 노선을 이어 달리는 계통. 역마다 밟는 노선을 함께 적는다.
     for k, route in sorted(through.items()):
