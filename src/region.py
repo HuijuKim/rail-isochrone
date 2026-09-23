@@ -194,9 +194,19 @@ def load(region_id: str) -> Region:
     from_hand: set[str] = set()
     if hand_path.exists():
         hand = json.loads(hand_path.read_text(encoding="utf-8"))
+        # 방향만 다른 관계가 노선 대표가 되면 사전의 열쇠와 어긋난다. 사전에는
+        # "JR埼京線 (大崎 → 大宮)" 로 적혀 있는데, 반대 방향 관계
+        # "JR埼京線 (大宮 → 大崎)" 가 대표가 된 권역에서 한국어 이름을 못 찾았다.
+        # 괄호를 떼고 견준 열쇠가 사전에서 하나뿐일 때만 그것으로 찾는다.
+        loose: dict = {}
+        for k, v in hand.items():
+            loose.setdefault(_loose_key(k), []).append(v)
         for r in railways.values():
             title = r.setdefault("title", {})
-            got = hand.get((title.get("ja") or "").strip())
+            ja_now = (title.get("ja") or "").strip()
+            got = hand.get(ja_now)
+            if got is None and len(loose.get(_loose_key(ja_now), [])) == 1:
+                got = loose[_loose_key(ja_now)][0]
             if not isinstance(got, dict):
                 continue
             # 회사 이름이 노선 이름의 일부인 것만 아래 떼기에서 뺀다.
@@ -999,6 +1009,16 @@ def _operator_label(railway: dict) -> dict:
         return {lang: operator_title(head, lang)
                 for lang in ("ja", "en", "ko", "zh-Hans", "zh-Hant")}
     return {}
+
+
+_LOOSE_DIR = _re.compile(
+    r"\s*[(（]\s*(?:内回り|外回り|右回り|左回り|上り|下り|内回|外回)\s*[)）]\s*$")
+_LOOSE_ARROW = _re.compile(r"\s*[(（][^()（）]*(?:=>|->|→|⇒)[^()（）]*[)）]?\s*$")
+
+
+def _loose_key(ja: str) -> str:
+    """방향·구간 괄호를 뗀 노선 이름. 이름 사전을 느슨하게 찾을 때 쓴다."""
+    return _LOOSE_ARROW.sub("", _LOOSE_DIR.sub("", (ja or "").strip())).strip()
 
 
 _DIR_PAREN_KEY = _re.compile(
