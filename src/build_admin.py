@@ -362,6 +362,7 @@ def land_polygons(bb, scale, land=None, land_grid=None):
     하나보다 훨씬 큰 물음이라 마스크로 충분하고, 정작 눈에 보이는
     해안선은 벡터 그대로 남는다.
     """
+    import shapely
     from shapely import STRtree, points as sh_points
     from shapely.geometry import LineString
     from shapely.ops import polygonize, unary_union
@@ -402,9 +403,25 @@ def land_polygons(bb, scale, land=None, land_grid=None):
     gy = lat0 + (iy + 0.5) * cell / m_lat
     flag = land[iy, ix].astype(np.int64)
 
+    # 표본이 어느 면에 드는지. 상자로 후보를 추린 뒤, 면마다 모아서 한 번에
+    # 묻는다. STRtree 에 predicate="within" 을 주면 점 하나씩 도형을 다시
+    # 훑어 50초가 넘는다(꼭짓점 13만 개짜리 면이 있다). 면을 미리 준비해 두고
+    # 묶어 물으면 0.3초고 답은 같다.
+    faces_arr = np.asarray(faces, dtype=object)
+    shapely.prepare(faces_arr)
+    qi, fi = STRtree(faces_arr).query(sh_points(np.stack([gx, gy], axis=1)))
+    order = np.argsort(fi, kind="stable")
+    qi, fi = qi[order], fi[order]
+    edge = np.searchsorted(fi, np.arange(len(faces) + 1))
+    inside = np.zeros(len(qi), dtype=bool)
+    for k in range(len(faces)):
+        a, b = edge[k], edge[k + 1]
+        if b > a:
+            inside[a:b] = shapely.contains_xy(faces_arr[k], gx[qi[a:b]],
+                                              gy[qi[a:b]])
+    qi, fi = qi[inside], fi[inside]
+
     votes = np.zeros((len(faces), 2), dtype=np.int64)
-    qi, fi = STRtree(faces).query(sh_points(np.stack([gx, gy], axis=1)),
-                                  predicate="within")
     np.add.at(votes, (fi, flag[qi]), 1)
 
     # 칸보다 작은 섬은 표본이 하나도 안 걸린다. 대표점으로 가른다.
