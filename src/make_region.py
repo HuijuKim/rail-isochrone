@@ -75,6 +75,8 @@ STEPS = [
     ("build_walk.py", {}),
     ("build_admin.py", {}),
     ("build_rail.py", {}),
+    # 기존 권역이 채워 둔 노선 이름(한국어 등)을 빌려 온다
+    ("build_names.py", {"optional": True}),
     ("build_express.py", {"optional": True}),
     ("build_track.py", {}),
     ("build_naive.py", {}),
