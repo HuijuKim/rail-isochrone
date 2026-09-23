@@ -48,8 +48,9 @@ def test_grid_covers_every_prefecture():
     assert meta["prefectures"] == prefs
     # 岡山 경계의 일부(兵庫 와의 바다 경계)는 간사이 추출본에만 있다. 이웃 현의 추출본도 읽는다.
     assert meta["osm_extracts"] == ["chugoku", "kansai", "shikoku"]
-    # 첫 출발지는 역이 더 많은 현의 중심역
+    # 첫 출발지는 역이 더 많은 현의 중심역. 이름은 다섯 언어로 들어간다.
     assert meta["start"]["names"]["ja"] == "岡山"
+    assert meta["start"]["names"]["ko"] == "오카야마"
 
 
 def test_extra_areas_follow_the_prefecture():

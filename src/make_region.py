@@ -155,8 +155,12 @@ def region_json(rid: str, prefs: list[str]) -> dict:
         "note": "현을 골라 만든 권역(make_region.py). 시각표가 없어 나이브 모델로 돈다. "
                 "경계는 고른 현의 경계를 해안선으로 자른 것이라, 다른 현으로 넘어가는 "
                 "노선은 경계에서 끊긴다.",
+        # 중심역 이름은 다섯 언어로. 없으면 일본어로 채운다(화면의 예시 문구가
+        # "新宿 / 新宿 / 新宿" 이 돼 버린다).
         "start": {"lon": hub["lon"], "lat": hub["lat"],
-                  "names": {k: hub["ja"] for k in ("ja", "en", "ko", "zh-Hans", "zh-Hant")}},
+                  "names": dict(hub.get("names")
+                                or {k: hub["ja"] for k in
+                                    ("ja", "en", "ko", "zh-Hans", "zh-Hant")})},
         "prefectures": prefs,
     }
     extra = _extra_areas(prefs)
