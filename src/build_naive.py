@@ -381,10 +381,15 @@ def build(railways, express, pos, seg_head, seg_km, km, scale):
         return [(seg_km.get((a, b), km(a, b) * DETOUR) * 1000.0, "rail_e")]
 
     ev_stop, ev_arr, ev_dep, trip_start = [], [], [], []
+    # 운행 -> 계통 번호. 각역정차(노선 그 자체)는 -1 이다. 경로 패널이
+    # "세토오하시선 · 특급 南風" 처럼 적으려면 운행마다 이것이 있어야 한다.
+    trip_pat = []
 
-    def lay(line_key, rid, cs, headway_min, spans, fast=False):
-        """cs 를 순서대로 도는 운행을 배차 간격으로 깐다.
+    def lay(line_key, seq, headway_min, spans, fast=False, pat=-1):
+        """seq(역 줄 번호)를 순서대로 도는 운행을 배차 간격으로 깐다.
 
+        역 줄은 (노선, 역 묶음) 이라, 줄 번호를 받으면 한 운행이 여러 노선을
+        이어 달릴 수 있다. 南風 은 瀬戸大橋線·予讃線·土讃線 을 이어 간다.
         spans 는 정차 사이마다 (길이 m, 등급) 목록이다."""
         secs = [leg_seconds(p, fast) for p in spans]
         step = max(int(round(headway_min * 60)), 60)
@@ -396,13 +401,14 @@ def build(railways, express, pos, seg_head, seg_km, km, scale):
         # 첫 차가 와서 宮崎-都城 이 271분으로 나왔다.
         whole = sum(secs)
         lead = -(-whole // step) * step
-        for seq, legs in ((cs, secs), (cs[::-1], secs[::-1])):
+        for order, legs in ((seq, secs), (seq[::-1], secs[::-1])):
             t0 = SERVICE_FROM + offset - lead
             while t0 <= SERVICE_TO:
                 trip_start.append(len(ev_stop))
+                trip_pat.append(pat)
                 t = t0
-                for i, c in enumerate(seq):
-                    ev_stop.append(row_of[(rid, c)])
+                for i, row in enumerate(order):
+                    ev_stop.append(row)
                     ev_arr.append(t)
                     ev_dep.append(t)
                     if i < len(legs):
@@ -435,14 +441,15 @@ def build(railways, express, pos, seg_head, seg_km, km, scale):
         # 1/h_dense - 1/h_full 의 역수다.
         fast = bool(FAST_NAME.search(r["title"].get("ja", "")))
         full = max(heads)
-        lay(r["id"] + "|full", r["id"], cs, full, legs, fast=fast)
+        seq = [row_of[(r["id"], c)] for c in cs]
+        lay(r["id"] + "|full", seq, full, legs, fast=fast)
         for i, j, h in runs_of(heads):
             if h >= full - 1e-6:
                 continue
             extra = 1.0 / max(1.0 / h - 1.0 / full, 1e-6)
             if extra > cap:
                 continue
-            lay(f"{r['id']}|{i}", r["id"], cs[i:j + 1], extra, legs[i:j], fast=fast)
+            lay(f"{r['id']}|{i}", seq[i:j + 1], extra, legs[i:j], fast=fast)
 
     # 통과 계통. 같은 역 줄 위를 건너뛰며 달린다.
     # 한 역이 두 번 실린 관계에서는 첫 자리를 쓴다. 마지막 자리를 쓰면
@@ -456,32 +463,44 @@ def build(railways, express, pos, seg_head, seg_km, km, scale):
         order_of[r["id"]] = first
     clusters_of = {r["id"]: r["clusters"] for r in railways}
     n_exp = 0
+    pats = []
     for n, e in enumerate(express):
         if e["kind"] == "부분":
             continue
-        rid = e["railway"]
-        if rid not in order_of or rid in capped:
+        # 여러 노선을 이어 달리는 계통은 역마다 밟는 노선이 적혀 있다.
+        # 南風 은 岡山-宇多津 을 瀬戸大橋線 으로, 그 뒤를 予讃線·土讃線 으로
+        # 간다. 노선을 하나만 보면 이런 열차를 아예 깔 수 없거나, 노선별로
+        # 쪼개 환승을 만들게 된다.
+        on = [(r[0], r[1]) for r in e.get("rows") or
+              [[e["railway"], c] for c in e["clusters"]]]
+        on = [(rid, c) for rid, c in on if c in pos and (rid, c) in row_of]
+        if len(on) < 2 or any(rid in capped for rid, _c in on):
             continue
-        cs = [c for c in e["clusters"] if c in pos and (rid, c) in row_of]
-        if len(cs) < 2:
+        if any(rid not in order_of for rid, _c in on):
             continue
-        ord_, full_cs = order_of[rid], clusters_of[rid]
         legs, unders = [], []
-        for a, b in zip(cs, cs[1:]):
-            if a in ord_ and b in ord_:
+        for (rid_a, a), (rid_b, b) in zip(on, on[1:]):
+            ord_ = order_of[rid_a]
+            if rid_a == rid_b and a in ord_ and b in ord_:
+                full_cs = clusters_of[rid_a]
                 i, j = sorted((ord_[a], ord_[b]))
                 span = list(zip(full_cs[i:j], full_cs[i + 1:j + 1]))
-                legs.append([x for p in span for x in parts(rid, *p)])
+                legs.append([x for p in span for x in parts(rid_a, *p)])
                 unders += [seg_head[p] for p in span if p in seg_head]
             else:
+                # 노선이 바뀌는 자리. 그 사이 역은 어느 노선에도 함께 실려
+                # 있지 않으므로 직선 거리로 잡는다.
                 legs.append([(km(a, b) * DETOUR * 1000.0, "rail_e")])
         base = float(np.median(unders)) if unders else 20.0
-        lay(f"{rid}|exp{n}", rid, cs,
-            min(base * EXP_MULT, HONSU_CAP if USE_HONSU else HEADWAY_CAP), legs, fast=True)
+        lay(f"{on[0][0]}|exp{n}", [row_of[k] for k in on],
+            min(base * EXP_MULT, HONSU_CAP if USE_HONSU else HEADWAY_CAP), legs,
+            fast=True, pat=len(pats))
+        pats.append({"kind": e["kind"], "name": e.get("name", ""),
+                     "railway": on[0][0]})
         n_exp += 1
 
     trip_start.append(len(ev_stop))
-    return rows, row_of, ev_stop, ev_arr, ev_dep, trip_start, n_exp
+    return rows, row_of, ev_stop, ev_arr, ev_dep, trip_start, n_exp, trip_pat, pats
 
 
 def transfers(rows, pos, scale, title):
@@ -536,7 +555,7 @@ def main():
     print("  등급: " + ", ".join(f"{GRADE_NAMES[g]} {counts[g]}" for g in sorted(counts)),
           flush=True)
 
-    rows, row_of, ev_stop, ev_arr, ev_dep, trip_start, n_exp = build(
+    rows, row_of, ev_stop, ev_arr, ev_dep, trip_start, n_exp, trip_pat, pats = build(
         railways, express, pos, seg_head, seg_km, km, scale)
     print(f"  역 줄 {len(rows):,}개, 운행 {len(trip_start) - 1:,}건, "
           f"정차 이벤트 {len(ev_stop):,}개 (통과 계통 {n_exp}개)", flush=True)
@@ -576,12 +595,16 @@ def main():
             ev_arr=np.array(ev_arr, dtype=np.int32),
             ev_dep=np.array(ev_dep, dtype=np.int32),
             trip_start=np.array(trip_start, dtype=np.int32),
+            trip_pat=np.array(trip_pat, dtype=np.int16),
             tr_to=tr[:, 1].astype(np.int32),
             tr_cost=tr[:, 2].astype(np.int32),
             tr_ptr=tr_ptr.astype(np.int64),
         )
         size = (BASE / f"graph-{calendar}.npz").stat().st_size
         print(f"  graph-{calendar}.npz {size / 1e6:.1f} MB", flush=True)
+
+    (RAW / "patterns.json").write_text(json.dumps(pats, ensure_ascii=False),
+                                       encoding="utf-8")
 
     # 역 묶음 파일은 역 줄 id 로 다시 적는다. 검색과 세기가 이걸 쓴다.
     by_cluster = defaultdict(list)
