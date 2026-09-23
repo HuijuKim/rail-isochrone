@@ -578,6 +578,65 @@ def combo_plan():
     return jsonify(info)
 
 
+_PREF_SHAPES: dict = {}
+
+
+def _pref_shapes() -> dict:
+    """현 이름 -> 바다를 잘라 낸 현 경계 고리들. 빌드된 권역들이 가진 것을 모은다.
+
+    권역마다 build_admin 이 고른 현의 경계를 raw/prefecture-rings.json 에 적어
+    둔다. 같은 현이 여러 권역에 있으면 점이 가장 많은 것(덜 줄인 것)을 쓴다.
+    권역이 없는 현(北海道·沖縄)은 빠진다.
+    """
+    if _PREF_SHAPES:
+        return _PREF_SHAPES
+    for f in sorted(region_mod.REGIONS_DIR.glob("*/raw/prefecture-rings.json")):
+        try:
+            data = json.loads(f.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        for name, rings in data.items():
+            n = sum(len(r) for r in rings)
+            if n > sum(len(r) for r in _PREF_SHAPES.get(name, [])):
+                _PREF_SHAPES[name] = rings
+    return _PREF_SHAPES
+
+
+@app.get("/api/combo/outline")
+def combo_outline():
+    """고른 현들을 합친 경계. 현 조합 탭에서 고르는 동안 지도에 칠한다."""
+    from shapely.geometry import MultiPolygon, Polygon, mapping
+    from shapely.ops import unary_union
+
+    prefs = _combo_prefs()
+    shapes = _pref_shapes()
+    polys = []
+    for p in prefs:
+        # 섬은 뺀다. 현마다 본토(가장 큰 덩어리)만 남긴다. 도쿄도는 이즈 제도까지
+        # 들어 있어 지도가 멀리 물러났다. 본토가 강 하구 같은 데서 갈라진 경우를
+        # 생각해 가장 큰 것의 20% 넘는 덩어리는 둔다(아와지·사도도 이보다 작다).
+        parts = [Polygon(r) for r in shapes.get(p, []) if len(r) >= 4]
+        parts = [q if q.is_valid else q.buffer(0) for q in parts]
+        if parts:
+            top = max(q.area for q in parts)
+            polys.extend(q for q in parts if q.area >= 0.2 * top)
+    if not polys:
+        return jsonify({"type": "FeatureCollection", "features": []})
+    # 현과 현 사이 경계는 지우고 바깥 윤곽만 남긴다. 일본 전체를 보는 축척이라
+    # 200m 쯤으로 줄이고 3km² 보다 작은 섬은 뺀다. 그대로 보내면 세 현에 700KB 다.
+    whole = unary_union(polys).simplify(0.002)
+    parts = [q for q in (whole.geoms if hasattr(whole, "geoms") else [whole])
+             if q.geom_type == "Polygon" and q.area > 0.0003]
+    geom = mapping(MultiPolygon(parts))
+
+    def rounded(x):
+        return [rounded(v) for v in x] if isinstance(x, (list, tuple)) else round(x, 4)
+
+    geom = {"type": geom["type"], "coordinates": rounded(geom["coordinates"])}
+    return jsonify({"type": "FeatureCollection", "features": [
+        {"type": "Feature", "properties": {}, "geometry": geom}]})
+
+
 @app.get("/api/combo/status")
 def combo_status():
     return jsonify(_combo_status())
