@@ -492,9 +492,10 @@ def build(railways, express, pos, seg_head, seg_km, km, scale):
                 # 있지 않으므로 직선 거리로 잡는다.
                 legs.append([(km(a, b) * DETOUR * 1000.0, "rail_e")])
         base = float(np.median(unders)) if unders else 20.0
+        # 직통 운전은 각역정차라 빠르게 달리지 않는다
         lay(f"{on[0][0]}|exp{n}", [row_of[k] for k in on],
             min(base * EXP_MULT, HONSU_CAP if USE_HONSU else HEADWAY_CAP), legs,
-            fast=True, pat=len(pats))
+            fast=e["kind"] != "직통", pat=len(pats))
         pats.append({"kind": e["kind"], "name": e.get("name", ""),
                      "railway": on[0][0]})
         n_exp += 1

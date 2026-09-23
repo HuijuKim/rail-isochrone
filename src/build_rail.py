@@ -106,6 +106,10 @@ LTD_EXPRESS = re.compile(
     r"^「?(?:" + _LTD_EXPRESS_NAMES + r")(?:$|[\s\d０-９(（:：・=>＞、,」])")
 
 PAREN_RE = re.compile(r"[（(][^）)]*[）)]")
+# 여러 회사 노선을 이어 다니는 운행 계통. 노선이 아니라 운행이다.
+# "東京メトロ日比谷線 - 東武スカイツリーライン直通運転 : 中目黒→北千住→南栗橋" 처럼
+# 적힌다. 정차역이 가장 많아 뼈대가 되면 노선 이름이 이 긴 것이 된다.
+THROUGH_RUN = re.compile(r"直通運転")
 DIR_RE = re.compile(r"(上り|下り|内回り|外回り|環状)")
 # 이름 끝의 방향 괄호. 묶은 노선에는 뜻이 없다.
 DIR_PAREN_RE = re.compile(
@@ -2011,7 +2015,11 @@ def _build(pbfs, rel, ways, nodes):
     routes = [r for r in rel.routes if len(r["seq"]) >= 2]
     # 뼈대는 각역정차 쪽에서 고른다. 통과 계통을 먼저 집으면 그 긴 회랑이
     # 뼈대가 되고 진짜 노선들이 그 밑으로 빨려 들어간다.
+    # 직통 운전 계통도 뒤로 미룬다. 日比谷線 을 東武 까지 이어 달리는 계통이
+    # 역이 더 많아 뼈대가 되며 노선 이름이 "東京メトロ日比谷線 - 東武
+    # スカイツリーライン直通運転" 이 됐다. 평범한 노선 관계가 있으면 그것이 뼈대다.
     routes.sort(key=lambda r: (r["kind"] not in (None, "각역정차"),
+                               bool(THROUGH_RUN.search(r["name"])),
                                -len(r["seq"]), r["name"]))
 
     lines, patterns = [], []
@@ -2150,13 +2158,18 @@ def _build(pbfs, rel, ways, nodes):
 
     # 애칭만 붙은 특급은 노선이 아니다. 밟고 가는 노선들을 찾아 계통으로
     # 돌린다. 하나라도 못 찾으면 예전처럼 제 노선으로 남긴다.
+    # 여러 회사 노선을 이어 다니는 직통 운전 계통도 같다. 半蔵門線 직통은
+    # 田園都市線·半蔵門線·スカイツリーライン 셋에 걸쳐 어느 노선에도 안 접혔다.
+    def is_service(name):
+        return is_nickname(name) or bool(THROUGH_RUN.search(name or ""))
+
     through = {}
     for k, ln in enumerate(lines):
-        if not is_nickname(ln["rep"]["name"]) or len(ln["seq"]) < 2:
+        if not is_service(ln["rep"]["name"]) or len(ln["seq"]) < 2:
             continue
         others = [(j, lines[j]["seq"]) for j in range(len(lines))
                   if j != k and len(lines[j]["seq"]) >= 2
-                  and not is_nickname(lines[j]["rep"]["name"])]
+                  and not is_service(lines[j]["rep"]["name"])]
         route = through_route(ln["seq"], others)
         if route:
             through[k] = route
@@ -2210,6 +2223,15 @@ def _build(pbfs, rel, ways, nodes):
                 if not titles[g] and r["titles"].get(g):
                     titles[g] = r["titles"][g]
         titles["ja"] = titles["ja"] or base
+        # 갈라 붙일 노선이 없어 노선으로 남은 직통 운전 계통. 이름이 "東京地下鉄の
+        # 直通運転 - 東急東横線 : 横浜→渋谷" 처럼 적혀 있다. " - " 로 나눈 조각
+        # 가운데 직통 설명이 아닌 것이 하나뿐이면 그것을 노선 이름으로 쓴다.
+        if THROUGH_RUN.search(titles["ja"]):
+            parts = [x.strip() for x in titles["ja"].split(" - ")]
+            keep = [x for x in parts if x and not THROUGH_RUN.search(x)]
+            if len(keep) == 1:
+                titles = {g: "" for g in LANGS}
+                titles["ja"] = keep[0]
         # 안팎으로 도는 계통을 한 노선으로 묶었으니 방향 표기는 뗀다.
         titles = {g: DIR_PAREN_RE.sub("", v).strip() if v else v
                   for g, v in titles.items()}
@@ -2222,7 +2244,7 @@ def _build(pbfs, rel, ways, nodes):
 
     plain = [(j, lines[j]["seq"]) for j in range(len(lines))
              if j not in through and len(lines[j]["seq"]) >= 2
-             and not is_nickname(lines[j]["rep"]["name"])]
+             and not is_service(lines[j]["rep"]["name"])]
     for k, r in patterns:
         if k in through:
             # 밑 노선이 계통으로 돌아갔다. 같은 열차의 반대 방향 계통이라
@@ -2234,18 +2256,26 @@ def _build(pbfs, rel, ways, nodes):
         # 岡山·児島 가 予讃線 에 없어, 운행을 깔 때 그 둘이 떨어져 宇多津 부터만
         # 달렸다. 역마다 밟을 노선을 정해 여러 노선을 이어 달리게 한다.
         on_line = set(lines[k]["seq"])
-        if r["kind"] and any(c not in on_line for c in r["seq"]):
+        # 직통 운전 계통은 각역정차라 종별이 없다. 밑 노선 밖으로 이어 가면
+        # 따로 "직통" 으로 깐다. 이름은 붙이지 않는다(노선 이름이 이미 있다).
+        through_run = not r["kind"] and THROUGH_RUN.search(r["name"])
+        if (r["kind"] or through_run) and any(c not in on_line for c in r["seq"]):
             route = through_route(r["seq"], plain, prefer=k)
             if route:
                 item["rows"] = [[lines[j]["lid"], c] for j, c in zip(route, r["seq"])]
+                if through_run:
+                    item["kind"], item["name"] = "직통", ""
         express.append(item)
 
     # 여러 노선을 이어 달리는 계통. 역마다 밟는 노선을 함께 적는다.
     for k, route in sorted(through.items()):
         rep = lines[k]["rep"]
         rows = [[lines[j]["lid"], c] for j, c in zip(route, lines[k]["seq"])]
-        express.append({"railway": rows[0][0], "kind": rep["kind"] or "특급",
-                        "name": base_name(rep["name"]) or rep["name"],
+        if THROUGH_RUN.search(rep["name"]):
+            kind, name = "직통", ""
+        else:
+            kind, name = rep["kind"] or "특급", base_name(rep["name"]) or rep["name"]
+        express.append({"railway": rows[0][0], "kind": kind, "name": name,
                         "clusters": lines[k]["seq"], "rows": rows})
 
     by_cluster = defaultdict(list)
