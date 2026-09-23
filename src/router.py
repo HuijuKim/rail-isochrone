@@ -42,6 +42,8 @@ class Graph:
     tr_ptr: np.ndarray
     # 이벤트마다 소속 운행의 시작 인덱스 (라운드 계산에 쓰는 보조 배열)
     ev_trip_start: np.ndarray
+    # 운행마다 계통 번호. 각역정차는 -1, 없는 판의 파일이면 None
+    trip_pat: np.ndarray | None = None
 
     @property
     def n_stations(self) -> int:
@@ -64,6 +66,7 @@ def load_graph(path) -> Graph:
         tr_cost=z["tr_cost"],
         tr_ptr=z["tr_ptr"],
         ev_trip_start=ev_trip_start,
+        trip_pat=(z["trip_pat"] if "trip_pat" in z.files else None),
     )
 
 
@@ -308,6 +311,14 @@ def earliest_arrivals(
     return (best, tr) if trace else best
 
 
+def _pat_of(g: Graph, event: int) -> int:
+    """이벤트가 속한 운행의 계통 번호. 없으면 -1."""
+    if g.trip_pat is None:
+        return -1
+    t = int(np.searchsorted(g.trip_start, event, side="right")) - 1
+    return int(g.trip_pat[t]) if 0 <= t < len(g.trip_pat) else -1
+
+
 def reconstruct(g: Graph, trace: Trace, station: int, max_legs: int = 40) -> list[dict]:
     """도착역에서 출발지 쪽으로 거슬러 올라가 여정을 구간별로 편다.
 
@@ -341,6 +352,8 @@ def reconstruct(g: Graph, trace: Trace, station: int, max_legs: int = 40) -> lis
                     "depart": int(g.ev_dep[board]),
                     "arrive": int(g.ev_arr[alight]),
                     "path": path,
+                    # 탄 운행이 어느 계통인지. 종별과 열차 이름을 보이는 데 쓴다.
+                    "pat": _pat_of(g, board),
                 }
             )
             cur = int(g.ev_stop[board])

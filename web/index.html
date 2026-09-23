@@ -388,6 +388,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   font-variant-numeric: tabular-nums; color: var(--muted);
 }
 .leg .stations { font-size: var(--step-1); color: var(--ink-2); }
+.leg .train { font-size: var(--step-1); color: var(--muted); }
 .leg .clock {
   font-family: var(--mono); font-size: var(--step-2);
   font-variant-numeric: tabular-nums; color: var(--muted);
@@ -965,6 +966,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       walkToDest: "내려서 도착지까지 도보 {n}분",
       walkFromOrigin: "출발지에서 {to} 까지 도보 {n}분",
       rideDur: "{n}분 · {stops}개 역",
+      kindLtdExp: "특급", kindRapid: "쾌속",
       reasonSea: "바다 위입니다. 뭍에 있는 지점을 골라주세요.",
       reasonOutside: "권역 밖입니다 (보라색 점선 안쪽만 다룹니다).",
       reasonNoRoad: "도로가 없는 곳입니다. 길이 있는 지점을 골라주세요.",
@@ -1069,6 +1071,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       walkToDest: "降りて目的地まで徒歩 {n}分",
       walkFromOrigin: "出発地から {to} まで徒歩 {n}分",
       rideDur: "{n}分 · {stops}駅",
+      kindLtdExp: "特急", kindRapid: "快速",
       reasonSea: "海の上です。陸地の地点を選んでください。",
       reasonOutside: "対応エリア外です (紫の点線の内側のみ)。",
       reasonNoRoad: "道路がない場所です。道のある地点を選んでください。",
@@ -1173,6 +1176,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       walkToDest: "Walk {n} min to the destination",
       walkFromOrigin: "Walk {n} min to {to}",
       rideDur: "{n} min · {stops} stops",
+      kindLtdExp: "Limited Express", kindRapid: "Rapid",
       reasonSea: "That is open water. Pick a point on land.",
       reasonOutside: "Outside the covered region (inside the purple dashed line only).",
       reasonNoRoad: "No road here. Pick a point with a path.",
@@ -1277,6 +1281,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       walkToDest: "下车后步行 {n} 分到目的地",
       walkFromOrigin: "从出发地步行 {n} 分到 {to}",
       rideDur: "{n} 分 · {stops} 站",
+      kindLtdExp: "特急", kindRapid: "快速",
       reasonSea: "这里是海上。请选择陆地上的地点。",
       reasonOutside: "超出支持范围 (仅限紫色虚线内侧)。",
       reasonNoRoad: "这里没有道路。请选择有路的地点。",
@@ -1381,6 +1386,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       walkToDest: "下車後步行 {n} 分到目的地",
       walkFromOrigin: "從出發地步行 {n} 分到 {to}",
       rideDur: "{n} 分 · {stops} 站",
+      kindLtdExp: "特急", kindRapid: "快速",
       reasonSea: "這裡是海上。請選擇陸地上的地點。",
       reasonOutside: "超出支援範圍 (僅限紫色虛線內側)。",
       reasonNoRoad: "這裡沒有道路。請選擇有路的地點。",
@@ -3140,6 +3146,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
         head.appendChild(line);
         head.appendChild(dur);
 
+        // 각역정차가 아니면 종별과 열차 이름을 적는다. 南風 처럼 여러
+        // 노선을 이어 달리는 특급은 이 줄로만 가려진다.
+        var kind = t({ "특급": "kindLtdExp", "쾌속": "kindRapid" }[leg.railway.kind] || "");
+        var train = [kind, leg.railway.train].filter(Boolean).join(" ");
+
         var st = document.createElement("div");
         st.className = "stations";
         // 화살표로 잇는 짧은 줄이라 화면 언어 이름만 적는다. 일본어는
@@ -3151,6 +3162,12 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
         clock.textContent = leg.depart + " – " + leg.arrive;
 
         r.body.appendChild(head);
+        if (train) {
+          var tr = document.createElement("div");
+          tr.className = "train";
+          tr.textContent = train;
+          r.body.appendChild(tr);
+        }
         r.body.appendChild(st);
         r.body.appendChild(clock);
         list.appendChild(r.li);

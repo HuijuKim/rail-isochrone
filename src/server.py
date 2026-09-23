@@ -245,6 +245,18 @@ def walk_path(reg, lon: float, lat: float, station: int, limit: float) -> list[l
 TRANSFER_WALK_M = 200.0
 
 
+def _pattern_of(reg, leg) -> dict:
+    """탄 운행의 종별과 열차 이름. 각역정차면 빈 값."""
+    i = int(leg.get("pat", -1))
+    if i < 0 or i >= len(reg.patterns):
+        return {}
+    pat = reg.patterns[i]
+    out = {"kind": pat.get("kind") or ""}
+    if pat.get("name"):
+        out["train"] = pat["name"]
+    return out
+
+
 def describe_journey(reg, legs: list[dict], best: np.ndarray, depart: int,
                      origin: tuple[float, float]) -> list[dict]:
     """복원한 구간들을 화면에 그대로 쓸 수 있는 형태로 옮긴다."""
@@ -303,6 +315,9 @@ def describe_journey(reg, legs: list[dict], best: np.ndarray, depart: int,
                          for lang in region_mod.LANGS},
                         # 지도에 그린 선과 같은 값을 쓴다
                         color=region_mod.line_color(rail),
+                        # 각역정차가 아니면 종별과 열차 이름을 함께 준다.
+                        # 여러 노선을 이어 달리는 특급은 이것으로만 가려진다.
+                        **_pattern_of(reg, leg),
                     ),
                     "path": leg_path(reg, leg["path"], rid),
                 }
