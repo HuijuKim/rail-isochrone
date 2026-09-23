@@ -399,7 +399,20 @@ _KO_TAIL = re.compile(r"(?<=[가-힣])\s*역$|(?<=[가-힣])\s+시$")
 
 
 def clean_station_name(nm: str) -> str:
-    """승강장·출입구 표기를 떼어 역 이름 하나로 만든다."""
+    """승강장·출입구 표기를 떼어 역 이름 하나로 만든다.
+
+    꼬리가 겹쳐 붙은 이름("…1番のりばのりば")이 있어 더 뗄 것이 없을 때까지
+    돌린다. 한 번만 떼면 훑을 때와, 캐시를 읽으며 한 번 더 거칠 때의 결과가
+    달라진다(주고쿠·간사이에서 11개).
+    """
+    while True:
+        out = _clean_once(nm)
+        if out == nm:
+            return out
+        nm = out
+
+
+def _clean_once(nm: str) -> str:
     nm = (nm or "").strip()
     for br in ("(", "（"):
         if br in nm:
