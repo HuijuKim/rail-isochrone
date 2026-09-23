@@ -43,6 +43,7 @@ class Region:
     coords: np.ndarray
     graphs: dict          # calendar -> router.Graph
     railways: dict        # railway id -> 제목/색
+    patterns: list        # 계통 번호 -> {kind, name} (특급·쾌속 운행이 가리킨다)
     walk: object | None   # walknet.WalkNet
     fine: object | None   # finegeom.FineGeometry (선을 도로에 붙일 때만)
     supported: np.ndarray  # 묶음 번호 -> 도보권이 있어 실제로 쓸 수 있는가
@@ -92,6 +93,10 @@ def load(region_id: str) -> Region:
         r["id"]: r
         for r in json.loads((base / "raw" / "railways.json").read_text(encoding="utf-8"))
     }
+    # 통과 계통 표. 운행마다 붙은 번호가 여기를 가리킨다.
+    pat_path = base / "raw" / "patterns.json"
+    patterns = (json.loads(pat_path.read_text(encoding="utf-8"))
+                if pat_path.exists() else [])
     # OSM 관계에는 일본어 이름뿐인 노선이 많다. build_geometry.py 가
     # 짝이 된 시각표 권역에서 빌려 적어 둔 이름으로 빈 언어를 메운다.
     name_path = base / "raw" / "line-names.json"
@@ -233,7 +238,10 @@ def load(region_id: str) -> Region:
     _tail = _re.compile(r"\s*[(（][^)）]*[)）]\s*$")
     for r in railways.values():
         title = r.get("title") or {}
-        for lang in ("ko", "en", "zh-Hans", "zh-Hant"):
+        # 색 열쇠는 빌드 때 적은 이름으로 맞춰 둔다. 여기서 다듬은 이름을
+        # 쓰면 build_colors 가 만든 열쇠와 어긋나 색을 잃는다.
+        r.setdefault("_ja_raw", title.get("ja") or "")
+        for lang in ("ja", "ko", "en", "zh-Hans", "zh-Hant"):
             v = (title.get(lang) or "").strip()
             if not v:
                 continue
@@ -441,6 +449,7 @@ def load(region_id: str) -> Region:
         coords=coords,
         graphs=graphs,
         railways=railways,
+        patterns=patterns,
         walk=walk,
         fine=fine,
         geometry=geometry,
@@ -1004,7 +1013,8 @@ def _qual_key(railway: dict) -> str:
     둘이고, 日光線 은 JR 과 東武 둘이다. 한 칸을 나눠 쓰면 한쪽 색이
     다른 쪽을 덮는다.
     """
-    ja = railway.get("title", {}).get("ja", "") or railway.get("id", "")
+    ja = (railway.get("_ja_raw")
+          or railway.get("title", {}).get("ja", "") or railway.get("id", ""))
     # 방향 표기는 뗀다. 빌드해 둔 데이터에는 아직 "（上り）" 가 남아 있어,
     # 떼지 않으면 같은 노선인데 색 열쇠가 갈린다.
     ja = _DIR_PAREN_KEY.sub("", ja).strip()
