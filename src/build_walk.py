@@ -165,21 +165,39 @@ def cell_center(cells: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
 # 1단계: PBF 에서 보행로 뽑기
 # --------------------------------------------------------------------------
 
-def extract_ways() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """보행 가능한 way 들을 (노드 좌표열, 구간 경계, 계단 여부) 로 돌려준다."""
+def _walk_part(path):
+    """추출본 하나의 보행로 전부. 격자로 거르기 전이라 어느 권역이든 쓴다.
+
+    좌표는 OSM 이 속으로 쓰는 정수(1e-7 도)로 받는다. 파이썬 float 목록에
+    쌓으면 점 하나가 수십 바이트라, 간토 추출본을 통째로 담을 수가 없다.
+    정수를 1e7 로 나누면 osmium 이 주는 좌표와 비트까지 같다.
+    """
+    import json
+
     import osmium
+    from array import array
+
+    npz_path, json_path = osmcache.files("walk", [path])
+    stamp_v = ",".join(sorted(WALKABLE))
+    if os.environ.get("WALK_RESCAN") != "1" and npz_path.exists():
+        if osmcache.read_meta(json_path, [path], _walk_part, v=stamp_v) is not None:
+            try:
+                z = np.load(npz_path)
+                print(f"    {path.name}: 저장해 둔 보행로를 다시 쓴다 "
+                      f"(way {len(z['steps']):,}개)", flush=True)
+                return z["x"], z["y"], z["bounds"], z["steps"]
+            except (OSError, ValueError) as e:
+                print(f"  (저장해 둔 보행로를 못 읽었다: {e})", flush=True)
 
     class WalkHandler(osmium.SimpleHandler):
         def __init__(self) -> None:
             super().__init__()
-            self.lon: list[float] = []
-            self.lat: list[float] = []
-            self.bounds: list[int] = [0]
-            self.steps: list[bool] = []
-            self.seen = 0
+            self.x = array("i")
+            self.y = array("i")
+            self.bounds = array("q", [0])
+            self.steps = array("b")
 
         def way(self, w) -> None:
-            self.seen += 1
             tags = w.tags
             highway = tags.get("highway")
             if highway not in WALKABLE:
@@ -188,43 +206,73 @@ def extract_ways() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
                 return
             if tags.get("access") in ("no", "private") and tags.get("foot") is None:
                 return
-
             n = 0
             for node in w.nodes:
-                if not node.location.valid():
+                loc = node.location
+                if not loc.valid():
                     continue
-                lon, lat = node.location.lon, node.location.lat
-                # 격자 밖은 어차피 버려진다. 여기서 걸러야 주부 추출본의
-                # 나고야까지 메모리에 쌓지 않는다.
-                if not (GRID_LON0 <= lon <= GRID_LON1 and GRID_LAT0 <= lat <= GRID_LAT1):
-                    continue
-                self.lon.append(lon)
-                self.lat.append(lat)
+                self.x.append(loc.x)
+                self.y.append(loc.y)
                 n += 1
             if n < 2:
-                del self.lon[len(self.lon) - n:]
-                del self.lat[len(self.lat) - n:]
+                del self.x[len(self.x) - n:]
+                del self.y[len(self.y) - n:]
                 return
             self.bounds.append(self.bounds[-1] + n)
-            self.steps.append(highway == "steps")
+            self.steps.append(1 if highway == "steps" else 0)
 
-    handler = WalkHandler()
     t0 = time.time()
+    h = WalkHandler()
+    h.apply_file(str(path), locations=True, idx="flex_mem")
+    x = np.frombuffer(h.x, dtype=np.int32).copy()
+    y = np.frombuffer(h.y, dtype=np.int32).copy()
+    bounds = np.frombuffer(h.bounds, dtype=np.int64).copy()
+    steps = np.frombuffer(h.steps, dtype=np.int8).astype(bool)
+    print(f"    {path.name}: 보행로 훑기 way {len(steps):,}개 "
+          f"({time.time() - t0:.0f}s)", flush=True)
+    try:
+        np.savez_compressed(npz_path, x=x, y=y, bounds=bounds, steps=steps)
+        json_path.write_text(json.dumps({"stamp": osmcache.stamp(
+            [path], _walk_part, v=stamp_v)}), encoding="utf-8")
+    except Exception as e:          # 캐시를 못 써도 빌드는 계속한다
+        print(f"  (보행로를 저장하지 못했다: {e})", flush=True)
+    return x, y, bounds, steps
+
+
+def extract_ways() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """보행 가능한 way 들을 (노드 좌표열, 구간 경계, 계단 여부) 로 돌려준다.
+
+    추출본 하나씩 통째로 훑어 캐시해 두고, 여기서 격자로 거른다. 격자 밖
+    점은 버리고, 점이 둘 넘게 남은 way 만 둔다. 추출본끼리 겹치는 way 도
+    예전처럼 두 번 들어간다.
+    """
+    t0 = time.time()
+    lons, lats, counts, steps = [], [], [], []
     for path in PBFS:
-        before = len(handler.steps)
-        handler.apply_file(str(path), locations=True, idx="flex_mem")
-        print(f"    {path.name}: 보행로 +{len(handler.steps) - before:,}개 "
-              f"({time.time() - t0:.0f}s)", flush=True)
-    print(
-        f"  way {handler.seen:,}개 훑어 보행로 {len(handler.steps):,}개, "
-        f"점 {len(handler.lon):,}개 ({time.time() - t0:.0f}s)",
-        flush=True,
-    )
-    return (
-        np.array(handler.lon, dtype=np.float64),
-        np.array(handler.lat, dtype=np.float64),
-        np.array(handler.bounds, dtype=np.int64),
-    ), np.array(handler.steps, dtype=bool)
+        x, y, bounds, st = _walk_part(path)
+        if len(bounds) < 2:
+            continue
+        lon = x.astype(np.float64) / 1e7
+        lat = y.astype(np.float64) / 1e7
+        inside = ((GRID_LON0 <= lon) & (lon <= GRID_LON1)
+                  & (GRID_LAT0 <= lat) & (lat <= GRID_LAT1))
+        n_in = np.add.reduceat(inside.astype(np.int64), bounds[:-1])
+        ok = n_in >= 2
+        way_of = np.repeat(np.arange(len(n_in)), np.diff(bounds))
+        take = inside & ok[way_of]
+        lons.append(lon[take])
+        lats.append(lat[take])
+        counts.append(n_in[ok])
+        steps.append(st[ok])
+        del lon, lat, inside, way_of, take
+    lon = np.concatenate(lons) if lons else np.zeros(0)
+    lat = np.concatenate(lats) if lats else np.zeros(0)
+    n = np.concatenate(counts) if counts else np.zeros(0, dtype=np.int64)
+    bounds = np.concatenate([[0], np.cumsum(n)]).astype(np.int64)
+    steps = np.concatenate(steps) if steps else np.zeros(0, dtype=bool)
+    print(f"  보행로 {len(steps):,}개, 점 {len(lon):,}개 ({time.time() - t0:.0f}s)",
+          flush=True)
+    return (lon, lat, bounds), steps
 
 
 # --------------------------------------------------------------------------
