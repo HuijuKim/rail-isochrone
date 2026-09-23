@@ -29,8 +29,12 @@ _DIR = re.compile(r"\s*[(（]\s*(?:内回り|外回り|右回り|左回り|上�
 _ARROW = re.compile(r"\s*[(（][^()（）]*(?:=>|->|→|⇒)[^()（）]*[)）]?\s*$")
 
 
+_COLON = re.compile(r"\s*[:：][^:：]*(?:=>|->|→|⇒)[^:：]*$")
+
+
 def _key(ja: str) -> str:
-    return _ARROW.sub("", _DIR.sub("", (ja or "").strip())).strip()
+    s = _COLON.sub("", (ja or "").strip())
+    return _ARROW.sub("", _DIR.sub("", s)).strip()
 
 
 def named_lines() -> dict:

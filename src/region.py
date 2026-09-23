@@ -1016,9 +1016,14 @@ _LOOSE_DIR = _re.compile(
 _LOOSE_ARROW = _re.compile(r"\s*[(（][^()（）]*(?:=>|->|→|⇒)[^()（）]*[)）]?\s*$")
 
 
+_LOOSE_COLON = _re.compile(r"\s*[:：][^:：]*(?:=>|->|→|⇒)[^:：]*$")
+
+
 def _loose_key(ja: str) -> str:
-    """방향·구간 괄호를 뗀 노선 이름. 이름 사전을 느슨하게 찾을 때 쓴다."""
-    return _LOOSE_ARROW.sub("", _LOOSE_DIR.sub("", (ja or "").strip())).strip()
+    """방향·구간 괄호와 ": 横浜→渋谷" 꼴 꼬리를 뗀 노선 이름. 이름 사전을
+    느슨하게 찾을 때 쓴다."""
+    s = _LOOSE_COLON.sub("", (ja or "").strip())
+    return _LOOSE_ARROW.sub("", _LOOSE_DIR.sub("", s)).strip()
 
 
 _DIR_PAREN_KEY = _re.compile(

@@ -2837,5 +2837,29 @@
   "ko": "쓰루미선 오카와 지선",
   "zh-Hans": "鹤见线大川支线",
   "zh-Hant": "鶴見線大川支線"
+ },
+ "東京メトロ半蔵門線": {
+  "en": "Hanzomon Line",
+  "ko": "한조몬선",
+  "zh-Hans": "半藏门线",
+  "zh-Hant": "半藏門線"
+ },
+ "東急東横線": {
+  "en": "Toyoko Line",
+  "ko": "도요코선",
+  "zh-Hans": "东横线",
+  "zh-Hant": "東橫線"
+ },
+ "東急田園都市線": {
+  "en": "Den-En-Toshi Line",
+  "ko": "덴엔토시선",
+  "zh-Hans": "田园都市线",
+  "zh-Hant": "田園都市線"
+ },
+ "TJライナー": {
+  "en": "TJ Liner",
+  "ko": "TJ 라이너",
+  "zh-Hans": "TJ Liner",
+  "zh-Hant": "TJ Liner"
  }
 }
