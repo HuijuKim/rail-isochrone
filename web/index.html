@@ -287,6 +287,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 .combo { display: flex; flex-direction: column; gap: 14px; }
 .combo .legend-title { margin-bottom: 6px; }
 .combo-fold > summary { cursor: pointer; list-style: none; }
+.combo-fold-body { display: flex; flex-direction: column; gap: 14px; }
 .combo-fold > summary::-webkit-details-marker { display: none; }
 .combo-fold > summary::before { content: "\25b8  "; }
 .combo-fold[open] > summary::before { content: "\25be  "; }
@@ -699,15 +700,17 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
           <div class="combo-job" id="combo-job" role="status" hidden></div>
           <details class="combo-fold" open>
             <summary class="legend-title" data-i18n="comboPick">현 고르기</summary>
-            <div class="combo-areas" id="combo-areas"></div>
+            <div class="combo-fold-body">
+              <div class="combo-areas" id="combo-areas"></div>
+              <p class="combo-plan" id="combo-plan"></p>
+              <div class="combo-actions">
+                <button type="button" class="primary-btn" id="combo-build" disabled
+                        data-i18n="comboBuild">이 조합 만들기</button>
+                <button type="button" class="linkish" id="combo-clear" data-i18n="comboClear">선택 지우기</button>
+              </div>
+              <p class="hint" data-i18n="comboHint">고른 현을 한 권역으로 새로 빌드합니다. 10-40분 걸리고, 그동안 다른 권역은 그대로 쓸 수 있습니다. 현 경계를 넘는 노선도 끊기지 않습니다.</p>
+            </div>
           </details>
-          <p class="combo-plan" id="combo-plan"></p>
-          <div class="combo-actions">
-            <button type="button" class="primary-btn" id="combo-build" disabled
-                    data-i18n="comboBuild">이 조합 만들기</button>
-            <button type="button" class="linkish" id="combo-clear" data-i18n="comboClear">선택 지우기</button>
-          </div>
-          <p class="hint" data-i18n="comboHint">고른 현을 한 권역으로 새로 빌드합니다. 10-40분 걸리고, 그동안 다른 권역은 그대로 쓸 수 있습니다. 현 경계를 넘는 노선도 끊기지 않습니다.</p>
         </div>
       </div>
 
