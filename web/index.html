@@ -542,7 +542,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 .pref-menu .on { color: var(--accent); }
 .pref-menu hr { border: 0; border-top: 1px solid var(--line-soft); margin: 4px 2px; }
 
-/* 노선 하나씩 켜고 끄는 디버그 패널. 현별 메뉴와 같은 모양을 쓰되,
+/* 노선 하나씩 켜고 끄는 노선별 보기 패널. 현별 메뉴와 같은 모양을 쓰되,
    노선 이름이 길어 더 넓고, 색을 눈으로 맞출 수 있게 색칠을 앞에 둔다. */
 .map-actions.right .pref-menu { inset-inline-start: auto; inset-inline-end: 0; }
 /* 폭과 높이를 둘 다 고정한다. 내용에 따라 늘었다 줄었다 하면 누를
@@ -868,9 +868,9 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     </div>
     <div class="map-actions right">
       <div class="pref-wrap">
-        <button type="button" id="debug-toggle" aria-expanded="false" data-i18n="debug"
-                data-i18n-title="debugTitle" title="노선을 하나씩 켜고 끕니다">노선 디버그</button>
-        <div class="pref-menu wide" id="debug-menu" hidden></div>
+        <button type="button" id="lineview-toggle" aria-expanded="false" data-i18n="lineview"
+                data-i18n-title="lineviewTitle" title="노선을 하나씩 켜고 끕니다">노선별 보기</button>
+        <div class="pref-menu wide" id="lineview-menu" hidden></div>
       </div>
       <button type="button" id="toggle-coverage" aria-pressed="true" data-i18n="coverage">경계선</button>
     </div>
@@ -928,14 +928,14 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       srcContributors: "기여자 (ODbL).", transferNote: "환승은 구내 3분 · 개찰 밖 5분.",
       fit: "권역에 맞추기", showLines: "지원 노선 표시", showStations: "지원 역 표시",
       coverage: "경계선",
-      debug: "노선 디버그", debugTitle: "노선을 하나씩 켜고 끕니다",
-      debugSearch: "노선 이름으로 찾기", debugAll: "모두 켜기", debugNone: "모두 끄기",
-      debugOther: "그 밖",
-      debugMain: "본선",
-      debugHover: "지도에서 선에 머물면 이름 보기",
-      debugOpenAll: "모두 펼치기", debugFoldAll: "모두 접기",
-      debugToggleOperator: "이 회사 노선을 통째로", debugNoMatch: "찾는 노선이 없습니다",
-      debugPieces: "조각",
+      lineview: "노선별 보기", lineviewTitle: "노선을 하나씩 켜고 끕니다",
+      lineviewSearch: "노선 이름으로 찾기", lineviewAll: "모두 켜기", lineviewNone: "모두 끄기",
+      lineviewOther: "그 밖",
+      lineviewMain: "본선",
+      lineviewHover: "지도에서 선에 머물면 이름 보기",
+      lineviewOpenAll: "모두 펼치기", lineviewFoldAll: "모두 접기",
+      lineviewToggleOperator: "이 회사 노선을 통째로", lineviewNoMatch: "찾는 노선이 없습니다",
+      lineviewPieces: "조각",
       lineCaretTitle: "노선을 현별로 골라 봅니다", lineCaretAria: "노선 현별 고르기",
       stationCaretTitle: "역을 현별로 골라 봅니다", stationCaretAria: "역 현별 고르기",
       language: "언어",
@@ -1031,14 +1031,14 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       srcContributors: "コントリビューター (ODbL)。", transferNote: "乗換は構内3分・改札外5分。",
       fit: "到達圏に合わせる", showLines: "対応路線を表示", showStations: "対応駅を表示",
       coverage: "境界線",
-      debug: "路線デバッグ", debugTitle: "路線を一つずつ表示・非表示",
-      debugSearch: "路線名で絞り込み", debugAll: "すべて表示", debugNone: "すべて非表示",
-      debugOther: "その他",
-      debugMain: "本線",
-      debugHover: "地図で線にホバーして名前を表示",
-      debugOpenAll: "すべて開く", debugFoldAll: "すべて閉じる",
-      debugToggleOperator: "この会社の路線を一括", debugNoMatch: "該当する路線がありません",
-      debugPieces: "本",
+      lineview: "路線別表示", lineviewTitle: "路線を一つずつ表示・非表示",
+      lineviewSearch: "路線名で絞り込み", lineviewAll: "すべて表示", lineviewNone: "すべて非表示",
+      lineviewOther: "その他",
+      lineviewMain: "本線",
+      lineviewHover: "地図で線にホバーして名前を表示",
+      lineviewOpenAll: "すべて開く", lineviewFoldAll: "すべて閉じる",
+      lineviewToggleOperator: "この会社の路線を一括", lineviewNoMatch: "該当する路線がありません",
+      lineviewPieces: "本",
       lineCaretTitle: "路線を都県別に選びます", lineCaretAria: "路線を都県別に選ぶ",
       stationCaretTitle: "駅を都県別に選びます", stationCaretAria: "駅を都県別に選ぶ",
       language: "言語",
@@ -1134,14 +1134,14 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       srcContributors: "contributors (ODbL).", transferNote: "Transfers: 3 min inside a station, 5 min outside the gates.",
       fit: "Fit to region", showLines: "Show lines", showStations: "Show stations",
       coverage: "Boundary",
-      debug: "Line debug", debugTitle: "Show or hide lines one by one",
-      debugSearch: "Filter by line name", debugAll: "Show all", debugNone: "Hide all",
-      debugOther: "Other",
-      debugMain: "Main",
-      debugHover: "Show name on hover",
-      debugOpenAll: "Expand all", debugFoldAll: "Collapse all",
-      debugToggleOperator: "Toggle all lines of this operator", debugNoMatch: "No matching line",
-      debugPieces: "pieces",
+      lineview: "Browse lines", lineviewTitle: "Show or hide lines one by one",
+      lineviewSearch: "Filter by line name", lineviewAll: "Show all", lineviewNone: "Hide all",
+      lineviewOther: "Other",
+      lineviewMain: "Main",
+      lineviewHover: "Show name on hover",
+      lineviewOpenAll: "Expand all", lineviewFoldAll: "Collapse all",
+      lineviewToggleOperator: "Toggle all lines of this operator", lineviewNoMatch: "No matching line",
+      lineviewPieces: "pieces",
       lineCaretTitle: "Filter lines by prefecture", lineCaretAria: "Filter lines by prefecture",
       stationCaretTitle: "Filter stations by prefecture", stationCaretAria: "Filter stations by prefecture",
       language: "Language",
@@ -1237,14 +1237,14 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       srcContributors: "贡献者 (ODbL)。", transferNote: "换乘：站内3分、出闸5分。",
       fit: "适应范围", showLines: "显示支持线路", showStations: "显示支持车站",
       coverage: "边界线",
-      debug: "线路调试", debugTitle: "逐条显示或隐藏线路",
-      debugSearch: "按线路名筛选", debugAll: "全部显示", debugNone: "全部隐藏",
-      debugOther: "其他",
-      debugMain: "本线",
-      debugHover: "悬停时显示线路名",
-      debugOpenAll: "全部展开", debugFoldAll: "全部收起",
-      debugToggleOperator: "切换该公司全部线路", debugNoMatch: "没有匹配的线路",
-      debugPieces: "段",
+      lineview: "按线路查看", lineviewTitle: "逐条显示或隐藏线路",
+      lineviewSearch: "按线路名筛选", lineviewAll: "全部显示", lineviewNone: "全部隐藏",
+      lineviewOther: "其他",
+      lineviewMain: "本线",
+      lineviewHover: "悬停时显示线路名",
+      lineviewOpenAll: "全部展开", lineviewFoldAll: "全部收起",
+      lineviewToggleOperator: "切换该公司全部线路", lineviewNoMatch: "没有匹配的线路",
+      lineviewPieces: "段",
       lineCaretTitle: "按都县筛选线路", lineCaretAria: "按都县筛选线路",
       stationCaretTitle: "按都县筛选车站", stationCaretAria: "按都县筛选车站",
       language: "语言",
@@ -1340,14 +1340,14 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       srcContributors: "貢獻者 (ODbL)。", transferNote: "換乘：站內3分、出閘5分。",
       fit: "適應範圍", showLines: "顯示支援路線", showStations: "顯示支援車站",
       coverage: "邊界線",
-      debug: "路線偵錯", debugTitle: "逐條顯示或隱藏路線",
-      debugSearch: "依路線名篩選", debugAll: "全部顯示", debugNone: "全部隱藏",
-      debugOther: "其他",
-      debugMain: "本線",
-      debugHover: "懸停時顯示路線名",
-      debugOpenAll: "全部展開", debugFoldAll: "全部收起",
-      debugToggleOperator: "切換該公司全部路線", debugNoMatch: "沒有符合的路線",
-      debugPieces: "段",
+      lineview: "按路線檢視", lineviewTitle: "逐條顯示或隱藏路線",
+      lineviewSearch: "依路線名篩選", lineviewAll: "全部顯示", lineviewNone: "全部隱藏",
+      lineviewOther: "其他",
+      lineviewMain: "本線",
+      lineviewHover: "懸停時顯示路線名",
+      lineviewOpenAll: "全部展開", lineviewFoldAll: "全部收起",
+      lineviewToggleOperator: "切換該公司全部路線", lineviewNoMatch: "沒有符合的路線",
+      lineviewPieces: "段",
       lineCaretTitle: "按都縣篩選路線", lineCaretAria: "按都縣篩選路線",
       stationCaretTitle: "按都縣篩選車站", stationCaretAria: "按都縣篩選車站",
       language: "語言",
@@ -1472,8 +1472,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     // 브라우저 탭도 같이 바꿈다. <title> 은 data-i18n 으로 못 바꾸어
     // 언어를 고쳐도 한국어로 남아 있었다.
     document.title = t("title");
-    // 열어 둔 노선 디버그 패널도 새 언어로 다시 그린다
-    if (el("debug-menu") && !el("debug-menu").hidden) buildDebugMenu();
+    // 열어 둔 노선별 보기 패널도 새 언어로 다시 그린다
+    if (el("lineview-menu") && !el("lineview-menu").hidden) buildLineviewMenu();
     var nodes = document.querySelectorAll("[data-i18n]");
     for (var i = 0; i < nodes.length; i++) {
       nodes[i].textContent = t(nodes[i].getAttribute("data-i18n"));
@@ -2105,7 +2105,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
      그 현들만 보여준다. 두 목록은 세는 대상도 다르다 — 역은 역 수를,
      노선은 그 현을 지나는 노선 수를 센다. */
   var prefPick = { stations: null, lines: null };
-  /* 노선 디버그 패널에서 꺼 둔 노선 id. null 이면 전부 켠 것이다.
+  /* 노선별 보기 패널에서 꺼 둔 노선 id. null 이면 전부 켠 것이다.
      "끈 것" 을 들고 있어야 새로 생긴 노선이 기본으로 보인다. */
   var lineHide = null;
   // 현 이름의 언어별 표기. 서버가 OSM 행정경계에서 받아 둔 것.
@@ -2156,17 +2156,17 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       if (lineHide && lineHide.has(r.id)) return false;
       if (!on) return true;
       return (r.prefs || []).some(function (p) { return on.has(p); });
-    }), debugHoverOn ? showLineHover : null);
+    }), lineviewHoverOn ? showLineHover : null);
   }
 
-  /* 지도에서 선 위에 1초 머물면 이름을 띄우고, 디버그 패널이 열려 있으면
+  /* 지도에서 선 위에 1초 머물면 이름을 띄우고, 노선별 보기 패널이 열려 있으면
      그 노선 줄까지 스크롤해 짚어 준다. 선이 촘촘한 도심에서 "이게 무슨
      노선인가" 를 알아보려고 켜는 기능이다. */
   var HOVER_DELAY_MS = 1000;
-  var debugHoverOn = false;
+  var lineviewHoverOn = false;
   var hoverRows = {};          // 노선 조각 id -> 패널의 그 줄
 
-  /* 지도에서 선 위에 1초 머물면 이름만 띄운다. 이름은 노선 디버그 목록에
+  /* 지도에서 선 위에 1초 머물면 이름만 띄운다. 이름은 노선별 보기 목록에
      적힌 것과 같은 것을 쓴다. 지도에서는 "JR成田線 (成田空港 → 千葉)" 인데
      목록에서는 "나리타선" 이면 같은 줄을 찾을 수가 없다. */
   function showLineHover(shape, ev) {
@@ -2185,20 +2185,20 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   /* 이름이 떠 있을 때 누르면 목록에서 그 줄까지 찾아간다. 켜 두지 않았을
      때는 아무 일도 하지 않는다. 선을 눌러 지도가 움직이면 곤란하다. */
   function pickLine(shape) {
-    if (!debugHoverOn) return;
-    if (el("debug-menu").hidden) {
+    if (!lineviewHoverOn) return;
+    if (el("lineview-menu").hidden) {
       // 토글 버튼을 누르면 노선을 받아오는 비동기 길로 갈 수 있다.
       // 여기서는 이미 선이 그려져 있으므로 바로 펴고 그린다.
-      el("debug-menu").hidden = false;
-      el("debug-toggle").setAttribute("aria-expanded", "true");
-      buildDebugMenu();
+      el("lineview-menu").hidden = false;
+      el("lineview-toggle").setAttribute("aria-expanded", "true");
+      buildLineviewMenu();
     }
     // 접힌 묶음도 줄은 만들어 두므로 hoverRows 에는 있다. 다만 감춰져
     // 있어서 스크롤해도 안 보인다. 그 회사를 펴고 다시 그린 뒤에 짚는다.
     var op = hoverGroupOf[lineKey(shape)];
-    if (op && !debugOpen[op]) {
-      debugOpen[op] = true;
-      buildDebugMenu();
+    if (op && !lineviewOpen[op]) {
+      lineviewOpen[op] = true;
+      buildLineviewMenu();
     }
     var row = hoverRows[shape.id];
     if (!row) return;
@@ -2217,7 +2217,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     return String(shape.id || "").split("~")[0];
   }
 
-  /* 노선 하나씩 켜고 끄는 디버그 패널.
+  /* 노선 하나씩 켜고 끄는 노선별 보기 패널.
 
      줄은 한 번만 만든다. 찾기는 만들어 둔 줄을 보이고 숨길 뿐이라
      다시 그리지 않는다. 예전에는 한 글자 칠 때마다 메뉴를 통째로 다시
@@ -2226,8 +2226,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
      운영사로 묶고 기본은 접어 둔다. 한 권역에 회사가 마흔 곳 넘어서
      다 펴 두면 스크롤만 길어진다. 접은 묶음도 줄은 만들어 두고 감추기만
      하므로, 찾을 때 접혀 있어도 걸린다. */
-  function buildDebugMenu() {
-    var menu = el("debug-menu");
+  function buildLineviewMenu() {
+    var menu = el("lineview-menu");
     var at = menu.scrollTop;
     menu.textContent = "";
 
@@ -2281,7 +2281,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       if (!parent) { kept.push(r); return; }
       // 지선을 붙이는 순간 본선도 갈래 하나가 된다. 제 조각에도 이름을 단다.
       parent.parts.forEach(function (q) {
-        if (!q.tag) q.tag = t("debugMain");
+        if (!q.tag) q.tag = t("lineviewMain");
       });
       var tail = r.name.slice(parent.name.length).trim() || r.name;
       r.parts.forEach(function (q) {
@@ -2328,7 +2328,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     order.forEach(function (r) {
       if (r.op) counts[r.op] = (counts[r.op] || 0) + 1;
     });
-    var OTHER = t("debugOther");
+    var OTHER = t("lineviewOther");
     var groups = {};
     var opNames = [];
     order.forEach(function (r) {
@@ -2368,7 +2368,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     function apply() {
       el("toggle-lines").setAttribute("aria-pressed", "true");
       refreshLines();
-      buildDebugMenu();
+      buildLineviewMenu();
     }
 
     function addRow(label, count, on, cls, fn) {
@@ -2402,11 +2402,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     var search = document.createElement("input");
     search.type = "search";
     search.className = "search";
-    search.placeholder = t("debugSearch");
-    search.value = debugQuery;
+    search.placeholder = t("lineviewSearch");
+    search.value = lineviewQuery;
     search.addEventListener("click", function (e) { e.stopPropagation(); });
     search.addEventListener("input", function () {
-      debugQuery = this.value;
+      lineviewQuery = this.value;
       filter();
     });
     menu.appendChild(search);
@@ -2416,10 +2416,10 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       r.parts.forEach(function (p) { allIds.push(p.id); });
     });
     var liveLines = order.filter(anyOn).length;
-    menu.appendChild(addRow(t("debugAll"), order.length,
+    menu.appendChild(addRow(t("lineviewAll"), order.length,
                             liveLines === order.length, "",
                             function () { lineHide = null; }).button);
-    menu.appendChild(addRow(t("debugNone"), 0, liveLines === 0, "",
+    menu.appendChild(addRow(t("lineviewNone"), 0, liveLines === 0, "",
                             function () { setOff(allIds, true); }).button);
 
     // 지도에서 선에 머물면 이름을 띄울지
@@ -2427,33 +2427,33 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     hoverRow.className = "hoverbox";
     var box = document.createElement("input");
     box.type = "checkbox";
-    box.checked = debugHoverOn;
+    box.checked = lineviewHoverOn;
     box.addEventListener("click", function (e) { e.stopPropagation(); });
     box.addEventListener("change", function () {
-      debugHoverOn = this.checked;
-      if (!debugHoverOn) showLineHover(null);
+      lineviewHoverOn = this.checked;
+      if (!lineviewHoverOn) showLineHover(null);
       refreshLines();
     });
     hoverRow.appendChild(box);
     var hoverText = document.createElement("span");
-    hoverText.textContent = t("debugHover");
+    hoverText.textContent = t("lineviewHover");
     hoverRow.appendChild(hoverText);
     menu.appendChild(hoverRow);
 
     // 회사 묶음을 한꺼번에 펴고 접는다
-    var anyOpen = opNames.some(function (op) { return debugOpen[op]; });
+    var anyOpen = opNames.some(function (op) { return lineviewOpen[op]; });
     var foldAll = document.createElement("button");
     foldAll.type = "button";
     foldAll.className = "foldall";
-    foldAll.textContent = t(anyOpen ? "debugFoldAll" : "debugOpenAll");
+    foldAll.textContent = t(anyOpen ? "lineviewFoldAll" : "lineviewOpenAll");
     foldAll.addEventListener("click", function (e) {
       e.stopPropagation();
       if (anyOpen) {
-        debugOpen = {};
+        lineviewOpen = {};
       } else {
-        opNames.forEach(function (op) { debugOpen[op] = true; });
+        opNames.forEach(function (op) { lineviewOpen[op] = true; });
       }
-      buildDebugMenu();
+      buildLineviewMenu();
     });
     menu.appendChild(foldAll);
     menu.appendChild(document.createElement("hr"));
@@ -2470,7 +2470,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
         });
       });
       var live = kids.filter(anyOn).length;
-      var open = !!debugOpen[op];
+      var open = !!lineviewOpen[op];
 
       var head = document.createElement("div");
       head.className = "grouprow";
@@ -2489,8 +2489,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       fold.appendChild(opName);
       fold.addEventListener("click", function (e) {
         e.stopPropagation();
-        debugOpen[op] = !debugOpen[op];
-        buildDebugMenu();
+        lineviewOpen[op] = !lineviewOpen[op];
+        buildLineviewMenu();
       });
 
       var eye = document.createElement("button");
@@ -2498,7 +2498,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       eye.className = "groupeye count";
       eye.setAttribute("aria-pressed", String(live > 0));
       eye.textContent = live + " / " + kids.length;
-      eye.title = t("debugToggleOperator");
+      eye.title = t("lineviewToggleOperator");
       eye.addEventListener("click", function (e) {
         e.stopPropagation();
         var ids = [];
@@ -2552,7 +2552,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
           /* 양식을 하나로. "지선 이름 (기점–종점)" 이다. 지선 이름이
              없을 때만 "(기점–종점)" 으로 구간만 적는다. */
           var tag = (p.tag || "").replace(/^[(（]|[)）]$/g, "").trim();
-          var span = p.span || (t("debugPieces") + " " + (i + 1));
+          var span = p.span || (t("lineviewPieces") + " " + (i + 1));
           var label = tag ? tag + " (" + span + ")" : "(" + span + ")";
           var sub = addRow(label, null, !hidden(p.id), "piece", function () {
             setOff([p.id], !hidden(p.id));
@@ -2569,7 +2569,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     /* 찾기는 만들어 둔 줄을 보이고 숨길 뿐이다. 걸린 줄이 있는 묶음은
        접혀 있어도 펴서 보여 준다. */
     function filter() {
-      var q = debugQuery.trim().toLowerCase();
+      var q = lineviewQuery.trim().toLowerCase();
       blocks.forEach(function (block) {
         var seen = 0;
         block.kids.forEach(function (kid) {
@@ -2585,9 +2585,9 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     menu.scrollTop = at;
   }
 
-  var debugQuery = "";
+  var lineviewQuery = "";
   /* 펜 운영사. 다시 그려도 유지한다. */
-  var debugOpen = {};
+  var lineviewOpen = {};
 
   /* 현별 메뉴. 역과 노선이 같은 모양을 쓰되 세는 대상과 고른 상태가 다르다. */
   var MENU = {
@@ -3572,7 +3572,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
           railwayShapes = list;
           refreshLines();
           if (!el("line-menu").hidden) buildPrefMenu("lines");
-          if (!el("debug-menu").hidden) buildDebugMenu();
+          if (!el("lineview-menu").hidden) buildLineviewMenu();
         })
         .catch(function (err) {
           notice(t("linesFailed"), err.message);
@@ -3581,25 +3581,25 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
         .then(function () { busy(false); });
     });
 
-    /* 디버그 패널은 바깥을 눌러도 닫지 않는다. 노선을 걷어내며 지도를
+    /* 노선별 보기 패널은 바깥을 눌러도 닫지 않는다. 노선을 걷어내며 지도를
        끌고 다니는 것이 이 패널을 쓰는 방식이라, 지도를 만질 때마다
        닫히면 쓸 수가 없다. 제 버튼을 다시 누를 때만 닫는다. */
-    el("debug-toggle").addEventListener("click", function () {
+    el("lineview-toggle").addEventListener("click", function () {
       var open = this.getAttribute("aria-expanded") !== "true";
       this.setAttribute("aria-expanded", String(open));
-      el("debug-menu").hidden = !open;
+      el("lineview-menu").hidden = !open;
       if (!open) return;
-      if (railwayShapes) { buildDebugMenu(); return; }
+      if (railwayShapes) { buildLineviewMenu(); return; }
       // 노선을 아직 안 받아 왔으면 여기서 받는다. "지원 노선 표시" 를
-      // 먼저 눌러야만 쓸 수 있으면 디버그용으로 번거롭다.
+      // 먼저 눌러야만 쓸 수 있으면 노선을 살펴볼 때 번거롭다.
       busy(true);
-      buildDebugMenu();
+      buildLineviewMenu();
       getJSON("/api/railways?region=" + encodeURIComponent(activeRegion))
         .then(function (list) {
           railwayShapes = list;
           el("toggle-lines").setAttribute("aria-pressed", "true");
           refreshLines();
-          if (!el("debug-menu").hidden) buildDebugMenu();
+          if (!el("lineview-menu").hidden) buildLineviewMenu();
         })
         .catch(function (err) { notice(t("linesFailed"), err.message); })
         .then(function () { busy(false); });
@@ -3901,7 +3901,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       Object.keys(MENU).forEach(function (k) {
         if (!el(MENU[k].menu).hidden) buildPrefMenu(k);
       });
-      if (!el("debug-menu").hidden) lines = lines.then(buildDebugMenu);
+      if (!el("lineview-menu").hidden) lines = lines.then(buildLineviewMenu);
       var st = regionStart(info);
       clearDestination();
       setOrigin(st.lon, st.lat, name(st.names), st.names);

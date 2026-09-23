@@ -106,8 +106,8 @@ def load(region_id: str) -> Region:
                 if lang != "ja" and not (title.get(lang) or "").strip():
                     title[lang] = v
 
-    # operator 태그도 network 태그도 없는 노선이 있다. 그대로 두면 디버그
-    # 패널에서 전부 "그 밖" 으로 떨어져, 東海道本線 같은 큰 노선이 회사 없이
+    # operator 태그도 network 태그도 없는 노선이 있다. 그대로 두면 노선별
+    # 보기 패널에서 전부 "그 밖" 으로 떨어져, 東海道本線 같은 큰 노선이 회사 없이
     # 선다. 두 단계로 메운다.
     #
     #  1. 노선 이름 안에 회사가 들어 있으면 그걸 쓴다. OSM 은 태그를
@@ -210,7 +210,7 @@ def load(region_id: str) -> Region:
                     title[lang] = v
 
     # 이름 끝에 붙은 경로 설명을 뗀다. "(오사키 → 신키바)", ": 메구로→
-    # 니시타카시마다이라" 같은 것들이다. 어느 구간인지는 디버그 패널이
+    # 니시타카시마다이라" 같은 것들이다. 어느 구간인지는 노선별 보기 패널이
     # span 으로 따로 적으므로 이름에 또 적으면 두 번 적힌 꼴이 된다.
     # 화살표가 든 것만 뗀다. "도쿄 사쿠라 트램 (아라카와선)" 은 남긴다.
     # 화살표뿐 아니라 "(히가시코이즈미-오타)" 처럼 하이픈으로 구간을
@@ -1246,13 +1246,13 @@ def railway_shapes(geometry, railways: dict, stops: dict, coords: np.ndarray,
             # "blue", "darkgreen" 처럼 이름으로 적어 두기도 하는데, 그대로
             # 보내면 지도에서 안 먹거나(white) 안 보인다.
             "color": line_color(railway),
-            # 디버그 패널이 운영사별로 묶는 데 쓴다. OSM 권역은 관계의
+            # 노선별 보기 패널이 운영사별로 묶는 데 쓴다. OSM 권역은 관계의
             # operator 태그가, 시각표 권역은 노선 id 앞머리가 회사다.
             "operator": _operator_label(railway),
             "prefs": sorted(p for p in seen if p),
         }
         for k, piece in enumerate(pieces):
-            # 조각마다 id 를 달리 한다. 같은 id 를 달면 디버그 패널에서
+            # 조각마다 id 를 달리 한다. 같은 id 를 달면 노선별 보기 패널에서
             # 조각 하나를 끕 때 그 노선의 조각이 전부 꺼진다.
             # build_rail.py · build_track.py 가 쓰는 "~k" 꼬리표를 따른다.
             row = dict(base, id=(rid if k == 0 else f"{rid}~{k}"),
