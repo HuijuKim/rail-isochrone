@@ -9,6 +9,7 @@ data/osm/ 에 공유로 둔다.
 """
 from __future__ import annotations
 
+import functools
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -411,6 +412,10 @@ def load(region_id: str) -> Region:
                 if not have or (lang == "ko" and not _HANGUL.search(have)
                                 and _HANGUL.search(v or "")):
                     stops[lang][i] = v
+
+    # 중국어 이름이 빈 역·노선은 일본어 한자 이름의 글자꼴만 바꿔 채운다
+    # (広島 -> 廣島 / 广岛). 가나가 든 이름은 뜻으로 옮겨야 해서 두지 않는다.
+    _fill_zh(stops, railways)
 
     index, groups, n_groups = build_search_index(
         base, stops, coords,
@@ -1016,6 +1021,49 @@ def _operator_label(railway: dict) -> dict:
 
 
 _HANGUL = _re.compile(r"[가-힣]")
+_KANA = _re.compile(r"[぀-ヿㇰ-ㇿ]")
+
+
+@functools.lru_cache(maxsize=1)
+def _zh_table():
+    path = ROOT / "data" / "zh-chars.json"
+    if not path.exists():
+        return {}, {}
+    got = json.loads(path.read_text(encoding="utf-8"))
+    return got.get("chars") or {}, got.get("words") or {}
+
+
+def to_zh(ja: str):
+    """일본어 한자 이름을 (번체, 간체) 로. 가나가 들었거나 표가 없으면 None."""
+    chars, words = _zh_table()
+    if not ja or not chars or _KANA.search(ja):
+        return None
+    s = _re.sub("(.)々", lambda m: m.group(1) * 2, ja)
+    t, h = s, s
+    for w, (wt, wh) in words.items():
+        t, h = t.replace(w, wt), h.replace(w, wh)
+    return ("".join(chars.get(c, (c, c))[0] for c in t),
+            "".join(chars.get(c, (c, c))[1] for c in h))
+
+
+def _fill_zh(stops: dict, railways: dict) -> None:
+    """빈 중국어 역·노선 이름을 to_zh 로 채운다."""
+    if "zh-Hans" in stops and "zh-Hant" in stops:
+        for i, ja in enumerate(stops.get("ja") or []):
+            if (stops["zh-Hans"][i] or "").strip() and (stops["zh-Hant"][i] or "").strip():
+                continue
+            got = to_zh((ja or "").strip())
+            if got:
+                stops["zh-Hant"][i] = stops["zh-Hant"][i] or got[0]
+                stops["zh-Hans"][i] = stops["zh-Hans"][i] or got[1]
+    for r in railways.values():
+        title = r.setdefault("title", {})
+        if (title.get("zh-Hans") or "").strip() and (title.get("zh-Hant") or "").strip():
+            continue
+        got = to_zh((title.get("ja") or "").strip())
+        if got:
+            title["zh-Hant"] = title.get("zh-Hant") or got[0]
+            title["zh-Hans"] = title.get("zh-Hans") or got[1]
 _LOOSE_DIR = _re.compile(
     r"\s*[(（]\s*(?:内回り|外回り|右回り|左回り|上り|下り|内回|外回)\s*[)）]\s*$")
 _LOOSE_ARROW = _re.compile(r"\s*[(（][^()（）]*(?:=>|->|→|⇒)[^()（）]*[)）]?\s*$")
