@@ -479,3 +479,35 @@ def test_far_from_tells_aliases_from_real_stations():
     xy = {1: (0.0, 0.0), 2: (1000.0, 0.0)}.get
     assert not _far_from((8.0, 0.0), [1, 2], xy)
     assert _far_from((412.0, 0.0), [1, 2], xy)
+
+
+def test_merge_osm_keeps_what_one_handler_over_many_files_keeps():
+    """추출본별 훑기를 합친 결과 = 핸들러 하나로 여러 파일을 읽은 결과."""
+    from build_rail import _Bag, merge_osm
+
+    def part(ids, names, geom, refs, pos, stations=(), rail=()):
+        rel, ways, nodes = _Bag(), _Bag(), _Bag()
+        rel.ids = ids
+        rel.routes = [{"name": n, "stops": [1], "ways": [10]} for n in names]
+        rel.dropped, rel.skipped = set(), set()
+        ways.geom, ways.refs = geom, refs
+        nodes.pos = pos
+        nodes.stations = {n: pos[n] for n in stations}
+        nodes.rail = set(rail)
+        return rel, ways, nodes
+
+    a = part([100], ["A선"],
+             {11: [(0.0, 0.0)]}, {10: [1, 2], 11: [3, 4]},
+             {1: (0.0, 0.0, {"ja": "가"}, "가")}, stations=[1], rail=[1])
+    b = part([100, 200], ["A선", "B선"],
+             {10: [(1.0, 1.0)], 11: [(9.0, 9.0)]}, {10: [1, 2, 5], 11: [7, 8]},
+             {1: (5.0, 5.0, {"ja": "나"}, "나")}, stations=[1])
+
+    rel, ways, nodes = merge_osm([a, b])
+    assert [r["name"] for r in rel.routes] == ["A선", "B선"]   # 같은 관계는 한 번만
+    assert ways.geom[10] == [(1.0, 1.0)]     # 좌표가 모자랐던 웨이는 뒤가 채운다
+    assert ways.refs[10] == [1, 2, 5]        # 그 웨이의 구성 노드도 채운 쪽 것
+    assert ways.geom[11] == [(0.0, 0.0)]     # 먼저 좌표를 얻은 웨이는 그대로
+    assert ways.refs[11] == [3, 4]
+    assert nodes.pos[1][3] == "가"           # 노드도 먼저 읽은 추출본 것이 남는다
+    assert nodes.rail == {1}

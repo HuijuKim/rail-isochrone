@@ -302,10 +302,13 @@ class Relations(osmium.SimpleHandler):
     def __init__(self):
         super().__init__()
         self.routes = []
+        # 관계 id 를 나란히 둔다. 추출본별로 훑은 것을 합칠 때 같은 관계를
+        # 두 번 넣지 않으려면 id 가 있어야 한다.
+        self.ids = []
         self.want_nodes = set()
         self.want_ways = set()
-        self.dropped = 0
-        self.skipped = 0
+        self.dropped = set()
+        self.skipped = set()
         # OSM id 는 추출본 사이에서 전역이다. 권역이 두 추출본에 걸치면
         # 경계의 관계가 양쪽에 다 들어 있어 그대로 읽으면 두 번 잡힌다.
         self.seen = set()
@@ -329,7 +332,7 @@ class Relations(osmium.SimpleHandler):
         if not name:
             return
         if SHINKANSEN.search(name) or SHINKANSEN.search(t.get("ref", "")):
-            self.dropped += 1
+            self.dropped.add(r.id)
             return
         # 유원지 어트랙션은 태그가 일반 노선과 같다. 디즈니랜드의
         # ウエスタンリバー鉄道 는 route=train, operator=オリエンタルランド
@@ -338,7 +341,7 @@ class Relations(osmium.SimpleHandler):
         # ディズニーリゾートライン 은 요금 받는 정식 모노레일이라 이
         # 태그가 없고, 그대로 남는다.
         if t.get("tourism") == "attraction" or _excluded(name):
-            self.skipped += 1
+            self.skipped.add(r.id)
             return
         stops = [m.ref for m in r.members
                  if m.type == "n" and m.role in ("stop", "stop_entry_only",
@@ -352,6 +355,7 @@ class Relations(osmium.SimpleHandler):
         # 선로 기하는 두 곳에 쓴다. 정차역이 없는 관계에서 정차 순서를
         # 되살릴 때와, 지도에 노선을 그릴 때다. 그래서 전부 챙긴다.
         self.want_ways.update(ways)
+        self.ids.append(r.id)
         self.routes.append({
             "name": name,
             "rtype": rtype,
@@ -1262,9 +1266,15 @@ def overlap(small, big):
 #
 # 훑은 결과는 권역이 아니라 추출본에 매인다. 관계와 선로 웨이는 권역과
 # 상관없이 읽고, 권역 경계는 역 노드를 거를 때만 쓰기 때문이다. 그래서
-# 거르기 전 결과를 추출본 이름으로 data/cache/rail/ 에 두고, 같은 추출본을
-# 읽는 다른 권역이 그대로 가져다 쓴다. 현 조합 권역은 이것이 없으면 조합마다
-# 같은 PBF 를 6~9분씩 다시 훑는다(조립은 5.6초, 시각표는 1.4초뿐이다).
+# 거르기 전 결과를 추출본 하나마다 한 벌씩 data/cache/rail/ 에 두고, 읽을
+# 때 합친다. 같은 추출본을 읽는 다른 권역은 그대로 가져다 쓰고, 추출본을
+# 하나 더 넣은 조합은 새 것만 훑는다. 이것이 없으면 조합마다 같은 PBF 를
+# 6~9분씩 다시 훑는다(조립은 5.6초, 시각표는 1.4초뿐이다).
+#
+# 추출본 하나만 훑어도 되는 이유: 지오파브릭 추출본은 멤버가 하나라도
+# 안에 있는 관계를 통째로 담는다. 그래서 추출본 경계를 넘는 노선은 양쪽
+# 추출본에 다 들어 있고, 그 노선이 찾는 웨이·노드도 제가 놓인 추출본에서
+# 잡힌다. 합치면 여러 파일을 한 번에 훑은 것과 같아진다.
 #
 # PBF 가 바뀌거나 읽는 코드(아래 세 핸들러)가 바뀌면 도장이 어긋나 다시
 # 훑는다. 억지로 다시 훑으려면 RAIL_RESCAN=1 을 준다.
@@ -1272,22 +1282,24 @@ class _Bag:
     """핸들러 자리에 끼울 껍데기."""
 
 
-def _cache_files(pbfs):
-    return osmcache.files("rail", pbfs)
+def _cache_files(pbf):
+    return osmcache.files("rail", [pbf])
 
 
-def _cache_stamp(pbfs):
+def _cache_stamp(pbf):
     # 제외 목록과 권역 경계는 도장에 넣지 않는다. 제외는 캐시를 읽을 때 다시
     # 거르고, 권역 경계는 캐시를 읽은 뒤에 쓴다. 제외를 풀었을 때는 캐시에 그
     # 노선이 없으니 data/cache/rail/ 의 파일을 지우고 다시 훑는다.
-    # 판 3: 권역으로 거르기 전의 역 노드.
-    return osmcache.stamp(pbfs, Relations, Ways, StationNodes, v=3)
+    # 판 4: 추출본 하나씩 저장한다.
+    return osmcache.stamp([pbf], Relations, Ways, StationNodes, v=4)
 
 
-def save_osm_cache(pbfs, rel, ways, nodes):
-    way_ids = sorted(ways.geom)
+def save_osm_cache(pbf, rel, ways, nodes):
+    # 좌표를 못 얻은 웨이도 구성 노드는 남긴다. 다음 추출본이 좌표를
+    # 채울 수 있게, 좌표 목록과 노드 목록을 따로 적는다.
+    geom_ids = sorted(ways.geom)
     xy, gptr = [], [0]
-    for w in way_ids:
+    for w in geom_ids:
         a = np.asarray(ways.geom[w], dtype=np.float64).reshape(-1, 2)
         xy.append(a)
         gptr.append(gptr[-1] + len(a))
@@ -1298,10 +1310,10 @@ def save_osm_cache(pbfs, rel, ways, nodes):
         rf.append(a)
         rptr.append(rptr[-1] + len(a))
     node_ids = sorted(nodes.pos)
-    npz_path, json_path = _cache_files(pbfs)
+    npz_path, json_path = _cache_files(pbf)
     np.savez_compressed(
         npz_path,
-        way_ids=np.asarray(way_ids, dtype=np.int64),
+        way_ids=np.asarray(geom_ids, dtype=np.int64),
         geom_xy=(np.concatenate(xy) if xy else np.zeros((0, 2))),
         geom_ptr=np.asarray(gptr, dtype=np.int64),
         ref_ids=np.asarray(ref_ids, dtype=np.int64),
@@ -1314,23 +1326,25 @@ def save_osm_cache(pbfs, rel, ways, nodes):
         is_rail=np.asarray([n in nodes.rail for n in node_ids], dtype=bool),
     )
     json_path.write_text(json.dumps({
-        "stamp": _cache_stamp(pbfs),
+        "stamp": _cache_stamp(pbf),
         "routes": rel.routes,
-        "dropped": rel.dropped,
-        "skipped": rel.skipped,
+        "route_ids": rel.ids,
+        "dropped": sorted(rel.dropped),
+        "skipped": sorted(rel.skipped),
         "names": {str(n): [nodes.pos[n][2], nodes.pos[n][3]] for n in node_ids},
     }, ensure_ascii=False), encoding="utf-8")
 
 
-def load_osm_cache(pbfs):
-    npz_path, json_path = _cache_files(pbfs)
+def load_osm_cache(pbf):
+    """저장해 둔 추출본 하나의 훑기. 훑어서 얻는 것과 같은 모양으로 낸다."""
+    npz_path, json_path = _cache_files(pbf)
     if not (npz_path.exists() and json_path.exists()):
         return None
     try:
         meta = json.loads(json_path.read_text(encoding="utf-8"))
-        if (meta.get("stamp") or {}) != _cache_stamp(pbfs):
-            print("  (저장해 둔 OSM 훑기가 지금 파일·코드와 안 맞아 다시 훑는다)",
-                  flush=True)
+        if (meta.get("stamp") or {}) != _cache_stamp(pbf):
+            print(f"  (저장해 둔 OSM 훑기가 지금 파일·코드와 안 맞아 다시 훑는다:"
+                  f" {pbf.name})", flush=True)
             return None
         z = np.load(npz_path)
     except (OSError, ValueError) as e:
@@ -1338,15 +1352,16 @@ def load_osm_cache(pbfs):
         return None
 
     rel = _Bag()
-    rel.routes = [r for r in meta["routes"] if not _excluded(r["name"])]
+    keep = [(i, r) for i, r in zip(meta["route_ids"], meta["routes"])
+            if not _excluded(r["name"])]
+    rel.ids = [i for i, _ in keep]
+    rel.routes = [r for _, r in keep]
     # 종별은 이름에서 다시 매긴다. 종별 규칙만 고쳤을 때 PBF 를 다시
     # 훑지 않아도 되게.
     for r in rel.routes:
         r["kind"] = kind_of(r["name"])
-    rel.dropped = meta.get("dropped", 0)
-    rel.skipped = meta.get("skipped", 0)
-    rel.want_nodes = {n for r in rel.routes for n in r["stops"]}
-    rel.want_ways = {w for r in rel.routes for w in r["ways"]}
+    rel.dropped = set(meta.get("dropped", []))
+    rel.skipped = set(meta.get("skipped", []))
 
     ways = _Bag()
     wid, gp, gx = z["way_ids"], z["geom_ptr"], z["geom_xy"]
@@ -1381,39 +1396,94 @@ def load_osm_cache(pbfs):
     return rel, ways, nodes
 
 
+def scan_one(pbf):
+    """추출본 하나를 세 번 훑는다. 관계, 웨이(노드 좌표 색인까지), 노드다."""
+    rel = Relations()
+    rel.apply_file(str(pbf))
+    ways = Ways(rel.want_ways)
+    ways.apply_file(str(pbf), locations=True, idx="flex_mem")
+    nodes = StationNodes(rel.want_nodes)
+    nodes.apply_file(str(pbf))
+    return rel, ways, nodes
+
+
+def merge_osm(parts):
+    """추출본별 훑기를 합친다. 핸들러 하나로 여러 파일을 읽을 때와 같은
+    규칙이다. 관계는 id 로 한 번만 받고, 웨이는 좌표를 먼저 얻은 추출본
+    것을, 노드도 먼저 읽은 추출본 것을 남긴다."""
+    rel, ways, nodes = _Bag(), _Bag(), _Bag()
+
+    rel.routes, rel.ids, rel.dropped, rel.skipped = [], [], set(), set()
+    seen = set()
+    for part, _, _ in parts:
+        for rid, r in zip(part.ids, part.routes):
+            if rid in seen:
+                continue
+            seen.add(rid)
+            rel.ids.append(rid)
+            rel.routes.append(r)
+        rel.dropped |= part.dropped
+        rel.skipped |= part.skipped
+    rel.want_nodes = {n for r in rel.routes for n in r["stops"]}
+    rel.want_ways = {w for r in rel.routes for w in r["ways"]}
+
+    ways.geom, ways.refs = {}, {}
+    for _, part, _ in parts:
+        for w, refs in part.refs.items():
+            # 좌표를 이미 얻은 웨이는 건드리지 않는다. 좌표가 모자랐던
+            # 웨이(추출본 가장자리)는 다음 추출본이 채울 수 있게 둔다.
+            if w in ways.geom:
+                continue
+            ways.refs[w] = refs
+            if w in part.geom:
+                ways.geom[w] = part.geom[w]
+
+    nodes.pos, nodes.stations, nodes.rail = {}, {}, set()
+    for _, _, part in parts:
+        for n, rec in part.pos.items():
+            if n in nodes.pos:
+                continue
+            nodes.pos[n] = rec
+            if n in part.stations:
+                nodes.stations[n] = rec
+            if n in part.rail:
+                nodes.rail.add(n)
+    return rel, ways, nodes
+
+
+def scan_osm(pbfs):
+    """추출본을 하나씩 읽어(캐시에 없으면 훑어 저장) 합친다."""
+    rescan = os.environ.get("RAIL_RESCAN") == "1"
+    parts = []
+    for pbf in pbfs:
+        part = None if rescan else load_osm_cache(pbf)
+        if part is not None:
+            head = "  저장해 둔 OSM 훑기를 다시 쓴다: "
+        else:
+            part = scan_one(pbf)
+            head = "  OSM 훑기: "
+            try:
+                save_osm_cache(pbf, *part)
+            except Exception as e:    # 캐시를 못 써도 빌드는 계속한다
+                print(f"  (OSM 훑기를 저장하지 못했다: {e})", flush=True)
+        print(f"{head}{pbf.name} (관계 {len(part[0].routes):,}개, "
+              f"웨이 {len(part[1].geom):,}개, 노드 {len(part[2].pos):,}개)",
+              flush=True)
+        parts.append(part)
+    return merge_osm(parts)
+
+
 def main():
     pbfs = _pbf_list()
     print("[" + REGION + "] " + ", ".join(p.name for p in pbfs) + " 읽는 중...",
           flush=True)
 
-    cached = (None if os.environ.get("RAIL_RESCAN") == "1"
-              else load_osm_cache(pbfs))
-    if cached is not None:
-        rel, ways, nodes = cached
-        print(f"  저장해 둔 OSM 훑기를 다시 쓴다 "
-              f"(관계 {len(rel.routes):,}개, 웨이 {len(ways.geom):,}개, "
-              f"노드 {len(nodes.pos):,}개)", flush=True)
-    else:
-        rel = Relations()
-        for p in pbfs:
-            rel.apply_file(str(p))
-        track_only = sum(1 for r in rel.routes if not r["stops"])
-        print(f"  철도 계통 관계 {len(rel.routes):,}개 "
-              f"(신칸센 {rel.dropped}개, 못 타는 노선 {rel.skipped}개 제외), "
-              f"선로만 있는 것 {track_only:,}개", flush=True)
-
-        ways = Ways(rel.want_ways)
-        for p in pbfs:
-            ways.apply_file(str(p), locations=True, idx="flex_mem")
-        print(f"  선로 웨이 {len(ways.geom):,}개", flush=True)
-
-        nodes = StationNodes(rel.want_nodes)
-        for p in pbfs:
-            nodes.apply_file(str(p))
-        try:
-            save_osm_cache(pbfs, rel, ways, nodes)
-        except Exception as e:        # 캐시를 못 써도 빌드는 계속한다
-            print(f"  (OSM 훑기를 저장하지 못했다: {e})", flush=True)
+    rel, ways, nodes = scan_osm(pbfs)
+    track_only = sum(1 for r in rel.routes if not r["stops"])
+    print(f"  철도 계통 관계 {len(rel.routes):,}개 "
+          f"(신칸센 {len(rel.dropped)}개, 못 타는 노선 {len(rel.skipped)}개 제외), "
+          f"선로만 있는 것 {track_only:,}개", flush=True)
+    print(f"  선로 웨이 {len(ways.geom):,}개", flush=True)
 
     inside, how = _region_filter()
     keep_inside(nodes, inside)
