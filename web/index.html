@@ -2422,11 +2422,15 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     order.forEach(function (r) {
       r.parts.forEach(function (p) { allIds.push(p.id); });
     });
+    // 회사 줄과 같은 꼴로 "켜진 수 / 전체" 를 보여 준다. 예전에는 "모두 켜기"
+    // 옆에 전체 개수가, "모두 끄기" 옆에는 그냥 0 이 붙어 있어 뜻이 없었다.
     var liveLines = order.filter(anyOn).length;
-    menu.appendChild(addRow(t("lineviewAll"), order.length,
+    menu.appendChild(addRow(t("lineviewAll"), liveLines + " / " + order.length,
                             liveLines === order.length, "",
                             function () { lineHide = null; }).button);
-    menu.appendChild(addRow(t("lineviewNone"), 0, liveLines === 0, "",
+    menu.appendChild(addRow(t("lineviewNone"),
+                            (order.length - liveLines) + " / " + order.length,
+                            liveLines === 0, "",
                             function () { setOff(allIds, true); }).button);
 
     // 지도에서 선에 머물면 이름을 띄울지
