@@ -1512,6 +1512,70 @@ def main():
     return _build(pbfs, rel, ways, nodes)
 
 
+def is_nickname(name: str) -> bool:
+    """열차 애칭만 적힌 이름인가. 南風·こうのとり 처럼 노선 이름이 없다."""
+    return bool(LTD_EXPRESS.match((name or "").strip()))
+
+
+def through_route(seq, others):
+    """애칭 계통의 역마다 밟을 노선. 하나라도 못 정하면 None.
+
+    南風 은 岡山에서 高知까지 瀬戸大橋線·予讃線·土讃線 셋을 이어 달린다.
+    어느 한 노선과도 정차역이 많이 겹치지 않아 노선으로 접히지 못하고 혼자
+    노선이 되어 있었다. 지도에 제 선이 따로 그려지고, 경로에도 노선 이름
+    대신 애칭이 나온다.
+
+    역마다 그 역을 담은 노선을 후보로 놓고, 노선을 가장 적게 바꾸는 배정을
+    고른다. 같은 노선을 잇달아 밟을 때는 역 차례가 한 방향이어야 한다.
+
+    others 는 (노선 열쇠, 정차역 묶음 목록) 목록이다. 애칭 노선끼리는
+    서로 붙이지 않는다.
+    """
+    idx = {key: {c: i for i, c in enumerate(cs)} for key, cs in others}
+    inf = float("inf")
+    states = []
+    prev = None
+    for k, c in enumerate(seq):
+        opts = [key for key, ix in idx.items() if c in ix]
+        if not opts:
+            return None
+        cur = {}
+        for key in opts:
+            if prev is None:
+                cur[key] = (0, None)
+                continue
+            best, who = inf, None
+            for pkey, (cost, _) in prev.items():
+                add = 0 if pkey == key else 1
+                if pkey == key and idx[key][seq[k - 1]] == idx[key][c]:
+                    add = inf          # 같은 자리에 두 번 서지는 않는다
+                if cost + add < best:
+                    best, who = cost + add, pkey
+            if best < inf:
+                cur[key] = (best, who)
+        if not cur:
+            return None
+        states.append(cur)
+        prev = cur
+    key = min(prev, key=lambda x: prev[x][0])
+    out = [key]
+    for k in range(len(states) - 1, 0, -1):
+        key = states[k][key][1]
+        out.append(key)
+    out = out[::-1]
+    # 같은 노선을 잇달아 밟는 토막은 역 차례가 한 방향이어야 한다.
+    i = 0
+    while i < len(out):
+        j = i
+        while j + 1 < len(out) and out[j + 1] == out[i]:
+            j += 1
+        run = [idx[out[i]][c] for c in seq[i:j + 1]]
+        if len(run) > 1 and run != sorted(run) and run != sorted(run, reverse=True):
+            return None
+        i = j + 1
+    return out
+
+
 def _false_close(seq, cpos, scale) -> bool:
     """처음으로 돌아오는 마지막 간격이 그 노선의 보통 간격보다 튀는가."""
     if len(seq) < 4 or seq[0] != seq[-1]:
@@ -2082,7 +2146,26 @@ def _build(pbfs, rel, ways, nodes):
     railways, stations, express = [], [], []
     used_ids, seen_sid = set(), set()
 
+    # 애칭만 붙은 특급은 노선이 아니다. 밟고 가는 노선들을 찾아 계통으로
+    # 돌린다. 하나라도 못 찾으면 예전처럼 제 노선으로 남긴다.
+    through = {}
     for k, ln in enumerate(lines):
+        if not is_nickname(ln["rep"]["name"]) or len(ln["seq"]) < 2:
+            continue
+        others = [(j, lines[j]["seq"]) for j in range(len(lines))
+                  if j != k and len(lines[j]["seq"]) >= 2
+                  and not is_nickname(lines[j]["rep"]["name"])]
+        route = through_route(ln["seq"], others)
+        if route:
+            through[k] = route
+    if through:
+        print("  애칭 특급을 노선 위 계통으로 돌린다: "
+              + ", ".join(base_name(lines[k]["rep"]["name"]) or lines[k]["rep"]["name"]
+                          for k in sorted(through)), flush=True)
+
+    for k, ln in enumerate(lines):
+        if k in through:
+            continue
         rep = ln["rep"]
         base = base_name(rep["name"]) or rep["name"]
         slug = re.sub(r"[^0-9A-Za-z]+", "", rep["operator"])[:20] or "OSM"
@@ -2136,8 +2219,21 @@ def _build(pbfs, rel, ways, nodes):
         ln["lid"] = lid
 
     for k, r in patterns:
+        if k in through:
+            # 밑 노선이 계통으로 돌아갔다. 같은 열차의 반대 방향 계통이라
+            # 따로 깔 것이 없다(운행은 왕복 모두 깐다).
+            continue
         express.append({"railway": lines[k]["lid"], "kind": r["kind"] or "부분",
-                        "name": r["name"], "clusters": r["seq"]})
+                        "name": base_name(r["name"]) or r["name"],
+                        "clusters": r["seq"]})
+
+    # 여러 노선을 이어 달리는 계통. 역마다 밟는 노선을 함께 적는다.
+    for k, route in sorted(through.items()):
+        rep = lines[k]["rep"]
+        rows = [[lines[j]["lid"], c] for j, c in zip(route, lines[k]["seq"])]
+        express.append({"railway": rows[0][0], "kind": rep["kind"] or "특급",
+                        "name": base_name(rep["name"]) or rep["name"],
+                        "clusters": lines[k]["seq"], "rows": rows})
 
     by_cluster = defaultdict(list)
     for s in stations:
@@ -2149,6 +2245,10 @@ def _build(pbfs, rel, ways, nodes):
     # mini-tokyo-3d 의 coordinates.json 과 같은 모양으로 맞춘다.
     shapes = []
     for ln in lines:
+        # 계통으로 돌아간 애칭 특급은 제 선을 그리지 않는다. 밟고 가는
+        # 노선들이 이미 그 선로를 그린다.
+        if "lid" not in ln:
+            continue
         # 사슬마다 따로 담는다. 하나로 이으면 사슬 사이가 직선으로 이어져
         # 지도에서 선로를 크게 벗어난다.
         for k, path in enumerate(stitch_all(ln["rep"]["ways"], ways.geom)):
