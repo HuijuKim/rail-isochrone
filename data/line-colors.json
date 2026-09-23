@@ -231,6 +231,10 @@
   "color": "#a52f5d",
   "source": "ja.wikipedia:宇部線"
  },
+ "JR宇都宮線 (東京=>黒磯)": {
+  "color": "#f68b1e",
+  "source": "ja.wikipedia:JR宇都宮線"
+ },
  "JR宇野線 (宇野=>岡山)": {
   "color": "#63d2d3",
   "source": "ja.wikipedia:宇野線"
@@ -279,6 +283,10 @@
   "color": "#9acd32",
   "source": "ja.wikipedia:JR山手線"
  },
+ "JR山手線 (外回り)": {
+  "color": "#9acd32",
+  "source": "ja.wikipedia:JR山手線"
+ },
  "JR山陽本線 (三原 => 福山)": {
   "color": "#00A7E3",
   "source": "ODPT:JR山陽本線 (三原 => 福山)"
@@ -306,6 +314,10 @@
  "JR左沢線": {
   "color": "#0073bf",
   "source": "ja.wikipedia:左沢線"
+ },
+ "JR常磐線": {
+  "color": "#3333ff",
+  "source": "ja.wikipedia:常磐線"
  },
  "JR常磐緩行線 （取手=>綾瀬）": {
   "color": "#808080",
@@ -599,6 +611,10 @@
   "color": "#0095d9",
   "source": "ja.wikipedia:JR香椎線"
  },
+ "JR高崎線": {
+  "color": "#f68b1e",
+  "source": "ja.wikipedia:高崎線"
+ },
  "JR高崎線 (上り)": {
   "color": "#f68b1e",
   "source": "ja.wikipedia:高崎線"
@@ -639,7 +655,7 @@
   "color": "#C64F24",
   "source": "권역 맞춤:流山線"
  },
- "OSM|鹿島臨海鉄道大洗鹿島線（上り）": {
+ "OSM|鹿島臨海鉄道大洗鹿島線": {
   "color": "#E54848",
   "source": "권역 맞춤:大洗鹿島線"
  },
@@ -1587,6 +1603,10 @@
   "color": "#B074D6",
   "source": "ODPT:名古屋市営名城線 (右回り)"
  },
+ "名古屋市営名城線 (右回り)": {
+  "color": "#B074D6",
+  "source": "ODPT:名古屋市営名城線 (右回り)"
+ },
  "名古屋市営名港線 (名古屋港→金山)": {
   "color": "#B074D6",
   "source": "ODPT:名古屋市営名港線 (名古屋港→金山)"
@@ -1894,6 +1914,10 @@
  "山口線": {
   "color": "#e86c4c",
   "source": "ja.wikipedia:山口線"
+ },
+ "山形鉄道フラワー長井線": {
+  "color": "#ff69b4",
+  "source": "ja.wikipedia:山形鉄道フラワー長井線"
  },
  "山形鉄道フラワー長井線（下り）": {
   "color": "#ff69b4",
@@ -3067,6 +3091,10 @@
   "color": "#0000ff",
   "source": "ja.wikipedia:関東鉄道常総線"
  },
+ "関東鉄道竜ヶ崎線": {
+  "color": "#0000ff",
+  "source": "ja.wikipedia:関東鉄道竜ヶ崎線"
+ },
  "関東鉄道竜ヶ崎線（上り）": {
   "color": "#0000ff",
   "source": "ja.wikipedia:関東鉄道竜ヶ崎線"
@@ -3150,6 +3178,10 @@
  "阿佐海岸鉄道阿佐東線": {
   "color": "#a5aeb4",
   "source": "ja.wikipedia:阿佐海岸鉄道阿佐東線"
+ },
+ "阿武隈急行線": {
+  "color": "blue",
+  "source": "ODPT:阿武隈急行線（下り）"
  },
  "阿武隈急行線（下り）": {
   "color": "blue",
@@ -3254,6 +3286,10 @@
  "鹿島線": {
   "color": "#00b2e5",
   "source": "손으로 고침 (JR동일본 2020년 지바 노선색)"
+ },
+ "鹿島臨海鉄道大洗鹿島線": {
+  "color": "#2866ad",
+  "source": "지어냄"
  },
  "鹿島臨海鉄道大洗鹿島線（上り）": {
   "color": "#2866ad",

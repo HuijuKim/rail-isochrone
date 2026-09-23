@@ -991,6 +991,12 @@ def _operator_label(railway: dict) -> dict:
     return {}
 
 
+_DIR_PAREN_KEY = _re.compile(
+    r"\s*[(（]\s*(?:内回り|外回り|右回り|左回り|上り|下り|内回|外回"
+    r"|inner|outer|inbound|outbound|clockwise|counterclockwise)\s*[)）]\s*$",
+    _re.I)
+
+
 def _qual_key(railway: dict) -> str:
     """사업자를 붙인 열쇠. build_colors.qual_key 와 같은 규칙이어야 한다.
 
@@ -999,6 +1005,9 @@ def _qual_key(railway: dict) -> str:
     다른 쪽을 덮는다.
     """
     ja = railway.get("title", {}).get("ja", "") or railway.get("id", "")
+    # 방향 표기는 뗀다. 빌드해 둔 데이터에는 아직 "（上り）" 가 남아 있어,
+    # 떼지 않으면 같은 노선인데 색 열쇠가 갈린다.
+    ja = _DIR_PAREN_KEY.sub("", ja).strip()
     op = (railway.get("operator") or "").strip()
     if not op:
         op = str(railway.get("id", "")).split(".")[0]

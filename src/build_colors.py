@@ -196,6 +196,12 @@ def can_borrow(target: str, source: str) -> bool:
     return same_operator(target, source)
 
 
+DIR_PAREN_RE = re.compile(
+    r"\s*[(（]\s*(?:内回り|外回り|右回り|左回り|上り|下り|内回|外回"
+    r"|inner|outer|inbound|outbound|clockwise|counterclockwise)\s*[)）]\s*$",
+    re.I)
+
+
 def qual_key(railway) -> str:
     """사업자를 붙인 열쇠.
 
@@ -204,6 +210,9 @@ def qual_key(railway) -> str:
     덮는다. ODPT 는 id 앞머리가, OSM 은 operator 태그가 회사를 가리킨다.
     """
     ja = railway.get("title", {}).get("ja", "") or railway.get("id", "")
+    # 안팎 도는 계통을 한 노선으로 묶었으니 방향은 이름에서 뗀다. region.py 와
+    # 같은 규칙이어야 색을 찾는다.
+    ja = DIR_PAREN_RE.sub("", ja).strip()
     op = (railway.get("operator") or "").strip()
     if not op:
         op = str(railway.get("id", "")).split(".")[0]
