@@ -1,14 +1,18 @@
 {
- "note": "현 목록. make_region.py 가 현을 골라 권역을 만들 때 쓴다. 범위(rail_bbox)는 이미 빌드한 권역의 역 좌표에서 뽑은 것으로, 역이 있는 곳만 덮는다(도쿄도 경계는 오가사와라까지 가지만 여기에는 안 든다). 추출본은 Geofabrik 의 일본 지역 구분이다. hub 는 노선이 가장 많이 모이는 역으로 권역의 첫 출발지로 쓴다. neighbors 는 땅이 맞닿거나 다리로 이어진 현이다(땅끼리 6km 안). 현 경계는 영해까지 뻗어 있어 경계가 닿는지로만 보면 도쿄와 시즈오카(이즈 제도)처럼 100km 떨어진 곳이 이웃이 된다. 기존 권역들이 뽑아 둔 현 경계에서 셈했다. 현 경계 고리를 닫으려면 이웃 현이 든 추출본도 읽어야 해서 make_region.py 가 쓴다. hub 의 names 는 빌드해 둔 권역의 역 이름에서 채운 5개 언어 표기다.",
+ "note": "현 목록. make_region.py 가 현을 골라 권역을 만들 때 쓴다. 범위(rail_bbox)는 이미 빌드한 권역의 역 좌표에서 뽑은 것으로, 역이 있는 곳만 덮는다(도쿄도 경계는 오가사와라까지 가지만 여기에는 안 든다). 추출본은 Geofabrik 의 일본 지역 구분이다. hub 는 노선이 가장 많이 모이는 역으로 권역의 첫 출발지로 쓴다. neighbors 는 땅이 맞닿거나 다리로 이어진 현이다(땅끼리 6km 안). 현 경계는 영해까지 뻗어 있어 경계가 닿는지로만 보면 도쿄와 시즈오카(이즈 제도)처럼 100km 떨어진 곳이 이웃이 된다. 기존 권역들이 뽑아 둔 현 경계에서 셈했다. 현 경계 고리를 닫으려면 이웃 현이 든 추출본도 읽어야 해서 make_region.py 가 쓴다. hub 의 names 는 빌드해 둔 권역의 역 이름에서 채운 5개 언어 표기다. zh-Hans·zh-Hant 도 칩에 쓰는 짧은 이름이다(都府県 을 뗀 것).",
  "北海道": {
   "en": "Hokkaido",
   "ko": "홋카이도",
+  "zh-Hans": "北海道",
+  "zh-Hant": "北海道",
   "extract": "hokkaido",
   "neighbors": []
  },
  "青森県": {
   "en": "Aomori",
   "ko": "아오모리",
+  "zh-Hans": "青森",
+  "zh-Hant": "青森",
   "extract": "tohoku",
   "rail_bbox": [
    139.8646,
@@ -37,6 +41,8 @@
  "岩手県": {
   "en": "Iwate",
   "ko": "이와테",
+  "zh-Hans": "岩手",
+  "zh-Hant": "岩手",
   "extract": "tohoku",
   "rail_bbox": [
    140.7367,
@@ -66,6 +72,8 @@
  "宮城県": {
   "en": "Miyagi",
   "ko": "미야기",
+  "zh-Hans": "宫城",
+  "zh-Hant": "宮城",
   "extract": "tohoku",
   "rail_bbox": [
    140.5942,
@@ -96,6 +104,8 @@
  "秋田県": {
   "en": "Akita",
   "ko": "아키타",
+  "zh-Hans": "秋田",
+  "zh-Hant": "秋田",
   "extract": "tohoku",
   "rail_bbox": [
    139.8487,
@@ -126,6 +136,8 @@
  "山形県": {
   "en": "Yamagata",
   "ko": "야마가타",
+  "zh-Hans": "山形",
+  "zh-Hant": "山形",
   "extract": "tohoku",
   "rail_bbox": [
    139.5488,
@@ -156,6 +168,8 @@
  "福島県": {
   "en": "Fukushima",
   "ko": "후쿠시마",
+  "zh-Hans": "福岛",
+  "zh-Hant": "福島",
   "extract": "tohoku",
   "rail_bbox": [
    139.3157,
@@ -188,6 +202,8 @@
  "茨城県": {
   "en": "Ibaraki",
   "ko": "이바라키",
+  "zh-Hans": "茨城",
+  "zh-Hant": "茨城",
   "extract": "kanto",
   "rail_bbox": [
    139.7096,
@@ -218,6 +234,8 @@
  "栃木県": {
   "en": "Tochigi",
   "ko": "도치기",
+  "zh-Hans": "栃木",
+  "zh-Hant": "栃木",
   "extract": "kanto",
   "rail_bbox": [
    139.3742,
@@ -248,6 +266,8 @@
  "群馬県": {
   "en": "Gunma",
   "ko": "군마",
+  "zh-Hans": "群马",
+  "zh-Hant": "羣馬",
   "extract": "kanto",
   "rail_bbox": [
    138.5291,
@@ -279,6 +299,8 @@
  "埼玉県": {
   "en": "Saitama",
   "ko": "사이타마",
+  "zh-Hans": "埼玉",
+  "zh-Hant": "埼玉",
   "extract": "kanto",
   "rail_bbox": [
    138.979,
@@ -312,6 +334,8 @@
  "千葉県": {
   "en": "Chiba",
   "ko": "지바",
+  "zh-Hans": "千叶",
+  "zh-Hant": "千葉",
   "extract": "kanto",
   "rail_bbox": [
    139.8222,
@@ -341,6 +365,8 @@
  "東京都": {
   "en": "Tokyo",
   "ko": "도쿄",
+  "zh-Hans": "东京",
+  "zh-Hant": "東京",
   "extract": "kanto",
   "rail_bbox": [
    139.0968,
@@ -371,6 +397,8 @@
  "神奈川県": {
   "en": "Kanagawa",
   "ko": "가나가와",
+  "zh-Hans": "神奈川",
+  "zh-Hant": "神奈川",
   "extract": "kanto",
   "rail_bbox": [
    139.0387,
@@ -400,6 +428,8 @@
  "新潟県": {
   "en": "Niigata",
   "ko": "니가타",
+  "zh-Hans": "新潟",
+  "zh-Hant": "新潟",
   "extract": "chubu",
   "rail_bbox": [
    137.6502,
@@ -431,6 +461,8 @@
  "富山県": {
   "en": "Toyama",
   "ko": "도야마",
+  "zh-Hans": "富山",
+  "zh-Hant": "富山",
   "extract": "chubu",
   "rail_bbox": [
    136.8656,
@@ -461,6 +493,8 @@
  "石川県": {
   "en": "Ishikawa",
   "ko": "이시카와",
+  "zh-Hans": "石川",
+  "zh-Hant": "石川",
   "extract": "chubu",
   "rail_bbox": [
    136.3144,
@@ -490,6 +524,8 @@
  "福井県": {
   "en": "Fukui",
   "ko": "후쿠이",
+  "zh-Hans": "福井",
+  "zh-Hant": "福井",
   "extract": "chubu",
   "rail_bbox": [
    135.4997,
@@ -520,6 +556,8 @@
  "山梨県": {
   "en": "Yamanashi",
   "ko": "야마나시",
+  "zh-Hans": "山梨",
+  "zh-Hant": "山梨",
   "extract": "chubu",
   "rail_bbox": [
    138.316,
@@ -551,6 +589,8 @@
  "長野県": {
   "en": "Nagano",
   "ko": "나가노",
+  "zh-Hans": "长野",
+  "zh-Hant": "長野",
   "extract": "chubu",
   "rail_bbox": [
    137.5492,
@@ -585,6 +625,8 @@
  "岐阜県": {
   "en": "Gifu",
   "ko": "기후",
+  "zh-Hans": "岐阜",
+  "zh-Hant": "岐阜",
   "extract": "chubu",
   "rail_bbox": [
    136.4706,
@@ -618,6 +660,8 @@
  "静岡県": {
   "en": "Shizuoka",
   "ko": "시즈오카",
+  "zh-Hans": "静冈",
+  "zh-Hant": "靜岡",
   "extract": "chubu",
   "rail_bbox": [
    137.4843,
@@ -648,6 +692,8 @@
  "愛知県": {
   "en": "Aichi",
   "ko": "아이치",
+  "zh-Hans": "爱知",
+  "zh-Hant": "愛知",
   "extract": "chubu",
   "rail_bbox": [
    136.7114,
@@ -678,6 +724,8 @@
  "三重県": {
   "en": "Mie",
   "ko": "미에",
+  "zh-Hans": "三重",
+  "zh-Hant": "三重",
   "extract": "kansai",
   "rail_bbox": [
    136.016,
@@ -710,6 +758,8 @@
  "滋賀県": {
   "en": "Shiga",
   "ko": "시가",
+  "zh-Hans": "滋賀",
+  "zh-Hant": "滋賀",
   "extract": "kansai",
   "rail_bbox": [
    135.8372,
@@ -740,6 +790,8 @@
  "京都府": {
   "en": "Kyoto",
   "ko": "교토",
+  "zh-Hans": "京都",
+  "zh-Hant": "京都",
   "extract": "kansai",
   "rail_bbox": [
    134.895,
@@ -772,6 +824,8 @@
  "大阪府": {
   "en": "Osaka",
   "ko": "오사카",
+  "zh-Hans": "大阪",
+  "zh-Hant": "大阪",
   "extract": "kansai",
   "rail_bbox": [
    135.1371,
@@ -802,6 +856,8 @@
  "兵庫県": {
   "en": "Hyogo",
   "ko": "효고",
+  "zh-Hans": "兵库",
+  "zh-Hant": "兵庫",
   "extract": "kansai",
   "rail_bbox": [
    134.3225,
@@ -834,6 +890,8 @@
  "奈良県": {
   "en": "Nara",
   "ko": "나라",
+  "zh-Hans": "奈良",
+  "zh-Hant": "奈良",
   "extract": "kansai",
   "rail_bbox": [
    135.6676,
@@ -864,6 +922,8 @@
  "和歌山県": {
   "en": "Wakayama",
   "ko": "와카야마",
+  "zh-Hans": "和歌山",
+  "zh-Hant": "和歌山",
   "extract": "kansai",
   "rail_bbox": [
    135.0806,
@@ -894,6 +954,8 @@
  "鳥取県": {
   "en": "Tottori",
   "ko": "돗토리",
+  "zh-Hans": "鸟取",
+  "zh-Hant": "鳥取",
   "extract": "chugoku",
   "rail_bbox": [
    133.223,
@@ -924,6 +986,8 @@
  "島根県": {
   "en": "Shimane",
   "ko": "시마네",
+  "zh-Hans": "岛根",
+  "zh-Hant": "島根",
   "extract": "chugoku",
   "rail_bbox": [
    131.7022,
@@ -953,6 +1017,8 @@
  "岡山県": {
   "en": "Okayama",
   "ko": "오카야마",
+  "zh-Hans": "冈山",
+  "zh-Hant": "岡山",
   "extract": "chugoku",
   "rail_bbox": [
    133.3169,
@@ -983,6 +1049,8 @@
  "広島県": {
   "en": "Hiroshima",
   "ko": "히로시마",
+  "zh-Hans": "广岛",
+  "zh-Hant": "廣島",
   "extract": "chugoku",
   "rail_bbox": [
    132.2233,
@@ -1014,6 +1082,8 @@
  "山口県": {
   "en": "Yamaguchi",
   "ko": "야마구치",
+  "zh-Hans": "山口",
+  "zh-Hant": "山口",
   "extract": "chugoku",
   "rail_bbox": [
    130.9002,
@@ -1044,6 +1114,8 @@
  "徳島県": {
   "en": "Tokushima",
   "ko": "도쿠시마",
+  "zh-Hans": "德岛",
+  "zh-Hant": "德島",
   "extract": "shikoku",
   "rail_bbox": [
    133.7547,
@@ -1074,6 +1146,8 @@
  "香川県": {
   "en": "Kagawa",
   "ko": "가가와",
+  "zh-Hans": "香川",
+  "zh-Hant": "香川",
   "extract": "shikoku",
   "rail_bbox": [
    133.6193,
@@ -1103,6 +1177,8 @@
  "愛媛県": {
   "en": "Ehime",
   "ko": "에히메",
+  "zh-Hans": "爱媛",
+  "zh-Hant": "愛媛",
   "extract": "shikoku",
   "rail_bbox": [
    132.4362,
@@ -1134,6 +1210,8 @@
  "高知県": {
   "en": "Kochi",
   "ko": "고치",
+  "zh-Hans": "高知",
+  "zh-Hant": "高知",
   "extract": "shikoku",
   "rail_bbox": [
    132.7135,
@@ -1162,6 +1240,8 @@
  "福岡県": {
   "en": "Fukuoka",
   "ko": "후쿠오카",
+  "zh-Hans": "福冈",
+  "zh-Hant": "福岡",
   "extract": "kyushu",
   "rail_bbox": [
    130.0479,
@@ -1192,6 +1272,8 @@
  "佐賀県": {
   "en": "Saga",
   "ko": "사가",
+  "zh-Hans": "佐贺",
+  "zh-Hant": "佐賀",
   "extract": "kyushu",
   "rail_bbox": [
    129.7904,
@@ -1220,6 +1302,8 @@
  "長崎県": {
   "en": "Nagasaki",
   "ko": "나가사키",
+  "zh-Hans": "长崎",
+  "zh-Hant": "長崎",
   "extract": "kyushu",
   "rail_bbox": [
    129.5828,
@@ -1248,6 +1332,8 @@
  "熊本県": {
   "en": "Kumamoto",
   "ko": "구마모토",
+  "zh-Hans": "熊本",
+  "zh-Hant": "熊本",
   "extract": "kyushu",
   "rail_bbox": [
    130.3742,
@@ -1279,6 +1365,8 @@
  "大分県": {
   "en": "Oita",
   "ko": "오이타",
+  "zh-Hans": "大分",
+  "zh-Hant": "大分",
   "extract": "kyushu",
   "rail_bbox": [
    130.8661,
@@ -1308,6 +1396,8 @@
  "宮崎県": {
   "en": "Miyazaki",
   "ko": "미야자키",
+  "zh-Hans": "宫崎",
+  "zh-Hant": "宮崎",
   "extract": "kyushu",
   "rail_bbox": [
    130.7676,
@@ -1337,6 +1427,8 @@
  "鹿児島県": {
   "en": "Kagoshima",
   "ko": "가고시마",
+  "zh-Hans": "鹿儿岛",
+  "zh-Hant": "鹿兒島",
   "extract": "kyushu",
   "rail_bbox": [
    130.1964,
@@ -1366,6 +1458,8 @@
  "沖縄県": {
   "en": "Okinawa",
   "ko": "오키나와",
+  "zh-Hans": "冲绳",
+  "zh-Hant": "沖繩",
   "extract": "kyushu",
   "neighbors": [
    "鹿児島県"

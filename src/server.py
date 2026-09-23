@@ -518,14 +518,15 @@ def combo():
             prefs.append({
                 "ja": ja,
                 "names": {"ja": ja, "en": info["en"], "ko": info["ko"],
-                          "zh-Hans": ja, "zh-Hant": ja},
+                          "zh-Hans": info.get("zh-Hans") or ja,
+                          "zh-Hant": info.get("zh-Hant") or ja},
                 "stations": info.get("stations", 0),
                 "ok": "rail_bbox" in info,
                 # 이어진 현만 고르게 하려고 함께 보낸다. 바다 위 경계도 이웃이라
                 # 다리로 이어진 岡山-香川, 広島-愛媛 이 들어 있다.
                 "neighbors": info.get("neighbors", []),
             })
-        areas.append({"names": dict(names, **{"zh-Hans": names["ja"], "zh-Hant": names["ja"]}),
+        areas.append({"names": {"zh-Hans": names["ja"], "zh-Hant": names["ja"], **names},
                       "prefectures": prefs})
     made = []
     for meta_path in sorted(region_mod.REGIONS_DIR.glob(make_region.PREFIX + "*/region.json")):
