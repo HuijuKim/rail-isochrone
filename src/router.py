@@ -95,16 +95,21 @@ def access_seconds(g: Graph, lon: float, lat: float, limit_sec: float,
 
 
 def initial_labels(g: Graph, lon: float, lat: float, depart_sec: int,
-                   limit_sec: float, walk=None) -> np.ndarray:
-    """출발 지점에서 걸어서 닿는 역들에 최초 라벨을 심는다."""
+                   limit_sec: float, walk=None):
+    """출발 지점에서 걸어서 닿는 역들에 최초 라벨을 심는다.
+
+    (도착 시각, 걸은 시간)을 함께 돌려준다. 걸은 시간은 같은 시각에 닿는
+    길이 여럿일 때 덜 걷는 쪽을 고르는 데 쓴다.
+    """
     best = np.full(g.n_stations, INF, dtype=np.int32)
     secs = access_seconds(g, lon, lat, limit_sec, walk)
     reachable = np.isfinite(secs) & (secs <= limit_sec)
     best[reachable] = (depart_sec + secs[reachable]).astype(np.int32)
-    return best
+    return best, secs
 
 
-def relax_transfers(g: Graph, best: np.ndarray, trace: Trace | None = None) -> np.ndarray:
+def relax_transfers(g: Graph, best: np.ndarray, trace: Trace | None = None,
+                    walked: np.ndarray | None = None) -> np.ndarray:
     """역 구내 환승 간선을 한 번 완화한다."""
     if len(g.tr_to) == 0:
         return best
@@ -123,16 +128,52 @@ def relax_transfers(g: Graph, best: np.ndarray, trace: Trace | None = None) -> n
     # 경로를 복원하려면 어느 역에서 넘어왔는지도 남겨야 해서, 최솟값만 취하는
     # 대신 도착역별로 가장 빠른 후보와 그 출발역을 함께 고른다.
     dst = g.tr_to[alive]
-    keys, values, picks = _best_per_group(dst, cand)
-    improved = values < best[keys]
-    trace.set_transfer(keys[improved], values[improved], src[alive][picks][improved])
+    src_alive = src[alive]
+    if walked is None:
+        keys, values, picks = _best_per_group(dst, cand)
+        improved = values < best[keys]
+    else:
+        # 시각이 같으면 덜 걷는 쪽. 片瀬江ノ島 에서 江ノ島 까지 9분을 걸어도
+        # 目白山下 까지 15분을 걸어도 같은 모노레일을 타는데, 시각만 보면
+        # 둘이 같아 먼저 훑은 쪽이 남았다.
+        cand_walk = walked[src_alive].astype(np.int64) + g.tr_cost[alive]
+        keys, values, picks = _best_per_group(dst, cand, cand_walk)
+        wpick = cand_walk[picks]
+        improved = (values < best[keys]) | ((values == best[keys])
+                                            & (wpick < walked[keys]))
+    trace.set_transfer(keys[improved], values[improved], src_alive[picks][improved])
     best[keys[improved]] = values[improved].astype(np.int32)
+    if walked is not None:
+        walked[keys[improved]] = np.minimum(wpick[improved], INF).astype(np.int32)
     return best
 
 
-def _best_per_group(keys: np.ndarray, values: np.ndarray):
-    """키별 최솟값과 그 원소의 위치. 키 순, 값 순으로 정렬해 첫 원소를 고른다."""
-    order = np.lexsort((values, keys))
+def _least_walk_boarding(g, sel, boardable, walked, ev_stop, fallback):
+    """고른 하차 이벤트마다 같은 운행 안에서 덜 걷고 탈 수 있는 승차 이벤트.
+
+    도착 시각은 같은 운행 안이면 어디서 타든 같으므로, 여기서 고르는 것은
+    "어디서 탔다고 적을지" 뿐이다. 걸은 시간이 같으면 늦게 타는 쪽으로 둔다.
+    """
+    out = np.asarray(fallback).astype(np.int64).copy()
+    for k, e in enumerate(np.asarray(sel).tolist()):
+        start = int(g.ev_trip_start[e])
+        if e <= start:
+            continue
+        ok = np.flatnonzero(boardable[start:e])
+        if len(ok) == 0:
+            continue
+        w = walked[ev_stop[start:e][ok]].astype(np.int64)
+        out[k] = start + int(ok[np.lexsort((-ok, w))[0]])
+    return out
+
+
+def _best_per_group(keys: np.ndarray, values: np.ndarray, second=None):
+    """키별 최솟값과 그 원소의 위치. 키 순, 값 순으로 정렬해 첫 원소를 고른다.
+
+    second 를 주면 값이 같을 때 그것이 작은 쪽을 고른다(걸은 시간).
+    """
+    order = (np.lexsort((values, keys)) if second is None
+             else np.lexsort((second, values, keys)))
     k = keys[order]
     first = np.flatnonzero(np.concatenate(([True], k[1:] != k[:-1])))
     picks = order[first]
@@ -189,16 +230,22 @@ def earliest_arrivals(
     deadline = depart_sec + horizon_sec
     # 출발지에서 역까지 걷는 시간의 상한. 따로 주지 않으면 소요 시간 상한이
     # 곧 한계다 (그 안에 도착해야 하므로).
-    best = initial_labels(
+    best, access_secs = initial_labels(
         g, lon, lat, depart_sec, access_limit if access_limit is not None else horizon_sec, walk
     )
     best[best > deadline] = INF
 
     tr = Trace(g.n_stations) if trace else None
+    walked = None
     if tr is not None:
         tr.set_access(np.flatnonzero(best < INF))
+        # 역마다 여기까지 오며 걸은 시간. 등시선에는 필요 없는 셈이라
+        # 경로를 복원할 때만 센다.
+        walked = np.full(g.n_stations, INF, dtype=np.int32)
+        live = best < INF
+        walked[live] = np.minimum(access_secs[live], INF).astype(np.int32)
 
-    best = relax_transfers(g, best, tr)
+    best = relax_transfers(g, best, tr, walked)
     best[best > deadline] = INF
 
     ev_stop, ev_arr, ev_dep = g.ev_stop, g.ev_arr, g.ev_dep
@@ -228,13 +275,31 @@ def earliest_arrivals(
                 np.minimum.at(best, ev_stop[hit], ev_arr[hit])
             else:
                 idx = np.flatnonzero(hit)
-                keys, values, picks = _best_per_group(ev_stop[idx], ev_arr[idx])
-                improved = values < best[keys]
+                if walked is None:
+                    keys, values, picks = _best_per_group(ev_stop[idx], ev_arr[idx])
+                    improved = values < best[keys]
+                else:
+                    # 타고 가는 동안은 걷지 않는다. 탄 역까지 걸은 시간을 그대로 옮긴다.
+                    ride_walk = walked[ev_stop[boarded_before[idx]]].astype(np.int64)
+                    keys, values, picks = _best_per_group(ev_stop[idx], ev_arr[idx], ride_walk)
+                    wpick = ride_walk[picks]
+                    improved = (values < best[keys]) | ((values == best[keys])
+                                                        & (wpick < walked[keys]))
                 sel = idx[picks][improved]
-                tr.set_ride(keys[improved], boarded_before[sel], sel)
+                board = boarded_before[sel]
+                if walked is not None:
+                    # 도착 시각은 어느 역에서 타든 같다. 그러면 덜 걷고 타는
+                    # 역으로 적는다. 江ノ島線 片瀬江ノ島 에서 모노레일을 탈 때
+                    # 9분 걸어 湘南江の島 에서 타나 16분 걸어 目白山下 에서
+                    # 타나 같은 열차인데, 늘 늦게 타는 쪽이 적혔다.
+                    board = _least_walk_boarding(g, sel, boardable, walked,
+                                                 ev_stop, board)
+                tr.set_ride(keys[improved], board, sel)
                 best[keys[improved]] = values[improved].astype(np.int32)
+                if walked is not None:
+                    walked[keys[improved]] = np.minimum(wpick[improved], INF).astype(np.int32)
 
-        best = relax_transfers(g, best, tr)
+        best = relax_transfers(g, best, tr, walked)
         best[best > deadline] = INF
 
         if np.array_equal(best, prev):
