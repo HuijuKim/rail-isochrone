@@ -241,6 +241,10 @@ def walk_path(reg, lon: float, lat: float, station: int, limit: float) -> list[l
     return draw_on_roads(reg, [ends[0]] + path + [ends[1]])
 
 
+# 두 역이 이보다 멀면 플랫폼 이동이 아니라 밖으로 걸어 나가는 환승으로 본다.
+TRANSFER_WALK_M = 200.0
+
+
 def describe_journey(reg, legs: list[dict], best: np.ndarray, depart: int,
                      origin: tuple[float, float]) -> list[dict]:
     """복원한 구간들을 화면에 그대로 쓸 수 있는 형태로 옮긴다."""
@@ -257,13 +261,30 @@ def describe_journey(reg, legs: list[dict], best: np.ndarray, depart: int,
                 }
             )
         elif leg["type"] == "transfer":
-            out.append(
-                {
-                    "type": "transfer",
-                    "at": station_brief(reg, leg["to"]),
-                    "min": max(0, round((int(best[leg["to"]]) - int(best[leg["from"]])) / 60)),
-                }
-            )
+            # 같은 역 구내에서 플랫폼만 옮기는 환승과, 역과 역 사이를 걸어서
+            # 갈아타는 환승은 다르다. 片瀬江ノ島 에서 目白山下 까지는 1.1km 를
+            # 걷는데 "환승" 이라고만 적으면 걷는 줄 모른다. 걷는 쪽은 길을
+            # 그려 주고 도보로 표시한다.
+            a, b = leg["from"], leg["to"]
+            secs = max(0, int(best[b]) - int(best[a]))
+            item = {
+                "type": "transfer",
+                "at": station_brief(reg, b),
+                "min": round(secs / 60),
+            }
+            far = haversine_m(float(reg.coords[a, 0]), float(reg.coords[a, 1]),
+                              float(reg.coords[b, 0]), float(reg.coords[b, 1]))
+            if far > TRANSFER_WALK_M:
+                item["walk"] = True
+                item["from"] = station_brief(reg, a)
+                item["to"] = station_brief(reg, b)
+                # 환승 값은 직선거리에 1.25배를 매긴 것이라 실제 길보다
+                # 짧을 수 있다. 目白山下 는 언덕을 돌아 올라가서 한도를
+                # 빠듯하게 주면 길을 못 찾고 직선만 남는다.
+                item["path"] = walk_path(reg, float(reg.coords[a, 0]),
+                                         float(reg.coords[a, 1]), b,
+                                         max(secs * 2, secs + 300))
+            out.append(item)
         else:
             rid = reg.stops["railway"][leg["from"]]
             rail = reg.railways.get(rid, {})

@@ -954,6 +954,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       viaSummary: "까지 {ride}분, 내려서 도보 {walk}분", failed: "계산하지 못했습니다 — {msg}",
       serverSaid: "서버가 {code} 를 돌려줬습니다",
       transferAt: "{at} 에서 환승 {n}분",
+      transferWalk: "{from} 에서 {to} 까지 걸어서 갈아탑니다 {n}분",
       walkToDest: "내려서 도착지까지 도보 {n}분",
       walkFromOrigin: "출발지에서 {to} 까지 도보 {n}분",
       rideDur: "{n}분 · {stops}개 역",
@@ -1057,6 +1058,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       viaSummary: "まで{ride}分、降りて徒歩{walk}分", failed: "計算できませんでした — {msg}",
       serverSaid: "サーバーが {code} を返しました",
       transferAt: "{at} で乗換 {n}分",
+      transferWalk: "{from} から {to} まで歩いて乗り換え {n}分",
       walkToDest: "降りて目的地まで徒歩 {n}分",
       walkFromOrigin: "出発地から {to} まで徒歩 {n}分",
       rideDur: "{n}分 · {stops}駅",
@@ -1160,6 +1162,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       viaSummary: "in {ride} min, then {walk} min on foot", failed: "Could not compute — {msg}",
       serverSaid: "Server returned {code}",
       transferAt: "Transfer at {at}, {n} min",
+      transferWalk: "Walk from {from} to {to} to change, {n} min",
       walkToDest: "Walk {n} min to the destination",
       walkFromOrigin: "Walk {n} min to {to}",
       rideDur: "{n} min · {stops} stops",
@@ -1263,6 +1266,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       viaSummary: "需 {ride} 分，下车后步行 {walk} 分", failed: "无法计算 — {msg}",
       serverSaid: "服务器返回 {code}",
       transferAt: "在 {at} 换乘 {n} 分",
+      transferWalk: "从 {from} 步行到 {to} 换乘 {n} 分",
       walkToDest: "下车后步行 {n} 分到目的地",
       walkFromOrigin: "从出发地步行 {n} 分到 {to}",
       rideDur: "{n} 分 · {stops} 站",
@@ -1366,6 +1370,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       viaSummary: "需 {ride} 分，下車後步行 {walk} 分", failed: "無法計算 — {msg}",
       serverSaid: "伺服器回傳 {code}",
       transferAt: "在 {at} 換乘 {n} 分",
+      transferWalk: "從 {from} 步行到 {to} 換乘 {n} 分",
       walkToDest: "下車後步行 {n} 分到目的地",
       walkFromOrigin: "從出發地步行 {n} 分到 {to}",
       rideDur: "{n} 分 · {stops} 站",
@@ -3141,8 +3146,12 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
         return;
       }
 
-      var w = row(leg.type === "transfer" ? "transfer" : "walk");
-      if (leg.type === "transfer") {
+      var w = row(leg.type === "transfer" && !leg.walk ? "transfer" : "walk");
+      if (leg.type === "transfer" && leg.walk) {
+        // 역과 역 사이를 걸어서 갈아타는 것은 도보로 적는다
+        w.body.textContent = t("transferWalk",
+          { from: name(leg.from), to: name(leg.to), n: leg.min });
+      } else if (leg.type === "transfer") {
         w.body.textContent = t("transferAt", { at: name(leg.at), n: leg.min });
       } else if (leg.final) {
         w.body.textContent = t("walkToDest", { n: leg.min });
@@ -3159,7 +3168,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       legs
         .filter(function (leg) {
           return leg.path && leg.path.length > 1 &&
-                 (leg.type === "ride" || leg.type === "walk");
+                 (leg.type === "ride" || leg.type === "walk" || leg.walk);
         })
         .map(function (leg) {
           return leg.type === "ride"
