@@ -87,7 +87,9 @@ REGION=<권역> WALK_REUSE=1 python src/build_walk.py     # 역별 도보권
 python src/build_colors.py                   # 노선 색
 ```
 
-추출본을 훑은 결과는 `data/cache/` 에 남아, 같은 추출본을 읽는 다른 권역이 그대로 씁니다.
+추출본을 훑은 결과는 `data/cache/` 에 추출본 하나마다 한 벌씩 남습니다. 같은
+추출본을 읽는 다른 권역이 그대로 쓰고, 현을 더 고른 조합도 새로 들어온 추출본만
+훑습니다.
 간토 실제 시각표 권역만 순서가 다릅니다(`fetch_data.py` → `build_graph.py` →
 `build_walk.py` → `build_admin.py`). 검사는 `python -m pytest tests/ -q` 입니다.
 
