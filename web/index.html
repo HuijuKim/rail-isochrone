@@ -286,6 +286,10 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 .tabs [role="tab"][aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
 .combo { display: flex; flex-direction: column; gap: 14px; }
 .combo .legend-title { margin-bottom: 6px; }
+.combo-fold > summary { cursor: pointer; list-style: none; }
+.combo-fold > summary::-webkit-details-marker { display: none; }
+.combo-fold > summary::before { content: "\25b8  "; }
+.combo-fold[open] > summary::before { content: "\25be  "; }
 .combo-list, .combo-areas { display: flex; flex-direction: column; gap: 5px; }
 .combo-row { display: flex; align-items: stretch; gap: 6px; }
 .combo-row .combo-item { flex: 1 1 auto; min-width: 0; }
@@ -693,10 +697,10 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
             <div class="combo-list" id="combo-made"></div>
           </div>
           <div class="combo-job" id="combo-job" role="status" hidden></div>
-          <div>
-            <p class="legend-title" data-i18n="comboPick">현 고르기</p>
+          <details class="combo-fold" open>
+            <summary class="legend-title" data-i18n="comboPick">현 고르기</summary>
             <div class="combo-areas" id="combo-areas"></div>
-          </div>
+          </details>
           <p class="combo-plan" id="combo-plan"></p>
           <div class="combo-actions">
             <button type="button" class="primary-btn" id="combo-build" disabled
