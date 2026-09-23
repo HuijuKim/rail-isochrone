@@ -30,30 +30,18 @@ from build_walk import PBFS  # noqa: E402
 ADMIN_LEVEL = "4"
 
 
-def prefecture_polygons() -> dict[str, list[np.ndarray]]:
-    """현 이름 -> 닫힌 고리들.
+def _admin_files(pbf):
+    return osmcache.files("adminway", [pbf])
 
-    osmium 의 면 조립(with_areas)은 관계의 멤버가 하나라도 빠지면 면을 만들지
-    않는다. 도쿄도 경계에는 이즈 제도와 오가사와라가 들어 있는데 그 way 들이
-    간토 추출본 밖이라, 도쿄도가 통째로 빠진다. 시즈오카·야마나시처럼 추출본
-    가장자리에서 잘린 현도 마찬가지다.
 
-    그래서 멤버 way 를 직접 받아 이어 붙인다. 섬 쪽 조각이 없어도 본토 고리는
-    제 힘으로 닫히므로, 닫힌 고리만 남기면 된다.
-    """
+def _scan_admin(pbf):
+    """추출본 하나의 경계 조각. 관계에서 way 의 임자를, way 에서 좌표를 받는다."""
     import osmium
 
-    t0 = time.time()
-
-    # 1) 어느 way 가 어느 현에 속하는지
-    # way id -> 그 way 를 경계로 쓰는 현들. 같은 관계가 두 추출본에
-    # 들어 있으면 이름이 겹치므로 집합으로 받는다.
-    want: dict[int, set[str]] = {}
-    names: set[str] = set()
     labels: dict[str, dict[str, str]] = {}
-    for path, rel in ((p, r) for p in PBFS
-                      for r in osmium.FileProcessor(str(p)).with_filter(
-                          osmium.filter.EntityFilter(osmium.osm.RELATION))):
+    want: dict[int, set[str]] = {}
+    for rel in osmium.FileProcessor(str(pbf)).with_filter(
+            osmium.filter.EntityFilter(osmium.osm.RELATION)):
         tags = rel.tags
         if tags.get("boundary") != "administrative":
             continue
@@ -62,7 +50,6 @@ def prefecture_polygons() -> dict[str, list[np.ndarray]]:
         name = tags.get("name") or tags.get("name:ja")
         if not name:
             continue
-        names.add(name)
         labels[name] = {
             "ja": name,
             "en": tags.get("name:en") or name,
@@ -77,30 +64,113 @@ def prefecture_polygons() -> dict[str, list[np.ndarray]]:
         for member in rel.members:
             if member.type == "w":
                 want.setdefault(member.ref, set()).add(name)
-    print(f"  현 {len(names)}개, 경계 way {len(want):,}개 ({time.time() - t0:.0f}s)", flush=True)
 
-    # 2) 그 way 들의 좌표.
-    #
-    # way id 는 전역이라 두 추출본이 겹치는 영역의 way 가 두 번 들어온다.
-    # 같은 조각이 둘이면 조각과 그 복제본이 서로 맞물려 2개짜리 가짜 고리를
-    # 만들고, 정작 본토 고리는 못 닫힌다. id 로 한 번만 받는다.
-    pieces: dict[str, list[np.ndarray]] = {n: [] for n in names}
-    taken: set[int] = set()
-    for path, way in ((p, w) for p in PBFS
-                      for w in osmium.FileProcessor(str(p)).with_locations().with_filter(
-                          osmium.filter.EntityFilter(osmium.osm.WAY))):
-        owners = want.get(way.id)
-        if not owners or way.id in taken:
+    ids, arrs = [], []
+    for way in osmium.FileProcessor(str(pbf)).with_locations().with_filter(
+            osmium.filter.EntityFilter(osmium.osm.WAY)):
+        if way.id not in want:
             continue
-        pts = [(n.location.lon, n.location.lat) for n in way.nodes if n.location.valid()]
+        pts = [(n.location.lon, n.location.lat) for n in way.nodes
+               if n.location.valid()]
         if len(pts) < 2:
             continue
-        taken.add(way.id)
-        arr = np.asarray(pts, dtype=np.float64)
-        for name in owners:
+        ids.append(way.id)
+        arrs.append(np.asarray(pts, dtype=np.float64))
+    return labels, want, ids, arrs
+
+
+def _save_admin(pbf, labels, want, ids, arrs) -> None:
+    npz_path, json_path = _admin_files(pbf)
+    ptr = np.cumsum([0] + [len(a) for a in arrs])
+    np.savez_compressed(
+        npz_path,
+        ids=np.asarray(ids, dtype=np.int64),
+        pts=(np.concatenate(arrs) if arrs else np.zeros((0, 2))),
+        ptr=np.asarray(ptr, dtype=np.int64),
+    )
+    json_path.write_text(json.dumps({
+        "stamp": osmcache.stamp([pbf], _scan_admin),
+        "labels": labels,
+        "want": {str(w): sorted(n) for w, n in want.items()},
+    }, ensure_ascii=False), encoding="utf-8")
+
+
+def _load_admin(pbf):
+    """저장해 둔 추출본 하나의 경계 조각. 도장이 안 맞으면 None."""
+    npz_path, json_path = _admin_files(pbf)
+    if not npz_path.exists():
+        return None
+    meta = osmcache.read_meta(json_path, [pbf], _scan_admin)
+    if meta is None:
+        return None
+    try:
+        z = np.load(npz_path)
+    except (OSError, ValueError) as e:
+        print(f"  (저장해 둔 행정경계를 못 읽었다: {e})", flush=True)
+        return None
+    ids, pts, ptr = z["ids"], z["pts"], z["ptr"]
+    arrs = [pts[ptr[i]:ptr[i + 1]] for i in range(len(ids))]
+    want = {int(w): set(n) for w, n in meta["want"].items()}
+    return meta["labels"], want, [int(w) for w in ids], arrs
+
+
+def prefecture_polygons() -> dict[str, list[np.ndarray]]:
+    """현 이름 -> 닫힌 고리들.
+
+    osmium 의 면 조립(with_areas)은 관계의 멤버가 하나라도 빠지면 면을 만들지
+    않는다. 도쿄도 경계에는 이즈 제도와 오가사와라가 들어 있는데 그 way 들이
+    간토 추출본 밖이라, 도쿄도가 통째로 빠진다. 시즈오카·야마나시처럼 추출본
+    가장자리에서 잘린 현도 마찬가지다.
+
+    그래서 멤버 way 를 직접 받아 이어 붙인다. 섬 쪽 조각이 없어도 본토 고리는
+    제 힘으로 닫히므로, 닫힌 고리만 남기면 된다.
+
+    훑기는 추출본 하나에만 매이므로 캐시도 하나씩 둔다. 현 경계가 추출본을
+    넘어가도 괜찮다. 경계 way 가 놓인 추출본에는 그 way 를 멤버로 둔 관계도
+    함께 들어 있어서, 조각을 다 모은 뒤에 이으면 고리가 닫힌다.
+    """
+    t0 = time.time()
+    rescan = os.environ.get("ADMIN_RESCAN") == "1"
+
+    # 1) 추출본 하나씩 읽어 모은다. way id 는 전역이라 겹치는 영역의 way 가
+    #    두 번 들어온다. 같은 조각이 둘이면 조각과 그 복제본이 서로 맞물려
+    #    2개짜리 가짜 고리를 만들고, 정작 본토 고리는 못 닫힌다. 먼저 읽은
+    #    것만 받는다.
+    labels: dict[str, dict[str, str]] = {}
+    want: dict[int, set[str]] = {}
+    taken: set[int] = set()
+    order: list[tuple[int, np.ndarray]] = []
+    for pbf in PBFS:
+        part = None if rescan else _load_admin(pbf)
+        if part is not None:
+            print(f"  저장해 둔 행정경계를 다시 쓴다: {pbf.name}", flush=True)
+        else:
+            part = _scan_admin(pbf)
+            print(f"  행정경계 훑기: {pbf.name} (현 {len(part[0])}개, "
+                  f"경계 way {len(part[2]):,}개)", flush=True)
+            try:
+                _save_admin(pbf, *part)
+            except Exception as e:  # 캐시를 못 써도 빌드는 계속한다
+                print(f"  (행정경계를 저장하지 못했다: {e})", flush=True)
+        plabels, pwant, ids, arrs = part
+        labels.update(plabels)
+        for w, names in pwant.items():
+            want.setdefault(w, set()).update(names)
+        for w, arr in zip(ids, arrs):
+            if w in taken:
+                continue
+            taken.add(w)
+            order.append((w, arr))
+    print(f"  현 {len(labels)}개, 경계 way {len(want):,}개 "
+          f"({time.time() - t0:.0f}s)", flush=True)
+
+    # 2) 조각을 현별로 나눠 담고
+    pieces: dict[str, list[np.ndarray]] = {n: [] for n in labels}
+    for w, arr in order:
+        for name in want.get(w, ()):
             pieces[name].append(arr)
 
-    # 3) 조각을 이어 고리로
+    # 3) 이어 고리로
     out: dict[str, list[np.ndarray]] = {}
     for name, parts in pieces.items():
         rings = _stitch(parts)
@@ -451,59 +521,13 @@ def check_outline(lines, scale):
         print(f"  !! 닫히지 않은 고리가 {bad_open}개 있습니다", flush=True)
 
 
-# 행정경계 뽑기(80초)와 해안선 자르기(115초)는 역 목록과 무관하다. 같은
-# 추출본이면 결과가 같으므로, build_rail 을 다시 돌려 역 번호만 밀렸을
-# 때는 2단계(역에 현 붙이기)만 하면 된다. 3분 16초가 몇 초로 준다.
+# 해안선 자르기(115초)는 역 목록과 무관하다. 같은 추출본이면 결과가 같으므로,
+# build_rail 을 다시 돌려 역 번호만 밀렸을 때는 2단계(역에 현 붙이기)만 하면
+# 된다. 3분 16초가 몇 초로 준다.
 #
 #     REGION=<권역> ADMIN_REUSE=1 python src/build_admin.py
 #
 # 켤 때만 쓴다. PBF 를 새로 받았으면 그냥 전부 다시 돌린다.
-def _poly_cache_path():
-    # 행정경계는 추출본에만 매인다. 권역 폴더가 아니라 공용 캐시에 둔다.
-    return osmcache.files("admin", PBFS, ".npz")[0]
-
-
-def _save_polygons(polygons, labels) -> None:
-    names, owner, pts, ptr = [], [], [], [0]
-    for i, (key, rings) in enumerate(sorted(polygons.items())):
-        names.append(key)
-        for r in rings:
-            a = np.asarray(r, dtype=np.float64)
-            owner.append(i)
-            pts.append(a)
-            ptr.append(ptr[-1] + len(a))
-    if not pts:
-        return
-    path = _poly_cache_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(
-        path,
-        stamp=np.array(json.dumps(osmcache.stamp(PBFS, prefecture_polygons))),
-        names=np.array(names, dtype=object),
-        labels=np.array(json.dumps(labels, ensure_ascii=False)),
-        owner=np.array(owner, dtype=np.int32),
-        pts=np.concatenate(pts),
-        ptr=np.array(ptr, dtype=np.int64),
-    )
-
-
-def _load_polygons():
-    path = _poly_cache_path()
-    if not path.exists():
-        return None, None
-    z = np.load(path, allow_pickle=True)
-    if "stamp" not in z or json.loads(str(z["stamp"])) != osmcache.stamp(PBFS, prefecture_polygons):
-        print("  (저장해 둔 행정경계가 지금 파일·코드와 안 맞아 다시 훑는다)", flush=True)
-        return None, None
-    names = [str(x) for x in z["names"]]
-    labels = json.loads(str(z["labels"]))
-    pts, ptr, owner = z["pts"], z["ptr"], z["owner"]
-    out = {n: [] for n in names}
-    for k, who in enumerate(owner):
-        out[names[int(who)]].append(pts[ptr[k]:ptr[k + 1]])
-    return out, labels
-
-
 def main() -> None:
     missing = [p for p in PBFS if not p.exists()]
     if missing:
@@ -513,23 +537,15 @@ def main() -> None:
         sys.exit(f"역 목록이 없습니다: {stops_path}")
 
     # ADMIN_REUSE 는 "3) 권역 경계 자르기" 를 건너뛸지만 정한다. 행정경계
-    # 자체는 추출본에만 매이므로 도장이 맞으면 언제나 다시 쓴다.
+    # 자체는 추출본 캐시에서 오므로 늘 다시 쓴다.
     # 결과를 담을 자리. 예전에는 행정경계 캐시를 권역 폴더에 쓰면서 덩달아
     # 생겼는데, 캐시를 공용으로 옮긴 뒤로는 여기서 만들어야 한다.
     (BASE / "raw").mkdir(parents=True, exist_ok=True)
     reuse = os.environ.get("ADMIN_REUSE") == "1"
-    polygons, labels = _load_polygons()
-    if polygons:
-        print(f"1) 저장해 둔 행정경계를 다시 쓴다 (현 {len(polygons)}개)", flush=True)
+    print("1) 행정경계 추출", flush=True)
+    polygons, labels = prefecture_polygons()
     if not polygons:
-        print("1) 행정경계 추출", flush=True)
-        polygons, labels = prefecture_polygons()
-        if not polygons:
-            sys.exit("admin_level=4 경계를 찾지 못했습니다.")
-        try:
-            _save_polygons(polygons, labels)
-        except Exception as e:      # 캐시를 못 써도 빌드는 계속한다
-            print(f"  (행정경계를 저장하지 못했습니다: {e})", flush=True)
+        sys.exit("admin_level=4 경계를 찾지 못했습니다.")
 
     print("2) 역에 현 붙이기", flush=True)
     stops = json.loads(stops_path.read_text(encoding="utf-8"))
