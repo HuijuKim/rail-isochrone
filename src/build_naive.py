@@ -492,9 +492,15 @@ def build(railways, express, pos, seg_head, seg_km, km, scale):
                 # 있지 않으므로 직선 거리로 잡는다.
                 legs.append([(km(a, b) * DETOUR * 1000.0, "rail_e")])
         base = float(np.median(unders)) if unders else 20.0
+        head = min(base * EXP_MULT, HONSU_CAP if USE_HONSU else HEADWAY_CAP)
+        # 계통 배차를 손으로 적은 것(line-headways.json 의 per_hour). 운행 횟수
+        # 자료는 구간 합계라 계통마다 가를 수 없다. 快速マリンライナー 는 30분
+        # 간격인데 밑 노선 배차의 두 배(62분)로 깔려 岡山-高松 이 80분이 됐다.
+        per_hour = (hand.get(e.get("name") or "") or {}).get("per_hour")
+        if per_hour:
+            head = 60.0 / float(per_hour)
         # 직통 운전은 각역정차라 빠르게 달리지 않는다
-        lay(f"{on[0][0]}|exp{n}", [row_of[k] for k in on],
-            min(base * EXP_MULT, HONSU_CAP if USE_HONSU else HEADWAY_CAP), legs,
+        lay(f"{on[0][0]}|exp{n}", [row_of[k] for k in on], head, legs,
             fast=e["kind"] != "직통", pat=len(pats))
         pats.append({"kind": e["kind"], "name": e.get("name", ""),
                      "railway": on[0][0]})

@@ -1516,6 +1516,16 @@ def main():
     return _build(pbfs, rel, ways, nodes)
 
 
+def train_name(raw: str) -> str:
+    """계통 이름을 열차 이름으로. "マリンライナー (Marine Liner)",
+    "うずしお Uzushio" 처럼 붙은 괄호·영문 꼬리를 뗀다. base_name 은 종별 글자를
+    떼느라 マリンライナー 를 통째로 지우므로, 비면 괄호만 뗀 이름을 쓴다."""
+    s = base_name(raw) or PAREN_RE.sub("", raw or "").strip()
+    if re.search(r"[\u3040-\u30ff\u4e00-\u9fff]", s):
+        s = re.sub(r"\s+[A-Za-z][A-Za-z .'\-]*$", "", s).strip()
+    return s or (raw or "").strip()
+
+
 def is_nickname(name: str) -> bool:
     """열차 애칭만 적힌 이름인가. 南風·こうのとり 처럼 노선 이름이 없다."""
     return bool(LTD_EXPRESS.match((name or "").strip()))
@@ -2251,7 +2261,7 @@ def _build(pbfs, rel, ways, nodes):
             # 따로 깔 것이 없다(운행은 왕복 모두 깐다).
             continue
         item = {"railway": lines[k]["lid"], "kind": r["kind"] or "부분",
-                "name": base_name(r["name"]) or r["name"], "clusters": r["seq"]}
+                "name": train_name(r["name"]), "clusters": r["seq"]}
         # 붙은 노선에 없는 역을 품은 특급·쾌속. しおかぜ 는 予讃線 계통으로 붙었는데
         # 岡山·児島 가 予讃線 에 없어, 운행을 깔 때 그 둘이 떨어져 宇多津 부터만
         # 달렸다. 역마다 밟을 노선을 정해 여러 노선을 이어 달리게 한다.
@@ -2274,7 +2284,7 @@ def _build(pbfs, rel, ways, nodes):
         if THROUGH_RUN.search(rep["name"]):
             kind, name = "직통", ""
         else:
-            kind, name = rep["kind"] or "특급", base_name(rep["name"]) or rep["name"]
+            kind, name = rep["kind"] or "특급", train_name(rep["name"])
         express.append({"railway": rows[0][0], "kind": kind, "name": name,
                         "clusters": lines[k]["seq"], "rows": rows})
 
