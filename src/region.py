@@ -405,7 +405,11 @@ def load(region_id: str) -> Region:
             for lang, v in got.items():
                 if lang == "ja" or lang not in stops:
                     continue
-                if not (stops[lang][i] or "").strip():
+                have = (stops[lang][i] or "").strip()
+                # 한국어 칸에 로마자가 든 원본이 있다(ODPT 의 海芝浦 는
+                # "Umi-Shibaura"). 한글이 없으면 사전 것으로 바꾼다.
+                if not have or (lang == "ko" and not _HANGUL.search(have)
+                                and _HANGUL.search(v or "")):
                     stops[lang][i] = v
 
     index, groups, n_groups = build_search_index(
@@ -1011,6 +1015,7 @@ def _operator_label(railway: dict) -> dict:
     return {}
 
 
+_HANGUL = _re.compile(r"[가-힣]")
 _LOOSE_DIR = _re.compile(
     r"\s*[(（]\s*(?:内回り|外回り|右回り|左回り|上り|下り|内回|外回)\s*[)）]\s*$")
 _LOOSE_ARROW = _re.compile(r"\s*[(（][^()（）]*(?:=>|->|→|⇒)[^()（）]*[)）]?\s*$")
