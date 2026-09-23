@@ -139,10 +139,10 @@ def _way_attrs(tags):
             None if tracks is None else tracks >= 2)
 
 
-def _load_tracks(pbfs):
+def _load_tracks(pbf):
     """저장해 둔 선로 훑기. 도장이 안 맞으면 None."""
-    npz_path, json_path = osmcache.files("track", pbfs)
-    meta = (osmcache.read_meta(json_path, pbfs, Tracks, _way_attrs)
+    npz_path, json_path = osmcache.files("track", [pbf])
+    meta = (osmcache.read_meta(json_path, [pbf], Tracks, _way_attrs)
             if npz_path.exists() else None)
     if meta is None:
         return None
@@ -161,8 +161,8 @@ def _load_tracks(pbfs):
     return tr
 
 
-def _save_tracks(pbfs, tr) -> None:
-    npz_path, json_path = osmcache.files("track", pbfs)
+def _save_tracks(pbf, tr) -> None:
+    npz_path, json_path = osmcache.files("track", [pbf])
     ptr = np.cumsum([0] + [len(w) for w in tr.ways])
     ids = sorted(tr.pos)
     np.savez_compressed(
@@ -174,7 +174,7 @@ def _save_tracks(pbfs, tr) -> None:
         node_xy=np.asarray([tr.pos[n] for n in ids], dtype=np.float64).reshape(-1, 2),
     )
     json_path.write_text(json.dumps({
-        "stamp": osmcache.stamp(pbfs, Tracks, _way_attrs),
+        "stamp": osmcache.stamp([pbf], Tracks, _way_attrs),
         "names": tr.names,
         "attrs": tr.attrs,
     }, ensure_ascii=False), encoding="utf-8")
@@ -182,6 +182,38 @@ def _save_tracks(pbfs, tr) -> None:
 
 class _Bag:
     """핸들러 자리에 끼울 껍데기."""
+
+
+def scan_tracks(pbfs):
+    """추출본을 하나씩 읽어 합친다. 훑은 결과는 추출본 하나에만 매이므로
+    캐시도 하나씩 둔다. 추출본을 더 넣은 권역은 새 것만 훑으면 된다.
+
+    합치는 규칙은 핸들러 하나로 여러 파일을 읽을 때와 같다. 웨이는 읽은
+    차례대로 잇고(겹치는 영역의 웨이가 두 번 들어가는 것까지 그대로),
+    노드 좌표는 먼저 읽은 것을 남긴다.
+    """
+    rescan = os.environ.get("TRACK_RESCAN") == "1"
+    out = _Bag()
+    out.ways, out.names, out.attrs, out.pos = [], [], [], {}
+    for pbf in pbfs:
+        part = None if rescan else _load_tracks(pbf)
+        if part is not None:
+            print(f"  저장해 둔 선로 훑기를 다시 쓴다: {pbf.name}", flush=True)
+        else:
+            part = Tracks()
+            part.apply_file(str(pbf), locations=True, idx="flex_mem")
+            print(f"  선로 훑기: {pbf.name} "
+                  f"(웨이 {len(part.ways):,}개)", flush=True)
+            try:
+                _save_tracks(pbf, part)
+            except Exception as e:      # 캐시를 못 써도 빌드는 계속한다
+                print(f"  (선로 훑기를 저장하지 못했다: {e})", flush=True)
+        out.ways.extend(part.ways)
+        out.names.extend(part.names)
+        out.attrs.extend(part.attrs)
+        for n, xy in part.pos.items():
+            out.pos.setdefault(n, xy)
+    return out
 
 
 def build_edges(ways, pos, scale):
@@ -308,17 +340,7 @@ def main() -> None:
     pbfs = _pbf_list()
     print("[" + REGION + "] 선로 읽는 중: "
           + ", ".join(p.name for p in pbfs), flush=True)
-    tr = None if os.environ.get("TRACK_RESCAN") == "1" else _load_tracks(pbfs)
-    if tr is not None:
-        print(f"  저장해 둔 선로 훑기를 다시 쓴다", flush=True)
-    else:
-        tr = Tracks()
-        for p in pbfs:
-            tr.apply_file(str(p), locations=True, idx="flex_mem")
-        try:
-            _save_tracks(pbfs, tr)
-        except Exception as e:      # 캐시를 못 써도 빌드는 계속한다
-            print(f"  (선로 훑기를 저장하지 못했다: {e})", flush=True)
+    tr = scan_tracks(pbfs)
     print(f"  철도 웨이 {len(tr.ways):,}개, 선로 노드 {len(tr.pos):,}개", flush=True)
 
     edges, xy, x, y = build_edges(tr.ways, tr.pos, scale)
