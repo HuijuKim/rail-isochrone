@@ -1072,6 +1072,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       comboCancelled: "멈췄습니다", comboCancelFailed: "빌드를 멈추지 못했습니다", comboListFailed: "현 목록을 받지 못했습니다: {msg}",
       comboStateBuilt: "빌드됨", comboStateIncomplete: "미완성", comboStateBuilding: "만드는 중",
       comboAdjacent: "고른 현과 이어진 현만 켜집니다. 다리로 이어진 곳(岡山·香川)도 이어진 것으로 봅니다.",
+      comboPivot: "이 현을 빼면 남은 현이 서로 떨어집니다. 바깥쪽 현부터 빼 주세요.",
       comboDelete: "지우기", comboDeleteAsk: "{name} 을(를) 지울까요? 만들어 둔 데이터가 사라집니다.",
       comboDeleteFailed: "지우지 못했습니다",
       stationCount: "(역 {n})"
@@ -1183,6 +1184,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       comboCancelled: "中止しました", comboCancelFailed: "ビルドを中止できませんでした", comboListFailed: "県の一覧を取得できませんでした: {msg}",
       comboStateBuilt: "ビルド済み", comboStateIncomplete: "未完成", comboStateBuilding: "作成中",
       comboAdjacent: "選んだ県と隣り合う県だけ選べます。橋でつながる県（岡山・香川）も隣として扱います。",
+      comboPivot: "この県を外すと残りが離れてしまいます。外側の県から外してください。",
       comboDelete: "削除", comboDeleteAsk: "{name} を削除しますか？ 作成したデータは消えます。",
       comboDeleteFailed: "削除できませんでした",
       stationCount: "(駅 {n})"
@@ -1293,6 +1295,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       comboCancel: "Stop build", comboCancelAsk: "Stop the build? What has been built so far stays; you can rebuild or delete it.", comboCancelled: "Stopped", comboCancelFailed: "Could not stop the build",
       comboStateBuilt: "built", comboStateIncomplete: "incomplete", comboStateBuilding: "building",
       comboAdjacent: "Only prefectures next to your picks stay enabled. Bridge links (Okayama-Kagawa) count as adjacent.",
+      comboPivot: "Dropping this one would split the rest. Drop an outer prefecture first.",
       comboDelete: "Delete", comboDeleteAsk: "Delete {name}? The built data is removed.",
       comboDeleteFailed: "Could not delete it",
       stationCount: "({n} stations)"
@@ -1403,6 +1406,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       comboCancel: "停止构建", comboCancelAsk: "要停止构建吗？已完成的部分会保留，可以重新构建或删除。", comboCancelled: "已停止", comboCancelFailed: "无法停止构建",
       comboStateBuilt: "已构建", comboStateIncomplete: "未完成", comboStateBuilding: "建立中",
       comboAdjacent: "只能选择与已选县相邻的县。由桥梁连接的（冈山·香川）也算相邻。",
+      comboPivot: "取消这个县会让其余的县断开。请先取消外侧的县。",
       comboDelete: "删除", comboDeleteAsk: "要删除 {name} 吗？已建的数据会消失。",
       comboDeleteFailed: "无法删除",
       stationCount: "({n} 站)"
@@ -1513,6 +1517,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       comboCancel: "停止建置", comboCancelAsk: "要停止建置嗎？已完成的部分會保留，可以重新建置或刪除。", comboCancelled: "已停止", comboCancelFailed: "無法停止建置",
       comboStateBuilt: "已建置", comboStateIncomplete: "未完成", comboStateBuilding: "建立中",
       comboAdjacent: "只能選擇與已選縣相鄰的縣。由橋樑連接的（岡山·香川）也算相鄰。",
+      comboPivot: "取消這個縣會讓其餘的縣斷開。請先取消外側的縣。",
       comboDelete: "刪除", comboDeleteAsk: "要刪除 {name} 嗎？已建的資料會消失。",
       comboDeleteFailed: "無法刪除",
       stationCount: "({n} 站)"
@@ -4503,6 +4508,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
         a.prefectures.forEach(function (p) { if (p.ok) ok[p.ja] = true; });
       });
       combo.pick = combo.pick.filter(function (ja) { return ok[ja]; });
+      // 저장해 둔 고름이 떨어져 있을 수 있다(가운데 현을 끄던 판에서 남은 것).
+      combo.pick = reachable(combo.pick, neighborMap(data));
       renderCombo();
       schedulePlan();
       if (data.job && data.job.started && !data.job.ended) pollCombo();
@@ -4510,6 +4517,34 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     }).catch(function (err) {
       el("combo-areas").textContent = t("comboListFailed", { msg: err.message });
     });
+  }
+
+  function neighborMap(d) {
+    var map = {};
+    d.areas.forEach(function (a) {
+      a.prefectures.forEach(function (p) { map[p.ja] = p.neighbors || []; });
+    });
+    return map;
+  }
+
+  // 첫 현에서 이웃을 따라 닿는 것만. 조합은 철도로 이어져야 하므로 떨어진
+  // 현이 섞이면 안 된다.
+  function reachable(list, map) {
+    if (list.length < 2) return list.slice();
+    var out = [list[0]], rest = list.slice(1), grew = true;
+    while (grew) {
+      grew = false;
+      for (var i = rest.length - 1; i >= 0; i--) {
+        for (var k = 0; k < out.length; k++) {
+          if ((map[out[k]] || []).indexOf(rest[i]) >= 0) {
+            out.push(rest.splice(i, 1)[0]);
+            grew = true;
+            break;
+          }
+        }
+      }
+    }
+    return out;
   }
 
   function renderCombo() {
@@ -4566,6 +4601,10 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     // 떨어진 현을 함께 고르면 철도로 못 잇는 권역이 된다. 고른 것과 맞닿은
     // 현만 켜 둔다. 바다 위 경계도 맞닿은 것으로 치므로 瀬戸大橋(岡山-香川),
     // しまなみ海道(広島-愛媛) 처럼 다리로 이어진 곳은 그대로 고를 수 있다.
+    // 가운데 현을 끄면 나머지가 둘로 갈린다. 후쿠오카·사가·나가사키에서
+    // 사가를 끄면 후쿠오카와 나가사키만 남아 철도로 못 잇는다. 빼도 나머지가
+    // 이어지는 현만 끌 수 있게 한다.
+    var nb = neighborMap(d);
     var allowed = null;
     if (combo.pick.length) {
       allowed = {};
@@ -4590,9 +4629,13 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
         c.type = "button";
         c.className = "chip";
         c.textContent = comboPrefLabel(p);
-        c.disabled = !p.ok || (allowed && !allowed[p.ja]);
-        c.setAttribute("aria-pressed", combo.pick.indexOf(p.ja) >= 0 ? "true" : "false");
-        if (p.ok) c.title = p.ja + " " + t("stationCount", { n: p.stations.toLocaleString() });
+        var picked = combo.pick.indexOf(p.ja) >= 0;
+        var rest = combo.pick.filter(function (x) { return x !== p.ja; });
+        var pivot = picked && reachable(rest, nb).length !== rest.length;
+        c.disabled = !p.ok || pivot || (allowed && !allowed[p.ja]);
+        c.setAttribute("aria-pressed", picked ? "true" : "false");
+        if (pivot) c.title = t("comboPivot");
+        else if (p.ok) c.title = p.ja + " " + t("stationCount", { n: p.stations.toLocaleString() });
         c.addEventListener("click", function () {
           var i = combo.pick.indexOf(p.ja);
           if (i >= 0) combo.pick.splice(i, 1); else combo.pick.push(p.ja);
