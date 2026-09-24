@@ -450,47 +450,109 @@ def snap_stations(node_cell: np.ndarray, coords: np.ndarray) -> np.ndarray:
     return snapped
 
 
-def build_sheds(indptr, indices, data, n_nodes: int, node_shed: np.ndarray,
-                station_nodes: np.ndarray) -> dict:
-    """역마다 MAX_SHED_SEC 안의 도보권을 계산해 이어 붙인다.
+def shed_of(indptr, indices, data, node_shed: np.ndarray, source: int,
+            dist: np.ndarray) -> tuple[np.ndarray, np.ndarray] | None:
+    """역 하나의 도보권: (저장 칸, 초). 닿는 칸이 없으면 None.
 
     계산은 촘촘한 그래프 위에서 하고, 결과는 성긴 저장용 격자로 내려 담는다.
     한 저장 칸에 여러 노드가 들어가면 그중 가장 빠른 시간만 남긴다.
     """
-    dist = np.full(n_nodes, np.inf, dtype=np.float64)
+    touched: list[int] = []
+    bounded_dijkstra(indptr, indices, data, int(source), MAX_SHED_SEC, dist, touched)
+
+    nodes = np.fromiter(set(touched), dtype=np.int32, count=-1)
+    secs = dist[nodes]
+    dist[nodes] = np.inf  # 다음 역을 위해 되돌린다
+
+    cells = node_shed[nodes]
+    ok = cells >= 0
+    cells, secs = cells[ok], secs[ok]
+    if len(cells) == 0:
+        return None
+
+    # 저장 칸별 최솟값
+    order = np.argsort(cells, kind="stable")
+    cells, secs = cells[order], secs[order]
+    starts = np.flatnonzero(np.concatenate(([True], cells[1:] != cells[:-1])))
+    cells = cells[starts]
+    secs = np.minimum.reduceat(secs, starts)
+    return cells.astype(np.int32), secs.astype(np.float32)
+
+
+# 도보권은 역마다 따로 도는 파이썬 다익스트라라 코어 하나로는 간토 다섯 현
+# 2,409역에 40초가 걸린다. 역을 묶음으로 나눠 여러 프로세스에 돌린다. 그래프는
+# 공유 메모리에 한 벌만 올리고 프로세스들이 함께 읽는다. 8개로 10초인데,
+# 16개로 늘려도 9초라(코어 14개 노트북) 8개에서 멈춘다.
+SHED_WORKERS = min(os.cpu_count() or 1, 8)
+SHED_CHUNK = 32         # 한 번에 넘기는 역 수. 작을수록 느린 역이 고르게 흩어진다
+_worker: dict = {}
+
+
+def _shed_init(specs: dict) -> None:
+    from multiprocessing import shared_memory
+    for key, (name, dtype, shape) in specs.items():
+        shm = shared_memory.SharedMemory(name=name)
+        _worker[key + "_shm"] = shm         # 붙잡아 두지 않으면 버퍼가 닫힌다
+        _worker[key] = np.ndarray(shape, dtype=dtype, buffer=shm.buf)
+    _worker["dist"] = np.full(len(_worker["indptr"]) - 1, np.inf, dtype=np.float64)
+
+
+def _shed_chunk(sources: np.ndarray) -> list:
+    w = _worker
+    return [shed_of(w["indptr"], w["indices"], w["data"], w["node_shed"], s, w["dist"])
+            if s >= 0 else None for s in sources]
+
+
+def _sheds_parallel(indptr, indices, data, node_shed, station_nodes):
+    """역 차례대로 shed_of 결과를 내놓는다. 여러 프로세스가 나눠 계산한다."""
+    from concurrent.futures import ProcessPoolExecutor
+    from multiprocessing import shared_memory
+
+    arrays = {"indptr": indptr, "indices": indices, "data": data, "node_shed": node_shed}
+    shms, specs = [], {}
+    try:
+        for key, a in arrays.items():
+            a = np.ascontiguousarray(a)
+            shm = shared_memory.SharedMemory(create=True, size=max(a.nbytes, 1))
+            shms.append(shm)
+            np.ndarray(a.shape, dtype=a.dtype, buffer=shm.buf)[...] = a
+            specs[key] = (shm.name, a.dtype.str, a.shape)
+        chunks = [station_nodes[i:i + SHED_CHUNK]
+                  for i in range(0, len(station_nodes), SHED_CHUNK)]
+        with ProcessPoolExecutor(SHED_WORKERS, initializer=_shed_init,
+                                 initargs=(specs,)) as ex:
+            for part in ex.map(_shed_chunk, chunks):
+                yield from part
+    finally:
+        for shm in shms:
+            shm.close()
+            shm.unlink()
+
+
+def build_sheds(indptr, indices, data, n_nodes: int, node_shed: np.ndarray,
+                station_nodes: np.ndarray) -> dict:
+    """역마다 MAX_SHED_SEC 안의 도보권을 계산해 이어 붙인다."""
     shed_cell: list[np.ndarray] = []
     shed_sec: list[np.ndarray] = []
     ptr = [0]
 
+    # 역이 몇 안 되면 프로세스를 띄우는 값이 더 든다
+    if SHED_WORKERS > 1 and len(station_nodes) >= 4 * SHED_CHUNK:
+        print(f"  프로세스 {SHED_WORKERS}개로 나눠 계산", flush=True)
+        results = _sheds_parallel(indptr, indices, data, node_shed, station_nodes)
+    else:
+        dist = np.full(n_nodes, np.inf, dtype=np.float64)
+        results = (shed_of(indptr, indices, data, node_shed, s, dist) if s >= 0 else None
+                   for s in station_nodes)
+
     t0 = time.time()
-    for i, source in enumerate(station_nodes):
-        if source < 0:
+    for i, got in enumerate(results):
+        if got is None:
             ptr.append(ptr[-1])
-            continue
-        touched: list[int] = []
-        bounded_dijkstra(indptr, indices, data, int(source), MAX_SHED_SEC, dist, touched)
-
-        nodes = np.fromiter(set(touched), dtype=np.int32, count=-1)
-        secs = dist[nodes]
-        dist[nodes] = np.inf  # 다음 역을 위해 되돌린다
-
-        cells = node_shed[nodes]
-        ok = cells >= 0
-        cells, secs = cells[ok], secs[ok]
-        if len(cells) == 0:
-            ptr.append(ptr[-1])
-            continue
-
-        # 저장 칸별 최솟값
-        order = np.argsort(cells, kind="stable")
-        cells, secs = cells[order], secs[order]
-        starts = np.flatnonzero(np.concatenate(([True], cells[1:] != cells[:-1])))
-        cells = cells[starts]
-        secs = np.minimum.reduceat(secs, starts)
-
-        shed_cell.append(cells.astype(np.int32))
-        shed_sec.append(secs.astype(np.float32))
-        ptr.append(ptr[-1] + len(cells))
+        else:
+            shed_cell.append(got[0])
+            shed_sec.append(got[1])
+            ptr.append(ptr[-1] + len(got[0]))
 
         if (i + 1) % 500 == 0:
             print(
