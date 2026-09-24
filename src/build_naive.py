@@ -380,6 +380,13 @@ def build(railways, express, pos, seg_head, seg_km, km, scale):
             return [(float(v["len"]), seg_class(v))]
         return [(seg_km.get((a, b), km(a, b) * DETOUR) * 1000.0, "rail_e")]
 
+    # 첫차 위상의 열쇠. 노선 id 는 빌드 순서로 붙는 번호(OSM.0, OSM.2 ...)라 같은
+    # 노선도 권역마다 달라서, 같은 역에서 떠나도 고른 현에 따라 시각표가 통째로
+    # 어긋났다(간토 5현과 7현 조합에서 공통 id 112개 중 같은 노선은 18개). 노선
+    # 이름과 운영사로 정한다. 급행 계통은 계통 이름과 종별로 정한다.
+    line_key_of = {r["id"]: (r["title"].get("ja") or r["id"]) + "@" + (r.get("operator") or "")
+                   for r in railways}
+
     ev_stop, ev_arr, ev_dep, trip_start = [], [], [], []
     # 운행 -> 계통 번호. 각역정차(노선 그 자체)는 -1 이다. 경로 패널이
     # "세토오하시선 · 특급 南風" 처럼 적으려면 운행마다 이것이 있어야 한다.
@@ -442,14 +449,14 @@ def build(railways, express, pos, seg_head, seg_km, km, scale):
         fast = bool(FAST_NAME.search(r["title"].get("ja", "")))
         full = max(heads)
         seq = [row_of[(r["id"], c)] for c in cs]
-        lay(r["id"] + "|full", seq, full, legs, fast=fast)
+        lay(line_key_of[r["id"]] + "|full", seq, full, legs, fast=fast)
         for i, j, h in runs_of(heads):
             if h >= full - 1e-6:
                 continue
             extra = 1.0 / max(1.0 / h - 1.0 / full, 1e-6)
             if extra > cap:
                 continue
-            lay(f"{r['id']}|{i}", seq[i:j + 1], extra, legs[i:j], fast=fast)
+            lay(f"{line_key_of[r['id']]}|{i}", seq[i:j + 1], extra, legs[i:j], fast=fast)
 
     # 통과 계통. 같은 역 줄 위를 건너뛰며 달린다.
     # 한 역이 두 번 실린 관계에서는 첫 자리를 쓴다. 마지막 자리를 쓰면
@@ -500,7 +507,8 @@ def build(railways, express, pos, seg_head, seg_km, km, scale):
         if per_hour:
             head = 60.0 / float(per_hour)
         # 직통 운전은 각역정차라 빠르게 달리지 않는다
-        lay(f"{on[0][0]}|exp{n}", [row_of[k] for k in on], head, legs,
+        lay(f"{line_key_of.get(on[0][0], on[0][0])}|exp:{e.get('name') or ''}:{e['kind']}",
+            [row_of[k] for k in on], head, legs,
             fast=e["kind"] != "직통", pat=len(pats))
         pats.append({"kind": e["kind"], "name": e.get("name", ""),
                      "railway": on[0][0]})
