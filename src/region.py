@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import functools
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -19,7 +20,9 @@ import numpy as np
 import geometry as geometry_mod
 
 ROOT = Path(__file__).resolve().parent.parent
-REGIONS_DIR = ROOT / "data" / "regions"
+# 전국 권역(실험)은 data/national/regions/ 에 따로 둔다. 원래 서버와 조합 빌드가
+# 기존 권역을 훑을 때 섞이지 않게. 그 서버는 REGIONS_DIR 로 이곳을 가리킨다.
+REGIONS_DIR = Path(os.environ.get("REGIONS_DIR") or ROOT / "data" / "regions")
 
 # 화면이 고를 수 있는 언어. 역 이름을 이만큼 내보낸다.
 LANGS = ("ja", "en", "ko", "zh-Hans", "zh-Hant")

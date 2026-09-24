@@ -70,7 +70,7 @@ def named_lines() -> dict:
 def main() -> None:
     base = REGIONS / REGION
     meta = json.loads((base / "region.json").read_text(encoding="utf-8"))
-    if not meta.get("custom"):
+    if not (meta.get("custom") or meta.get("national")):
         print("현 조합 권역이 아니라 건너뛴다", flush=True)
         return
     known = named_lines()

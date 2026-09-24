@@ -70,6 +70,33 @@ def load_graph(path) -> Graph:
     )
 
 
+def restrict(g: Graph, keep: np.ndarray) -> Graph:
+    """keep 인 역에 서는 정차 기록만 남긴 그래프. 운행은 밖으로 나가는 자리에서 끊는다.
+
+    전국 그래프에서 현 몇 개만 골라 쓸 때 쓴다. 고른 현만으로 따로 빌드한 것처럼
+    현 밖을 지나 다시 들어오는 운행도 이어 타지 못한다. 역 번호는 그대로 둔다.
+    """
+    idx = np.flatnonzero(keep[g.ev_stop])
+    new = np.ones(len(idx), dtype=bool)
+    new[1:] = (idx[1:] != idx[:-1] + 1) | (g.ev_trip_start[idx[1:]] == idx[1:])
+    starts = np.flatnonzero(new)
+    trip_start = np.append(starts, len(idx)).astype(g.trip_start.dtype)
+    counts = np.diff(g.tr_ptr)
+    src = np.repeat(np.arange(g.n_stations), counts)
+    ok = keep[src] & keep[g.tr_to]
+    tr_ptr = np.concatenate(([0], np.cumsum(np.bincount(src[ok], minlength=g.n_stations))))
+    pat = None
+    if g.trip_pat is not None:
+        # 잘린 운행 조각마다 원래 운행의 계통 번호를 물려준다
+        trip_of = np.searchsorted(g.trip_start, idx[starts], "right") - 1
+        pat = g.trip_pat[trip_of]
+    return Graph(coords=g.coords, ev_stop=g.ev_stop[idx], ev_arr=g.ev_arr[idx],
+                 ev_dep=g.ev_dep[idx], trip_start=trip_start,
+                 tr_to=g.tr_to[ok], tr_cost=g.tr_cost[ok], tr_ptr=tr_ptr.astype(g.tr_ptr.dtype),
+                 ev_trip_start=np.repeat(starts, np.diff(trip_start)).astype(g.ev_trip_start.dtype),
+                 trip_pat=pat)
+
+
 def haversine_m(lon1, lat1, lon2, lat2) -> np.ndarray:
     """위경도 배열 사이의 대권거리(미터)."""
     r = 6371000.0
