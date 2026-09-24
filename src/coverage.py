@@ -70,30 +70,30 @@ BRIDGE_M = 1000.0
 
 
 def _walk_reach(walk):
-    """역에서 보행망으로 이어진 노드들의 위치 색인. 한 번만 만든다.
+    """노드마다 역과 보행망으로 이어졌는가. 한 번만 만든다.
 
     다리·방파제로 이어진 땅은 보행망이 이어져 있고, 배로만 가는 섬은
     제 보행망이 따로 떨어져 있다. 거리로 가르면 1km 안의 섬이 다리가
     없어도 딸려 왔다.
+
+    예전에는 이어진 노드 전부로 KD 트리를 만들어 들고 있었다. 전국(2,857만
+    노드)에서 0.9 GB 다. 노드는 칸 번호 순으로 정렬돼 있으니, 땅 조각을 두른
+    상자의 행마다 이분 탐색으로 꺼내면 트리 없이 같은 답이 나온다.
     """
-    got = getattr(walk, "_reach_tree", None)
+    got = getattr(walk, "_reach", None)
     if got is not None:
         return got
     from scipy.sparse import csr_matrix
     from scipy.sparse.csgraph import connected_components
-    from scipy.spatial import cKDTree
 
     n = len(walk.indptr) - 1
     g = csr_matrix((np.ones(len(walk.indices), dtype=np.int8), walk.indices,
                     walk.indptr), shape=(n, n))
     _, comp = connected_components(g, directed=False)
+    del g
     st = walk.station_node[walk.station_node >= 0]
-    ok = np.isin(comp, np.unique(comp[st]))
-    scale = float(np.cos(np.radians(float(np.median(walk.node_lat)))))
-    xy = np.stack([walk.node_lon[ok] * scale * 111_320.0,
-                   walk.node_lat[ok] * 111_132.0], axis=1)
-    got = (cKDTree(xy), walk.node_lon[ok], walk.node_lat[ok], scale)
-    walk._reach_tree = got
+    got = (walk, np.isin(comp, np.unique(comp[st])))
+    walk._reach = got
     return got
 
 
@@ -101,15 +101,29 @@ def _ring_reached(ring, reach) -> bool:
     """이 땅 조각 안에 역과 보행망으로 이어진 노드가 있는가."""
     from matplotlib.path import Path as MplPath
 
-    tree, lon, lat, scale = reach
+    walk, linked = reach
     r = np.asarray(ring, dtype=np.float64)
-    cx, cy = r[:, 0].mean(), r[:, 1].mean()
-    half = float(np.hypot((r[:, 0].max() - r[:, 0].min()) * scale * 111_320.0,
-                          (r[:, 1].max() - r[:, 1].min()) * 111_132.0))
-    idx = tree.query_ball_point([cx * scale * 111_320.0, cy * 111_132.0], half)
-    if not idx:
+    # 상자에 걸친 칸(한 칸 여유)의 노드만 꺼낸다. 노드 위치는 제 칸 안에 있다.
+    gx0 = int(np.floor((r[:, 0].min() - walk.lon0) * walk.m_per_deg_lon / walk.cell_m)) - 1
+    gx1 = int(np.floor((r[:, 0].max() - walk.lon0) * walk.m_per_deg_lon / walk.cell_m)) + 1
+    gy0 = int(np.floor((r[:, 1].min() - walk.lat0) * walk.m_per_deg_lat / walk.cell_m)) - 1
+    gy1 = int(np.floor((r[:, 1].max() - walk.lat0) * walk.m_per_deg_lat / walk.cell_m)) + 1
+    gx0, gx1 = max(gx0, 0), min(gx1, walk.grid_w - 1)
+    gy0, gy1 = max(gy0, 0), min(gy1, walk.grid_h - 1)
+    if gx0 > gx1 or gy0 > gy1:
         return False
-    pts = np.stack([lon[idx], lat[idx]], axis=1)
+    rows = np.arange(gy0, gy1 + 1, dtype=np.int64) * walk.grid_w
+    key = walk.node_cell.dtype
+    lo = np.searchsorted(walk.node_cell, (rows + gx0).astype(key), "left")
+    hi = np.searchsorted(walk.node_cell, (rows + gx1).astype(key), "right")
+    n = hi - lo
+    if not n.sum():
+        return False
+    idx = np.repeat(lo, n) + (np.arange(n.sum()) - np.repeat(np.cumsum(n) - n, n))
+    idx = idx[linked[idx]]
+    if not len(idx):
+        return False
+    pts = np.stack([walk.node_lon[idx], walk.node_lat[idx]], axis=1)
     return bool(MplPath(r).contains_points(pts).any())
 
 
@@ -497,14 +511,15 @@ class Coverage:
         if self.land is None:
             return np.ones(shape, dtype=bool)
         lon0, lat0, cell, w, h, m_lon, m_lat = self.land_grid
-        gy, gx = np.mgrid[0:shape[0], 0:shape[1]]
-        lon = self.lon0 + (gx + self.x0 + 0.5) * self.cell / self.m_lon
-        lat = self.lat0 + (gy + self.y0 + 0.5) * self.cell / self.m_lat
+        # 경도는 열에만, 위도는 행에만 달렸다. 격자 전체로 펴지 않는다.
+        lon = self.lon0 + (np.arange(shape[1]) + self.x0 + 0.5) * self.cell / self.m_lon
+        lat = self.lat0 + (np.arange(shape[0]) + self.y0 + 0.5) * self.cell / self.m_lat
         j = np.floor((lon - lon0) * m_lon / cell).astype(np.int64)
         i = np.floor((lat - lat0) * m_lat / cell).astype(np.int64)
-        ok = (i >= 0) & (i < self.land.shape[0]) & (j >= 0) & (j < self.land.shape[1])
+        jok = (j >= 0) & (j < self.land.shape[1])
+        iok = (i >= 0) & (i < self.land.shape[0])
         out = np.zeros(shape, dtype=bool)
-        out[ok] = self.land[i[ok], j[ok]]
+        out[np.ix_(iok, jok)] = self.land[np.ix_(i[iok], j[jok])]
         return out
 
     def _fine_region(self):
@@ -521,17 +536,18 @@ class Coverage:
         lon0, lat0, cell, w, h, m_lon, m_lat = self.land_grid
         cell = float(cell)
 
-        # 성긴 격자의 각 칸이 고운 격자의 어느 칸에 해당하는지
-        gy, gx = np.mgrid[0:self.land.shape[0], 0:self.land.shape[1]]
-        lon = lon0 + (gx + 0.5) * cell / m_lon
-        lat = lat0 + (gy + 0.5) * cell / m_lat
+        # 성긴 격자의 각 칸이 고운 격자의 어느 칸에 해당하는지. 경도는 열에만,
+        # 위도는 행에만 달렸으므로 행과 열로 따로 구한다. 격자 전체로 펴면
+        # 전국 육지 격자(4,600만 칸)에서 좌표 배열만 3 GB 다.
+        lon = lon0 + (np.arange(self.land.shape[1]) + 0.5) * cell / m_lon
+        lat = lat0 + (np.arange(self.land.shape[0]) + 0.5) * cell / m_lat
         j = np.floor((lon - self.lon0) * self.m_lon / self.cell).astype(np.int64) - self.x0
         i = np.floor((lat - self.lat0) * self.m_lat / self.cell).astype(np.int64) - self.y0
-        ok = ((i >= 0) & (i < self._coarse.shape[0])
-              & (j >= 0) & (j < self._coarse.shape[1]))
+        jok = (j >= 0) & (j < self._coarse.shape[1])
+        iok = (i >= 0) & (i < self._coarse.shape[0])
 
         fine = np.zeros(self.land.shape, dtype=bool)
-        fine[ok] = self._coarse[i[ok], j[ok]]
+        fine[np.ix_(iok, jok)] = self._coarse[np.ix_(i[iok], j[jok])]
 
         # 펴면서 생긴 1 km 계단을 둥글린다
         r = int(round(self.cell / cell))
