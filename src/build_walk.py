@@ -493,7 +493,8 @@ def shed_of(indptr, indices, data, node_shed: np.ndarray, source: int,
 # 2,409역에 40초가 걸린다. 역을 묶음으로 나눠 여러 프로세스에 돌린다. 그래프는
 # 공유 메모리에 한 벌만 올리고 프로세스들이 함께 읽는다. 8개로 10초인데,
 # 16개로 늘려도 9초라(코어 14개 노트북) 8개에서 멈춘다.
-SHED_WORKERS = min(os.cpu_count() or 1, 8)
+# 전국 그래프(2,857만 노드)는 프로세스마다 거리 배열이 230 MB 라 WALK_WORKERS 로 줄인다.
+SHED_WORKERS = int(os.environ.get("WALK_WORKERS") or 0) or min(os.cpu_count() or 1, 8)
 SHED_CHUNK = 32         # 한 번에 넘기는 역 수. 작을수록 느린 역이 고르게 흩어진다
 _worker: dict = {}
 
