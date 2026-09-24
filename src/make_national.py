@@ -6,7 +6,7 @@
 철도 쪽은 현 조합 빌드(make_region)와 같은 단계를 돈다. 보행망만 다르다.
 전국을 한 번에 build_walk 로 만들면 메모리가 모자라서, build_national_walk 가
 타일로 만들어 이어 붙인 것을 하드링크로 가져오고 육지 마스크와 역별 도보권만
-여기서 만든다. 北海道 는 추출본이 없고, 沖縄 는 전국 격자 밖이라 뺀다.
+여기서 만든다. 沖縄 는 전국 격자 밖이라 뺀다.
 """
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ RID = "national"
 BASE = ROOT / "data" / "national" / "regions" / RID
 NATIONAL_WALK = ROOT / "data" / "national" / "walk"
 WALK_FILES = ["graph.npz", "fine_pt.npy", "fine_seg.npy", "fine_ptr.npy", "fine_grid.npy"]
-SKIP = ("北海道", "沖縄県")
+SKIP = ("沖縄県",)
 
 STEPS = [
     # 보행 그래프는 가져온 것을 쓰고 육지 마스크만 만든다

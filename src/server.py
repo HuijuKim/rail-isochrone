@@ -104,32 +104,58 @@ _SCOPE_LOCK = threading.Lock()
 
 
 def _pref_table(reg) -> dict:
-    """권역의 현 경계와 역마다 든 현 번호. 처음 쓸 때 한 번 만든다."""
+    """역마다 든 현 번호와 현 경계. 처음 쓸 때 한 번 만든다.
+
+    역의 현은 build_admin 이 행정경계로 매겨 prefectures.json 에 적어 둔 것을
+    쓴다(화면의 현별 거르기도 이것을 쓴다). 도형으로 다시 물으면 전국에서 3초
+    걸렸다. 현 도형은 고른 현만 처음 쓸 때 만든다(_pref_shape).
+    """
     got = getattr(reg, "_pref_table", None)
     if got is not None:
         return got
-    from shapely.geometry import Polygon
-    from shapely.ops import unary_union
-
     rings = json.loads((reg.dir / "raw" / "prefecture-rings.json").read_text(encoding="utf-8"))
     names = sorted(rings)
-    station_pref = np.full(len(reg.coords), -1, dtype=np.int16)
-    x, y = reg.coords[:, 0], reg.coords[:, 1]
-    ok = np.isfinite(x)
-    shapes = {}
-    # 고리마다 matplotlib 으로 물으면 전국(역 1만, 고리 1,072개)에서 9초다. 현 도형을
-    # 준비해 두고 상자 안 역만 한꺼번에 묻는다.
-    for k, name in enumerate(names):
-        g = unary_union([Polygon(r).buffer(0) for r in rings[name] if len(r) >= 4])
-        shapely.prepare(g)
-        shapes[name] = g
-        x0, y0, x1, y1 = g.bounds
-        cand = np.flatnonzero(ok & (station_pref < 0) & (x >= x0) & (x <= x1)
-                              & (y >= y0) & (y <= y1))
-        station_pref[cand[shapely.contains_xy(g, x[cand], y[cand])]] = k
-    got = {"names": names, "index": {n: k for k, n in enumerate(names)},
-           "station_pref": station_pref, "shapes": shapes}
+    index = {n: k for k, n in enumerate(names)}
+    try:
+        by_id = json.loads((reg.dir / "prefectures.json").read_text(encoding="utf-8")).get("stations", {})
+    except (OSError, ValueError):
+        by_id = {}
+    station_pref = np.array([index.get(by_id.get(sid), -1) for sid in reg.stops["ids"]],
+                            dtype=np.int16)
+    got = {"names": names, "index": index, "station_pref": station_pref,
+           "rings": rings, "shapes": {}}
     reg._pref_table = got
+    return got
+
+
+def _pref_shape(table, name):
+    got = table["shapes"].get(name)
+    if got is None:
+        from shapely.geometry import Polygon
+        from shapely.ops import unary_union
+
+        got = unary_union([Polygon(r).buffer(0) for r in table["rings"][name] if len(r) >= 4])
+        shapely.prepare(got)
+        table["shapes"][name] = got
+    return got
+
+
+def area_presets(reg) -> list:
+    """전국 권역을 지방 단위로 거를 때 쓸 현 목록. 권역 탭의 프리셋으로 보인다."""
+    got = getattr(reg, "_area_presets", None)
+    if got is not None:
+        return got
+    table = _pref_table(reg)
+    got = []
+    for names, members in make_region.AREAS:
+        prefs = [p for p in members if p in table["index"]]
+        if not prefs:
+            continue
+        keep = np.isin(table["station_pref"], [table["index"][p] for p in prefs])
+        n = int(np.unique(reg.station_group[keep & (reg.station_group >= 0)]).size)
+        got.append({"id": "area:" + names["ja"], "names": names, "prefectures": prefs,
+                    "stations": n})
+    reg._area_presets = got
     return got
 
 
@@ -152,7 +178,7 @@ def read_scope(reg):
         from shapely.ops import unary_union
 
         keep = np.isin(table["station_pref"], [table["index"][p] for p in prefs])
-        clip = unary_union([table["shapes"][p] for p in prefs])
+        clip = unary_union([_pref_shape(table, p) for p in prefs])
         shapely.prepare(clip)
         got = Scope(prefs, keep, clip,
                     {cal: restrict(g, keep) for cal, g in reg.graphs.items()})
@@ -539,6 +565,7 @@ def regions():
                     # 전국 권역. 있으면 화면의 현 조합 탭은 빌드 대신 이 권역에
                     # 현 목록(prefs)을 붙여 바로 계산한다.
                     "national": bool(r.meta.get("national")),
+                    "areas": area_presets(r) if r.meta.get("national") else [],
                     "prefectures": r.meta.get("prefectures") or [],
                 }
                 # 역이 많은 권역부터 보인다.
