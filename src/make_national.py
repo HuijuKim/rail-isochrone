@@ -21,7 +21,9 @@ import make_region as mr
 
 ROOT = Path(__file__).resolve().parent.parent
 RID = "national"
-BASE = mr.REGIONS / RID
+# data/regions/ 에 두면 원래 서버가 올리고, 조합 빌드의 이름·색 단계가 기존 권역으로
+# 읽는다. 따로 둔다. 서버는 REGIONS_DIR 로 이곳을 가리킨다.
+BASE = ROOT / "data" / "national" / "regions" / RID
 NATIONAL_WALK = ROOT / "data" / "national" / "walk"
 WALK_FILES = ["graph.npz", "fine_pt.npy", "fine_seg.npy", "fine_ptr.npy", "fine_grid.npy"]
 SKIP = ("北海道", "沖縄県")
@@ -37,7 +39,8 @@ STEPS = [
     ("build_naive.py", {}),
     ("build_admin.py", {"env": {"ADMIN_REUSE": "1"}}),
     ("build_walk.py", {"env": {"WALK_REUSE": "1", "WALK_WORKERS": "4"}}),
-    ("build_colors.py", {"optional": True}),
+    # build_colors 는 빼다. 모든 권역이 함께 쓰는 data/line-colors.json 을 고쳐 쓴다
+    # (전국 권역의 "中央線" 이 大阪メトロ 색으로 들어가 다른 권역에 번졌다).
 ]
 
 
@@ -47,6 +50,7 @@ def setup() -> None:
     prefs = [p for p in mr.PREFS if p not in SKIP]
     meta = mr.region_json(RID, prefs)
     meta.pop("custom", None)
+    meta["national"] = True      # build_names 가 기존 권역의 노선 이름을 빌려 온다
     meta["names"] = {"ja": "全国", "en": "Japan", "ko": "전국",
                      "zh-Hans": "全国", "zh-Hant": "全國"}
     meta["grid"] = dict(NATIONAL, ocean_seeds="auto")
@@ -83,7 +87,8 @@ def setup() -> None:
 
 def build() -> None:
     log = BASE / "build.log"
-    env = dict(os.environ, REGION=RID, PYTHONIOENCODING="utf-8", PYTHONUNBUFFERED="1")
+    # 단계 스크립트는 data/regions/<REGION> 을 쓰는데, 절대 경로를 주면 그곳을 쓴다
+    env = dict(os.environ, REGION=str(BASE), PYTHONIOENCODING="utf-8", PYTHONUNBUFFERED="1")
     t0 = time.time()
     with open(log, "w", encoding="utf-8") as f:
         for k, (script, opt) in enumerate(STEPS, 1):
@@ -99,7 +104,11 @@ def build() -> None:
             if r.returncode != 0 and not opt.get("optional"):
                 raise SystemExit(f"{script} 가 실패했다. {log} 를 보세요.")
             if script == "build_admin.py" and not opt.get("env"):
-                mr._check_rings(RID)
+                rings = json.loads((BASE / "raw" / "prefecture-rings.json").read_text(encoding="utf-8"))
+                prefs = json.loads((BASE / "region.json").read_text(encoding="utf-8"))["prefectures"]
+                missing = [p for p in prefs if not rings.get(p)]
+                if missing:
+                    raise SystemExit("현 경계를 닫지 못했다: " + ", ".join(missing))
     print(f"끝 ({(time.time() - t0) / 60:.1f}분)", flush=True)
 
 

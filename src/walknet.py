@@ -97,7 +97,9 @@ class WalkNet:
             return -1
 
         cand = np.concatenate(picked)
-        dx = (self.node_lon[cand] - lon) * self.m_per_deg_lon
+        # 칸을 고를 때는 격자의 경도 폭을 쓰지만 거리는 그 위도의 실제 폭으로 잰다.
+        # 전국 격자(기준 36도)에서는 둘이 홋카이도에서 14% 어긋난다.
+        dx = (self.node_lon[cand] - lon) * 111_320.0 * np.cos(np.radians(lat))
         dy = (self.node_lat[cand] - lat) * self.m_per_deg_lat
         dist = np.hypot(dx, dy)
         k = int(np.argmin(dist))

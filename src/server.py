@@ -17,6 +17,7 @@ from pathlib import Path
 os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
 
 import numpy as np  # noqa: E402
+import shapely  # noqa: E402
 from flask import Flask, jsonify, request, send_from_directory
 
 import make_region
@@ -57,7 +58,11 @@ app = Flask(__name__, static_folder=None)
 # 쓰이고 도보권은 아직 옛것이라 그 권역만 짝이 안 맞는데, 예전에는 그
 # 때문에 서버 전체가 안 떴다. 못 올린 권역은 목록에서 빠진다.
 REGIONS = {}
+# 올릴 권역을 고른다(쉼표로). 온라인에서는 전국 권역 하나만 올린다.
+_SERVE = [r for r in os.environ.get("SERVE_REGIONS", "").split(",") if r]
 for _rid in region_mod.available():
+    if _SERVE and _rid not in _SERVE:
+        continue
     try:
         REGIONS[_rid] = region_mod.load(_rid)
     except Exception as _err:      # noqa: BLE001 - 어떤 이유든 그 권역만 뺀다
@@ -80,6 +85,93 @@ def pick_region():
         raise BadRequest(f"모르는 권역입니다: {name!r} (쓸 수 있는 것: "
                          + ", ".join(sorted(REGIONS)) + ")")
     return REGIONS[name]
+
+
+# ---------- 현 목록 필터 ----------
+#
+# 요청에 prefs=東京都,神奈川県 가 붙으면 그 현들 안의 역만 쓰고 등시선을 그
+# 경계로 자른다. 전국 권역 하나로 모든 현 조합을 흉내 낸다(따로 빌드하지 않는다).
+# 거른 그래프는 현 목록마다 만들어 두고 몇 개만 들고 있는다.
+
+class Scope:
+    def __init__(self, prefs, keep, clip, graphs):
+        self.prefs, self.keep, self.clip, self.graphs = prefs, keep, clip, graphs
+
+
+_SCOPES: dict = {}
+_SCOPE_KEEP = 8
+_SCOPE_LOCK = threading.Lock()
+
+
+def _pref_table(reg) -> dict:
+    """권역의 현 경계와 역마다 든 현 번호. 처음 쓸 때 한 번 만든다."""
+    got = getattr(reg, "_pref_table", None)
+    if got is not None:
+        return got
+    from shapely.geometry import Polygon
+    from shapely.ops import unary_union
+
+    rings = json.loads((reg.dir / "raw" / "prefecture-rings.json").read_text(encoding="utf-8"))
+    names = sorted(rings)
+    station_pref = np.full(len(reg.coords), -1, dtype=np.int16)
+    x, y = reg.coords[:, 0], reg.coords[:, 1]
+    ok = np.isfinite(x)
+    shapes = {}
+    # 고리마다 matplotlib 으로 물으면 전국(역 1만, 고리 1,072개)에서 9초다. 현 도형을
+    # 준비해 두고 상자 안 역만 한꺼번에 묻는다.
+    for k, name in enumerate(names):
+        g = unary_union([Polygon(r).buffer(0) for r in rings[name] if len(r) >= 4])
+        shapely.prepare(g)
+        shapes[name] = g
+        x0, y0, x1, y1 = g.bounds
+        cand = np.flatnonzero(ok & (station_pref < 0) & (x >= x0) & (x <= x1)
+                              & (y >= y0) & (y <= y1))
+        station_pref[cand[shapely.contains_xy(g, x[cand], y[cand])]] = k
+    got = {"names": names, "index": {n: k for k, n in enumerate(names)},
+           "station_pref": station_pref, "shapes": shapes}
+    reg._pref_table = got
+    return got
+
+
+def read_scope(reg):
+    """요청의 prefs. 없으면 None(권역 전체)."""
+    raw = request.args.get("prefs", "").strip()
+    if not raw:
+        return None
+    prefs = tuple(sorted({p.strip() for p in raw.split(",") if p.strip()}))
+    table = _pref_table(reg)
+    unknown = [p for p in prefs if p not in table["index"]]
+    if unknown:
+        raise BadRequest("이 권역에 없는 현입니다: " + ", ".join(unknown))
+    key = (reg.id, prefs)
+    with _SCOPE_LOCK:
+        got = _SCOPES.get(key)
+        if got is not None:
+            return got
+        from router import restrict
+        from shapely.ops import unary_union
+
+        keep = np.isin(table["station_pref"], [table["index"][p] for p in prefs])
+        clip = unary_union([table["shapes"][p] for p in prefs])
+        shapely.prepare(clip)
+        got = Scope(prefs, keep, clip,
+                    {cal: restrict(g, keep) for cal, g in reg.graphs.items()})
+        if len(_SCOPES) >= _SCOPE_KEEP:
+            _SCOPES.pop(next(iter(_SCOPES)))
+        _SCOPES[key] = got
+        return got
+
+
+def clip_geojson(geo: dict, clip) -> dict:
+    """등시선을 고른 현 경계로 자른다."""
+    from shapely.geometry import mapping, shape
+
+    out = []
+    for f in geo["features"]:
+        g = shape(f["geometry"]).intersection(clip)
+        if not g.is_empty:
+            out.append(dict(f, geometry=mapping(g)))
+    return dict(geo, features=out)
 
 
 class BadRequest(Exception):
@@ -853,6 +945,9 @@ def reachable():
         if cover.is_sea(lon, lat):
             return jsonify({"ok": False, "reason": "sea"})
         return jsonify({"ok": False, "reason": "outside_region"})
+    scope = read_scope(reg)
+    if scope and not shapely.contains_xy(scope.clip, lon, lat):
+        return jsonify({"ok": False, "reason": "outside_region"})
 
     if reg.walk is not None and reg.walk.nearest_node(lon, lat) < 0:
         if cover is not None and cover.is_sea(lon, lat):
@@ -881,15 +976,18 @@ def isochrone():
     thresholds, egress = qs["thresholds"], qs["egress"]
 
     reg = pick_region()
-    g = reg.graphs.get(qs["calendar"]) or next(iter(reg.graphs.values()))
+    scope = read_scope(reg)
+    graphs = scope.graphs if scope else reg.graphs
+    g = graphs.get(qs["calendar"]) or next(iter(graphs.values()))
     budget = max(thresholds)
 
     # 도보 전용 모드: 전철을 아예 빼고 걷기만 한다
     if request.args.get("mode") == "walk" and reg.walk is not None:
         field = build_walk_only_field(reg.walk, lon, lat, budget)
+        geo = contour_geojson(field, thresholds)
         return jsonify(
             {
-                "geojson": contour_geojson(field, thresholds),
+                "geojson": clip_geojson(geo, scope.clip) if scope else geo,
                 "stats": {"reached": 0, "total": int(reg.supported.sum()),
                           "farthest": [], "mode": "walk"},
             }
@@ -902,6 +1000,8 @@ def isochrone():
     best = earliest_arrivals(
         g, lon, lat, depart, budget, walk=reg.walk, access_limit=access_limit
     )
+    if scope:
+        best[~scope.keep] = INF      # 걸어서 닿았어도 고른 현 밖 역에서는 타지 못한다
 
     # 출발지에서 그냥 걸어가는 범위. 역에 닿을 수 있으면 전철이 훨씬 멀리
     # 가므로 도보 원은 어차피 그 안에 묻힌다. 상한만큼 크게 그리려면 반경이
@@ -918,6 +1018,8 @@ def isochrone():
     else:
         field = build_field(g, lon, lat, depart, best, budget, egress_max_sec=egress)
     geojson = contour_geojson(field, thresholds)
+    if scope:
+        geojson = clip_geojson(geojson, scope.clip)
 
     elapsed = best.astype(np.float64) - depart
     # 역 수는 사람이 아는 "역" 단위로 센다. 역 목록은 노선별로 쪼개져 있어서
@@ -959,7 +1061,8 @@ def isochrone():
             "geojson": geojson,
             "stats": {
                 "reached": reached,
-                "total": int(reg.supported.sum()),
+                "total": (int(np.unique(reg.station_group[scope.keep & (reg.station_group >= 0)]).size)
+                          if scope else int(reg.supported.sum())),
                 "farthest": far,
             },
         }
@@ -976,7 +1079,11 @@ def point():
     dest_lon, dest_lat = need_point("dest_")
 
     reg = pick_region()
-    g = reg.graphs.get(qs["calendar"]) or next(iter(reg.graphs.values()))
+    scope = read_scope(reg)
+    graphs = scope.graphs if scope else reg.graphs
+    g = graphs.get(qs["calendar"]) or next(iter(graphs.values()))
+    if scope and not shapely.contains_xy(scope.clip, dest_lon, dest_lat):
+        return jsonify({"reachable": False, "reason": "outside_region"})
     # 상한을 넘더라도 "몇 분 걸리는지" 는 알려주는 편이 쓸모 있다. 상한에
     # 맞춰 좁히면 하코네 고우라(신주쿠에서 168분)처럼 멀쩡히 갈 수 있는 곳이
     # "닿지 않음" 으로 나온다. 넓혀도 비용은 0.25초에서 0.28초 정도다.
@@ -999,6 +1106,8 @@ def point():
             g, lon, lat, depart, horizon, walk=reg.walk, trace=True, access_limit=horizon
         )
 
+    if scope:
+        best[~scope.keep] = INF
     elapsed = best.astype(np.float64) - depart
     if reg.walk is not None:
         # 도착지에서 역 쪽으로 걸어가는 시간 (보행로는 양방향이라 그대로 쓴다)
