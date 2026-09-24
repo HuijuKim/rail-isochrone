@@ -162,15 +162,47 @@ def read_scope(reg):
         return got
 
 
+def scope_railways(reg, scope) -> list:
+    """고른 현을 지나는 노선만, 그 경계(300 m 여유)로 잘라서. 현 목록마다 한 번 만든다."""
+    got = getattr(scope, "railways", None)
+    if got is not None:
+        return got
+    from shapely.geometry import LineString
+
+    # 경계역에서 선이 딱 잘리면 역 점만 덩그러니 남는다. 조금 넉넉히 둔다.
+    area = scope.clip.buffer(0.003)
+    shapely.prepare(area)
+    want = set(scope.prefs)
+    out = []
+    for r in reg.railway_shapes:
+        if not want & set(r.get("prefs") or ()):
+            continue
+        line = LineString(r["path"])
+        if area.contains(line):
+            out.append(r)
+            continue
+        cut = line.intersection(area)
+        for part in getattr(cut, "geoms", [cut]):
+            if part.geom_type == "LineString" and len(part.coords) >= 2:
+                out.append(dict(r, path=[[round(x, 5), round(y, 5)] for x, y in part.coords]))
+    scope.railways = out
+    return out
+
+
 def clip_geojson(geo: dict, clip) -> dict:
     """등시선을 고른 현 경계로 자른다."""
-    from shapely.geometry import mapping, shape
+    from shapely.geometry import MultiPolygon, mapping, shape
 
     out = []
     for f in geo["features"]:
         g = shape(f["geometry"]).intersection(clip)
-        if not g.is_empty:
-            out.append(dict(f, geometry=mapping(g)))
+        # 경계에 닿는 곳에서 선이나 점이 섞인 도형 모음이 나온다. 화면은 면만
+        # 그리므로 면만 남긴다(모음을 그대로 보내면 화면이 좌표를 못 찾는다).
+        polys = [p for p in getattr(g, "geoms", [g])
+                 if p.geom_type in ("Polygon", "MultiPolygon") and not p.is_empty]
+        polys = [q for p in polys for q in getattr(p, "geoms", [p])]
+        if polys:
+            out.append(dict(f, geometry=mapping(MultiPolygon(polys))))
     return dict(geo, features=out)
 
 
@@ -504,6 +536,9 @@ def regions():
                     "note": r.meta.get("note", ""),
                     # 현을 골라 만든 권역은 화면의 "현 조합" 탭에 따로 모인다.
                     "custom": bool(r.meta.get("custom")),
+                    # 전국 권역. 있으면 화면의 현 조합 탭은 빌드 대신 이 권역에
+                    # 현 목록(prefs)을 붙여 바로 계산한다.
+                    "national": bool(r.meta.get("national")),
                     "prefectures": r.meta.get("prefectures") or [],
                 }
                 # 역이 많은 권역부터 보인다.
@@ -543,8 +578,14 @@ def _kill_tree(proc) -> None:
         proc.kill()
 
 
+# 전국 권역을 올린 서버(온라인판)는 조합을 빌드하지 않는다. 현은 요청마다 거른다.
+# 역방향 프록시 뒤에서는 모든 요청이 127.0.0.1 에서 온 것으로 보여서, 주소만
+# 보면 누구나 빌드를 걸 수 있게 된다. 빌드·삭제·열기를 통째로 막는다.
+ONLINE = any(r.meta.get("national") for r in REGIONS.values())
+
+
 def _from_this_machine() -> bool:
-    return request.remote_addr in ("127.0.0.1", "::1")
+    return not ONLINE and request.remote_addr in ("127.0.0.1", "::1")
 
 
 def _combo_running() -> bool:
@@ -649,6 +690,8 @@ def combo():
                 # 이어진 현만 고르게 하려고 함께 보낸다. 바다 위 경계도 이웃이라
                 # 다리로 이어진 岡山-香川, 広島-愛媛 이 들어 있다.
                 "neighbors": info.get("neighbors", []),
+                # 현만 골라 전국 권역을 거를 때 첫 출발지로 쓴다
+                "hub": info.get("hub"),
             })
         areas.append({"names": {"zh-Hans": names["ja"], "zh-Hant": names["ja"], **names},
                       "prefectures": prefs})
@@ -832,13 +875,21 @@ def combo_open():
 @app.get("/api/stations")
 def stations():
     """검색창 자동완성용 역 목록."""
-    return jsonify(pick_region().search_index)
+    reg = pick_region()
+    scope = read_scope(reg)
+    if scope:
+        return jsonify([e for e in reg.search_index if e.get("pref") in scope.prefs])
+    return jsonify(reg.search_index)
 
 
 @app.get("/api/prefectures")
 def prefectures():
     """도도부현 이름표. 화면 언어에 맞춰 보여주려고 언어별로 들고 있다."""
-    return jsonify(pick_region().pref_names)
+    reg = pick_region()
+    scope = read_scope(reg)
+    if scope:
+        return jsonify({k: v for k, v in reg.pref_names.items() if k in scope.prefs})
+    return jsonify(reg.pref_names)
 
 
 @app.get("/api/railways")
@@ -851,7 +902,8 @@ def railways():
     조각으로 끊겨 오므로 줄 수는 노선 수보다 많다.
     """
     reg = pick_region()
-    return jsonify(reg.railway_shapes)
+    scope = read_scope(reg)
+    return jsonify(scope_railways(reg, scope) if scope else reg.railway_shapes)
 
 
 @app.get("/api/config")
@@ -882,8 +934,16 @@ def config():
 
 @app.get("/api/coverage")
 def coverage():
-    """앱이 동작하는 범위의 윤곽선."""
-    return jsonify(pick_region().coverage_geojson)
+    """앱이 동작하는 범위의 윤곽선. 현을 골랐으면 그 현들의 바깥 윤곽."""
+    reg = pick_region()
+    scope = read_scope(reg)
+    if scope:
+        b = scope.clip.boundary
+        lines = [[[round(x, 5), round(y, 5)] for x, y in g.coords]
+                 for g in getattr(b, "geoms", [b])]
+        return jsonify({"type": "Feature", "properties": {},
+                        "geometry": {"type": "MultiLineString", "coordinates": lines}})
+    return jsonify(reg.coverage_geojson)
 
 
 @app.get("/api/nearest")
@@ -900,6 +960,9 @@ def nearest():
     # 가장 가까운 역이 답이고, 더 멀리 볼 이유가 없다.
     g = next(iter(reg.graphs.values()))
     coords_ok = np.isfinite(reg.coords[:, 0])
+    scope = read_scope(reg)
+    if scope:
+        coords_ok &= scope.keep       # 고른 현 밖 역으로는 맞추지 않는다
     for limit in (ACCESS_GATE_SEC, ACCESS_UNLIMITED_SEC):
         secs = np.where(coords_ok, access_seconds(g, lon, lat, limit, reg.walk), np.inf)
         if np.isfinite(secs).any():
