@@ -316,6 +316,61 @@ def smooth_spikes(path, scale, keep=None, hold=None):
             pinned.add(int(np.argmin(d0)))
     return sweep(pinned) if pinned != base else out
 
+# 선형 JSON(전국이면 26 MB + 12 MB)을 파이썬 목록으로 풀면 객체 수백만 개가 생기고,
+# 다 쓰고 나서도 흩어진 채 남아 서버 메모리를 1 GB 가까이 붙잡는다. 한 번 풀어
+# numpy 로 적어 두고 다음부터는 그것을 읽는다. 원본의 크기·수정 시각이 도장이다.
+# 캐시 이름은 원본을 따른다(간토는 빌드 때 coordinates.json, 서버는
+# coordinates-osm.json 을 읽는다. 이름이 하나면 번갈아 덮어쓴다).
+def _cache_path(coordinates_path) -> Path:
+    p = Path(coordinates_path)
+    return p.with_name(p.stem + "-cache.npz")
+
+
+def _stamp(*paths) -> np.ndarray:
+    out = []
+    for p in paths:
+        p = Path(p) if p is not None else None
+        st = p.stat() if p is not None and p.exists() else None
+        out += [st.st_size, st.st_mtime_ns] if st else [-1, -1]
+    return np.array(out, dtype=np.int64)
+
+
+def _load_cache(coordinates_path, segments_path):
+    path = _cache_path(coordinates_path)
+    try:
+        z = np.load(path)
+        if not np.array_equal(z["stamp"], _stamp(coordinates_path, segments_path)):
+            return None
+        pts, off = z["line_pts"], z["line_off"]
+        lines = {str(k): pts[off[i]:off[i + 1]] for i, k in enumerate(z["line_ids"])}
+        spts, soff = z["seg_pts"], z["seg_off"]
+        segs = {tuple(str(b) for b in k): spts[soff[i]:soff[i + 1]]
+                for i, k in enumerate(z["seg_keys"])}
+        return lines, segs
+    except (OSError, KeyError, ValueError):
+        return None
+
+
+def _save_cache(coordinates_path, segments_path, lines, segments) -> None:
+    path = _cache_path(coordinates_path)
+
+    def pack(arrays):
+        off = np.concatenate([[0], np.cumsum([len(a) for a in arrays])]).astype(np.int64)
+        pts = np.concatenate(arrays) if arrays else np.zeros((0, 2))
+        return pts.astype(np.float64), off
+
+    lp, lo = pack(list(lines.values()))
+    sp, so = pack(list(segments.values()))
+    try:
+        np.savez(path.with_suffix(".part.npz"), stamp=_stamp(coordinates_path, segments_path),
+                 line_ids=np.array(list(lines), dtype=str), line_pts=lp, line_off=lo,
+                 seg_keys=np.array(list(segments), dtype=str).reshape(-1, 3),
+                 seg_pts=sp, seg_off=so)
+        path.with_suffix(".part.npz").replace(path)
+    except OSError:
+        pass       # 못 적으면 다음에도 JSON 을 읽을 뿐이다
+
+
 class Geometry:
     """노선 선형과, 각 역이 어느 선형 위 어디에 놓이는지."""
 
@@ -324,12 +379,17 @@ class Geometry:
                  segments_path=None):
         from scipy.spatial import cKDTree
 
-        raw = json.loads(Path(coordinates_path).read_text(encoding="utf-8"))
+        cached = _load_cache(coordinates_path, segments_path)
         self.lines: dict[str, np.ndarray] = {}
-        for entry in raw["railways"]:
-            line = _concat_sublines(entry)
-            if len(line) >= 2:
-                self.lines[entry["id"]] = line
+        if cached is not None:
+            self.lines = cached[0]
+        else:
+            raw = json.loads(Path(coordinates_path).read_text(encoding="utf-8"))
+            for entry in raw["railways"]:
+                line = _concat_sublines(entry)
+                if len(line) >= 2:
+                    self.lines[entry["id"]] = line
+            del raw
 
         # 순환선(야마노테 등)은 양 끝이 맞물린다. 구간을 자를 때 어느 쪽으로
         # 돌지 정해야 하므로 미리 표시해 둔다.
@@ -351,12 +411,17 @@ class Geometry:
         # 역 근처에서 모서리를 질러간다. 열쇠는 "노선|역|역" 이다.
         # 노선을 빼면 같은 역 쌓을 지나는 다른 노선끼리 덮어쓴다.
         self.segments = {}
-        if segments_path is not None and Path(segments_path).exists():
+        if cached is not None:
+            self.segments = cached[1]
+        elif segments_path is not None and Path(segments_path).exists():
             table = json.loads(Path(segments_path).read_text(encoding="utf-8"))
             for k, v in table.items():
                 bits = k.split("|")
                 if len(bits) == 3 and len(v) >= 2:
                     self.segments[tuple(bits)] = np.asarray(v, dtype=np.float64)
+            del table
+        if cached is None:
+            _save_cache(coordinates_path, segments_path, self.lines, self.segments)
 
         self.ids = list(station_ids) if station_ids else []
         self.railway = list(station_railway)
