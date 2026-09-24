@@ -1570,6 +1570,14 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       o.value = r.id;
       o.textContent = localName(r.names) + " " + t("stationCount", { n: r.stations.toLocaleString() });
       sel.appendChild(o);
+      // 전국 권역이면 지방마다 현 목록으로 거른 프리셋을 그 아래에 둔다
+      (r.areas || []).forEach(function (a) {
+        var ao = document.createElement("option");
+        ao.value = a.id;
+        ao.textContent = "\u00a0\u00a0" + localName(a.names) + " "
+          + t("stationCount", { n: a.stations.toLocaleString() });
+        sel.appendChild(ao);
+      });
     });
     if (keep) sel.value = keep;
   }
@@ -3979,11 +3987,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     activeRegion = id;
     exitPickMode(false);
     // 조합 권역이면 조합 탭을, 아니면 권역 탭을 연다
-    if (scoped || (info && info.custom)) {
+    if (scoped ? scoped.tab !== "preset" : (info && info.custom)) {
       selectTab("combo");
     } else {
       selectTab("preset");
-      el("region").value = id;
+      el("region").value = scoped ? scoped.value : id;
     }
     if (combo.data) renderCombo();
     // 출발지 예시는 권역을 따른다. 간사이로 옮겼는데 신주쿠를 예로 들 수는 없다.
@@ -4212,7 +4220,31 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 
   function switchRegion(id) {
     try { localStorage.setItem("region", id); } catch (e) { /* 무시 */ }
-    return loadRegion(id).then(run);
+    return (isArea(id) ? openArea(id) : loadRegion(id)).then(run);
+  }
+
+  /* 지방 프리셋(area:関東 등). 전국 권역을 그 지방의 현 목록으로 거른다. */
+  function isArea(id) {
+    return typeof id === "string" && id.indexOf("area:") === 0;
+  }
+
+  function areaOf(id) {
+    var nat = regionList.filter(function (r) { return r.id === nationalId; })[0];
+    return ((nat && nat.areas) || []).filter(function (a) { return a.id === id; })[0] || null;
+  }
+
+  function openArea(id) {
+    var a = areaOf(id);
+    if (!a) return loadRegion(nationalId);
+    // 첫 출발지를 고르려면 현마다의 중심역·역 수가 든 조합 탭 자료가 있어야 한다
+    return (combo.data ? Promise.resolve() : refreshCombo()).then(function () {
+      scope = a.prefectures.slice().sort();
+      var info = scopeInfo(scope);
+      info.names = a.names;
+      info.tab = "preset";
+      info.value = id;
+      return loadRegion(nationalId, info);
+    });
   }
 
   function refreshRegionList() {
@@ -4573,7 +4605,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   el("tab-preset").addEventListener("click", function () {
     selectTab("preset");
     // 조합을 보던 중이면(현으로 거른 전국 권역도) 드롭다운에 있는 권역으로 돌아간다
-    if ((isCustom(activeRegion) || (regionInfo && regionInfo.scoped)) && el("region").value) {
+    if ((isCustom(activeRegion) || (regionInfo && regionInfo.scoped && regionInfo.tab !== "preset"))
+        && el("region").value) {
       exitPickMode(false);
       switchRegion(el("region").value);
     } else {
@@ -4584,7 +4617,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     selectTab("combo");
     // 필터 모드에서 골라 둔 현이 있으면 그것으로 연다
     if (nationalId && combo.pick.length) {
-      if (!scope) applyScope();
+      if (!(regionInfo && regionInfo.scoped && regionInfo.tab !== "preset")) applyScope();
       return;
     }
     // 빈 일본 지도에서 현을 고른다. 만든 조합은 목록에서 눌러 연다.
@@ -4627,7 +4660,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       var want = data.default;
       try {
         var saved = localStorage.getItem("region");
-        if (saved && regionList.some(function (r) { return r.id === saved; })) {
+        if (saved && (regionList.some(function (r) { return r.id === saved; })
+                      || (isArea(saved) && areaOf(saved)))) {
           want = saved;
         }
       } catch (e) { /* 사생활 보호 창 등 */ }
@@ -4636,7 +4670,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       // 권역이 하나뿐이어도 현 조합 탭이 있으니 늘 보인다
       el("field-region").hidden = false;
       sel.addEventListener("change", function () { switchRegion(sel.value); });
-      return loadRegion(want);
+      return isArea(want) ? openArea(want) : loadRegion(want);
     })
     .catch(function (err) { notice(t("regionListFailed"), err.message); });
 
