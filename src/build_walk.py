@@ -19,7 +19,13 @@ import time
 import os
 from pathlib import Path
 
-import numpy as np
+# numpy·scipy 는 저마다 OpenBLAS 를 달고 오는데, 가져올 때 CPU 스레드마다 버퍼를
+# 약정한다. 18 스레드 노트북에서 둘을 가져오기만 해도 전용 메모리 1.2 GB 고, 도보권을
+# 나눠 도는 프로세스마다 또 그만큼이다. 행렬 곱을 거의 쓰지 않으므로 한 스레드로
+# 둔다. numpy 를 가져오기 전이어야 한다.
+os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
+
+import numpy as np  # noqa: E402
 
 import osmcache
 

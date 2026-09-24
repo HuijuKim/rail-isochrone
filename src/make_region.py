@@ -257,7 +257,9 @@ def build(rid: str) -> None:
     """
     base = REGIONS / rid
     log = base / "build.log"
-    env = dict(os.environ, REGION=rid, PYTHONIOENCODING="utf-8", PYTHONUNBUFFERED="1")
+    # 단계마다 numpy·scipy 를 새로 가져온다. OpenBLAS 스레드 버퍼(1.2 GB)를 막는다.
+    env = dict(os.environ, REGION=rid, PYTHONIOENCODING="utf-8", PYTHONUNBUFFERED="1",
+               OPENBLAS_NUM_THREADS=os.environ.get("OPENBLAS_NUM_THREADS", "1"))
     t0 = time.time()
     with open(log, "a", encoding="utf-8") as f:
         for k, (script, opt) in enumerate(STEPS, 1):
