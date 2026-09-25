@@ -3549,14 +3549,14 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 
   /* 범위 안 장소 수(Google Places Aggregate API). 요청 한 건마다 과금되므로
      누를 때만 묻고, 같은 범위·종류는 다시 묻지 않는다. 소요 시간 상한까지의
-     범위 전체를 센다(등시선은 누적이라 가장 넓은 겹 하나). API 는 구멍 없는
-     고리 하나씩만 받아서 서버가 등시선을 고리 몇 개로 바꿔 주고, 키는 웹사이트
-     제한이라 요청은 여기서 보낸다. 고리가 여럿이면 요청도 그만큼 나간다. */
+     범위 전체를 센다(등시선은 누적이라 가장 넓은 겹 하나). 구글에는 서버가
+     서버 전용 키로 묻는다(브라우저 키를 쓰면 Referer 를 꾸민 요청에 뚫린다).
+     한도에 걸리면 서버가 사유를 돌려준다. */
   var poi = { feature: null, cache: {}, shown: null, busy: false };
 
   function syncPoi() {
     var f = lastIso && lastIso.data.geojson.features[0];
-    el("poi-wrap").hidden = !(googleKey && f);
+    el("poi-wrap").hidden = !(placeCountOn && f);
     if (f !== poi.feature) {
       poi.feature = f || null;
       poi.cache = {};
@@ -3577,28 +3577,6 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     });
   }
 
-  function aggregateCount(ring, type) {
-    return fetch("https://areainsights.googleapis.com/v1:computeInsights", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Goog-Api-Key": googleKey },
-      body: JSON.stringify({
-        insights: ["INSIGHT_COUNT"],
-        filter: {
-          locationFilter: { customArea: { polygon: { coordinates: ring.map(function (xy) {
-            return { latitude: xy[1], longitude: xy[0] };
-          }) } } },
-          typeFilter: { includedTypes: [type] },
-          operatingStatus: ["OPERATING_STATUS_OPERATIONAL"]
-        }
-      })
-    }).then(function (r) {
-      return r.json().then(function (data) {
-        if (!r.ok) throw new Error((data.error && data.error.message) || t("serverSaid", { code: r.status }));
-        return Number(data.count || 0);
-      });
-    });
-  }
-
   function countPoi() {
     var f = poi.feature, type = el("poi-type").value;
     if (!f || poi.busy) return;
@@ -3606,13 +3584,10 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     poi.busy = true;
     el("poi-count").disabled = true;
     drawPoi();
-    postJSON("/api/area-rings", { geometry: f.geometry })
+    postJSON("/api/place-count", { geometry: f.geometry, type: type })
       .then(function (res) {
-        return Promise.all(res.rings.map(function (ring) { return aggregateCount(ring, type); }));
-      })
-      .then(function (counts) {
         if (f !== poi.feature) return;   // 그 사이 등시선이 바뀌었다
-        poi.cache[type] = counts.reduce(function (a, b) { return a + b; }, 0);
+        poi.cache[type] = res.count;
         poi.shown = type;
       })
       .catch(function (err) { notice(t("poiFailed"), err.message); })
@@ -4096,7 +4071,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   var swapped = false;
   var keepView = null;   // 지도를 갈아낄 때 이어받을 보기 상태
   var googleReady = false;      // 구글 지도 스크립트를 받아 뒀는가
-  var googleKey = null;         // 장소 수를 셀 때 쓴다. 지도가 제대로 떴을 때만 둔다
+  var placeCountOn = false;     // 서버에 장소 수를 셀 키가 있는가
   var usingGoogle = false;
 
   /* 바탕 지도를 바꾼다. 우리가 그리는 선은 OSM 선로에서 뽑은 것이라,
@@ -4896,11 +4871,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   getJSON("/api/config")
     .then(function (cfg) {
       applyServerDefaults(cfg);
+      placeCountOn = !!cfg.place_count;
+      syncPoi();
       if (!cfg.google_maps_key) throw new Error("no-key");
       return loadGoogleMaps(cfg.google_maps_key).then(function () {
         googleReady = true;
-        googleKey = cfg.google_maps_key;
-        syncPoi();
         var want = "google";
         try { want = localStorage.getItem("basemap") || "google"; }
         catch (e) { /* 무시 */ }
