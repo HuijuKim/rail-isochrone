@@ -85,13 +85,16 @@ def setup() -> None:
     print(f"현 {len(prefs)}개, 추출본 {len(have)}개, 위키 표 {len(wiki)}개", flush=True)
 
 
-def build() -> None:
+def build(start: int = 1) -> None:
+    """start 단계부터 돈다. 철도만 고쳤으면 3(build_rail)부터 돌면 된다."""
     log = BASE / "build.log"
     # 단계 스크립트는 data/regions/<REGION> 을 쓰는데, 절대 경로를 주면 그곳을 쓴다
     env = dict(os.environ, REGION=str(BASE), PYTHONIOENCODING="utf-8", PYTHONUNBUFFERED="1")
     t0 = time.time()
-    with open(log, "w", encoding="utf-8") as f:
+    with open(log, "w" if start == 1 else "a", encoding="utf-8") as f:
         for k, (script, opt) in enumerate(STEPS, 1):
+            if k < start:
+                continue
             t = time.time()
             print(f"[{k}/{len(STEPS)}] {script}", end="", flush=True)
             f.write(f"\n===== [{k}/{len(STEPS)}] {script} =====\n")
@@ -113,5 +116,12 @@ def build() -> None:
 
 
 if __name__ == "__main__":
-    setup()
-    build()
+    import argparse
+
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("--from", dest="start", type=int, default=1,
+                    help="이 단계부터 돈다(1 이면 처음부터, 보행망 연결과 육지 마스크까지)")
+    args = ap.parse_args()
+    if args.start == 1:
+        setup()
+    build(args.start)

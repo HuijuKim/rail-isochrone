@@ -50,7 +50,10 @@ def merge_books(book: dict, region_id: str) -> dict:
     own = book.get(region_id)
     if isinstance(own, dict):
         return own
-    if not is_custom(region_id):
+    # 전국 권역(실험)도 현을 모은 권역이라 조합처럼 겹치는 권역 것을 모은다.
+    # 이것이 없으면 マリンライナー 배차, 瀬戸大橋線 연장 같은 손질이 전국판에서
+    # 하나도 먹지 않았다.
+    if not (is_custom(region_id) or _meta(region_id).get("national")):
         return {}
     merged: dict = {}
     for rid in neighbours(region_id, [k for k, v in book.items() if isinstance(v, dict)]):
