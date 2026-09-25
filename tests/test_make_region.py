@@ -22,10 +22,15 @@ def test_resolve_does_not_eat_the_name():
     assert make_region.resolve(["京都", "교토부", "東京", "tokyo"]) == ["東京都", "京都府"]
 
 
-@pytest.mark.parametrize("name", ["서울", "北海道", "沖縄"])
+@pytest.mark.parametrize("name", ["서울", "沖縄"])
 def test_resolve_refuses_unknown_or_railless(name):
     with pytest.raises(ValueError):
         make_region.resolve([name])
+
+
+def test_resolve_takes_hokkaido():
+    """홋카이도는 추출본을 받아 역 범위를 채웠으므로 고를 수 있다."""
+    assert make_region.resolve(["홋카이도"]) == ["北海道"]
 
 
 def test_combo_id_ignores_order():
