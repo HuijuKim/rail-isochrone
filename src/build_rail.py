@@ -1559,7 +1559,8 @@ def train_name(raw: str) -> str:
     # 애칭 특급은 애칭만. "北斗: Hakodate => Sapporo" 는 base_name 이 가운데 꼬리를
     # 못 떼어 "北斗: Hakodate =>" 가 됐다. 손질 사전도 이 이름으로 찾는다.
     if is_nickname(raw):
-        return re.split(r"[\s:：(（=>＞]", (raw or "").strip().lstrip("「"))[0].rstrip("」")
+        name = re.split(r"[\s:：(（=>＞]", (raw or "").strip().lstrip("「"))[0].rstrip("」")
+        return name.removesuffix("列車") or name
     s = base_name(raw) or PAREN_RE.sub("", raw or "").strip()
     if re.search(r"[\u3040-\u30ff\u4e00-\u9fff]", s):
         s = re.sub(r"\s+[A-Za-z][A-Za-z .'\-]*$", "", s).strip()
@@ -1579,6 +1580,19 @@ def rides(service, line) -> bool:
     if MINI_SHINKANSEN.match((service.get("name") or "").strip()):
         return True
     return bool(service.get("shinkansen")) == bool(line.get("shinkansen"))
+
+
+def ride_options(service, cands, lines):
+    """계통이 밟을 수 있는 노선들(through_route 의 others). 미니 신칸센은 신칸센
+    역에서는 신칸센 노선만 밟는다. こまち 가 東京-盛岡 을 東北本線 으로도 같은
+    횟수로 갈아타 갈 수 있어 재래선을 타고 秋田 까지 463분(실제 225분)이 됐다.
+    """
+    ok = [(j, cs) for j, cs in cands if rides(service, lines[j]["rep"])]
+    if not MINI_SHINKANSEN.match((service.get("name") or "").strip()):
+        return ok
+    hsr_cl = {c for j, cs in ok if lines[j]["rep"].get("shinkansen") for c in cs}
+    return [(j, cs if lines[j]["rep"].get("shinkansen") else [c for c in cs if c not in hsr_cl])
+            for j, cs in ok]
 
 
 def through_route(seq, others, prefer=None):
@@ -2294,10 +2308,9 @@ def _build(pbfs, rel, ways, nodes):
     for k, ln in enumerate(lines):
         if not is_service(ln["rep"]["name"]) or len(ln["seq"]) < 2:
             continue
-        others = [(j, lines[j]["seq"]) for j in range(len(lines))
-                  if j != k and len(lines[j]["seq"]) >= 2
-                  and not is_service(lines[j]["rep"]["name"])
-                  and rides(ln["rep"], lines[j]["rep"])]
+        others = ride_options(ln["rep"], [(j, lines[j]["seq"]) for j in range(len(lines))
+                                          if j != k and len(lines[j]["seq"]) >= 2
+                                          and not is_service(lines[j]["rep"]["name"])], lines)
         route = through_route(ln["seq"], others)
         if route:
             through[k] = route
@@ -2393,8 +2406,7 @@ def _build(pbfs, rel, ways, nodes):
         # 따로 "직통" 으로 깐다. 이름은 붙이지 않는다(노선 이름이 이미 있다).
         through_run = not r["kind"] and THROUGH_RUN.search(r["name"])
         if (r["kind"] or through_run) and any(c not in on_line for c in r["seq"]):
-            route = through_route(r["seq"], [(j, cs) for j, cs in plain
-                                             if rides(r, lines[j]["rep"])], prefer=k)
+            route = through_route(r["seq"], ride_options(r, plain, lines), prefer=k)
             if route:
                 item["rows"] = [[lines[j]["lid"], c] for j, c in zip(route, r["seq"])]
                 if through_run:
