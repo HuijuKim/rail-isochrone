@@ -1812,10 +1812,18 @@ def trim_lines(lines, members, pos, cpos=None, scale=1.0):
         # 세운다. 予讃線 의 해안선(伊予長浜 경유)은 계통 관계가 없다.
         for title, seq_names in (spec.get(BRANCH_KEY) or {}).items():
             got = [by_name.get(nm) or [] for nm in seq_names]
-            if any(len(g) != 1 for g in got):
-                print(f"  !! {title} 의 역 이름이 권역에 딱 하나씩이 아니라 "
+            sure = [g[0] for g in got if len(g) == 1]
+            if any(not g for g in got) or not sure or (len(sure) < len(got) and cpos is None):
+                print(f"  !! {title} 의 역 이름이 권역에 없거나 가릴 수 없어 "
                       f"세우지 않는다", flush=True)
                 continue
+            # 같은 이름의 역이 여럿이면(函館本線 砂原支線 의 森) 이름이 하나뿐인
+            # 갈래 역들의 가운데에 가장 가까운 것을 고른다.
+            if len(sure) < len(got):
+                cx = sum(cpos[c][0] for c in sure) / len(sure)
+                cy = sum(cpos[c][1] for c in sure) / len(sure)
+                got = [[min(g, key=lambda k: ((cpos[k][0] - cx) * scale) ** 2
+                            + (cpos[k][1] - cy) ** 2)] for g in got]
             seq = [g[0] for g in got]
             # 회사는 물려받지 않는다. 갈래는 다른 회사일 수 있다(しなの鉄道線
             # 에서 가른 妙高はねうまライン 은 えちごトキめき鉄道). 이름과
