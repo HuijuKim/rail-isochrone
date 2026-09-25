@@ -228,6 +228,33 @@ def scope_railways(reg, scope) -> list:
     return out
 
 
+def scope_outline(reg, scope) -> list:
+    """고른 현들의 바깥 윤곽(선 목록). 권역 윤곽과 같은 잣대로 섬을 뺀다.
+
+    현 경계를 그대로 그리면 東京都 를 골랐을 때 오가사와라까지 들어가 지도가
+    멀리 물러났다. 역이 든 땅과 거기서 걸어서 이어진 땅(江の島 등)만 남긴다.
+    등시선을 자르는 경계(clip)는 그대로 둔다.
+    """
+    got = getattr(scope, "outline", None)
+    if got is not None:
+        return got
+    from shapely.geometry import Polygon
+    from shapely.ops import unary_union
+
+    from coverage import _pieces_in_region, _walk_reach
+
+    table = _pref_table(reg)
+    rings = [r for p in scope.prefs for r in table["rings"][p] if len(r) >= 4]
+    pts = reg.coords[scope.keep & np.isfinite(reg.coords[:, 0])][:, :2]
+    keep = _pieces_in_region(rings, pts, _walk_reach(reg.walk) if reg.walk is not None else None)
+    if any(keep):
+        rings = [r for r, ok in zip(rings, keep) if ok]
+    b = unary_union([Polygon(r).buffer(0) for r in rings]).boundary
+    scope.outline = [[[round(x, 5), round(y, 5)] for x, y in g.coords]
+                     for g in getattr(b, "geoms", [b])]
+    return scope.outline
+
+
 def clip_geojson(geo: dict, clip) -> dict:
     """등시선을 고른 현 경계로 자른다."""
     from shapely.geometry import MultiPolygon, mapping, shape
@@ -980,11 +1007,9 @@ def coverage():
     reg = pick_region()
     scope = read_scope(reg)
     if scope and scope.clip:
-        b = scope.clip.boundary
-        lines = [[[round(x, 5), round(y, 5)] for x, y in g.coords]
-                 for g in getattr(b, "geoms", [b])]
         return jsonify({"type": "Feature", "properties": {},
-                        "geometry": {"type": "MultiLineString", "coordinates": lines}})
+                        "geometry": {"type": "MultiLineString",
+                                     "coordinates": scope_outline(reg, scope)}})
     return jsonify(reg.coverage_geojson)
 
 
