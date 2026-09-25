@@ -1,0 +1,14 @@
+{
+ "id": "hokkaido",
+ "note": "아직 빌드하지 않은 권역이다. 손질 사전(line-express·line-extensions·line-headways)의 홋카이도 항목이 이 id 로 적혀 있어서, 北海道 를 고른 현 조합과 전국 권역이 그 항목을 모아 쓰도록 현 목록만 둔다.",
+ "names": {
+  "ja": "北海道",
+  "en": "Hokkaido",
+  "ko": "홋카이도",
+  "zh-Hans": "北海道",
+  "zh-Hant": "北海道"
+ },
+ "prefectures": [
+  "北海道"
+ ]
+}

@@ -1525,6 +1525,10 @@ def train_name(raw: str) -> str:
     """계통 이름을 열차 이름으로. "マリンライナー (Marine Liner)",
     "うずしお Uzushio" 처럼 붙은 괄호·영문 꼬리를 뗀다. base_name 은 종별 글자를
     떼느라 マリンライナー 를 통째로 지우므로, 비면 괄호만 뗀 이름을 쓴다."""
+    # 애칭 특급은 애칭만. "北斗: Hakodate => Sapporo" 는 base_name 이 가운데 꼬리를
+    # 못 떼어 "北斗: Hakodate =>" 가 됐다. 손질 사전도 이 이름으로 찾는다.
+    if is_nickname(raw):
+        return re.split(r"[\s:：(（=>＞]", (raw or "").strip().lstrip("「"))[0].rstrip("」")
     s = base_name(raw) or PAREN_RE.sub("", raw or "").strip()
     if re.search(r"[\u3040-\u30ff\u4e00-\u9fff]", s):
         s = re.sub(r"\s+[A-Za-z][A-Za-z .'\-]*$", "", s).strip()
@@ -1704,6 +1708,53 @@ BRANCH_KEY = "갈래"
 INSERT_KEY = "끼울 역"
 
 
+def hand_trains(members, pos, cpos, scale):
+    """data/line-express.json 에 손으로 적은 특급을 OSM 운행 관계처럼 만든다.
+
+    OSM 에 운행 관계가 없는 특급이 있다(홋카이도의 カムイ·ライラック·とかち·
+    すずらん). 정차역 이름으로 역 묶음을 찾아 관계를 만들면, 뒤의 애칭 특급
+    처리가 밟고 가는 노선들을 찾아 계통으로 돌린다. 같은 이름의 역이 여럿이면
+    (池田·白石) 이름이 하나뿐인 정차역들의 가운데에 가장 가까운 것을 고른다.
+    권역에 없는 역은 건너뛴다. 선로 기하가 없으므로 계통으로 못 돌리면 버린다.
+    """
+    path = ROOT / "data" / "line-express.json"
+    if not path.exists():
+        return []
+    book = book_for(path, REGION)
+    by_name = defaultdict(list)
+    for cl, ns in enumerate(members):
+        if ns:
+            v = pos[ns[0]]
+            by_name[(v[2].get("ja") or v[3] or "").strip()].append(cl)
+    out = []
+    for name, spec in book.items():
+        if not isinstance(spec, dict):
+            continue
+        cands = [by_name.get(n, []) for n in spec.get("stops", [])]
+        sure = [c[0] for c in cands if len(c) == 1]
+        if not sure:
+            continue
+        cx = sum(cpos[c][0] for c in sure) / len(sure)
+        cy = sum(cpos[c][1] for c in sure) / len(sure)
+        seq = []
+        for c in cands:
+            if not c:
+                continue
+            best = min(c, key=lambda k: ((cpos[k][0] - cx) * scale) ** 2 + (cpos[k][1] - cy) ** 2)
+            if not seq or seq[-1] != best:
+                seq.append(best)
+        if len(seq) < 2:
+            continue
+        titles = {g: "" for g in LANGS}
+        titles["ja"] = name
+        out.append({"name": name, "rtype": "train", "titles": titles,
+                    "operator": spec.get("operator", ""), "ref": "", "colour": "",
+                    "wikipedia": "", "kind": kind_of(name), "stops": [], "ways": [],
+                    "listed": set(), "seq": seq, "hand": True})
+        print(f"  손으로 적은 특급 {name}: 역 {len(seq)}/{len(cands)}개", flush=True)
+    return out
+
+
 def trim_lines(lines, members, pos, cpos=None, scale=1.0):
     """data/line-extensions.json 의 "빼는 역" 을 노선에서 빼고 "갈래" 를 세운다.
 
@@ -1727,7 +1778,7 @@ def trim_lines(lines, members, pos, cpos=None, scale=1.0):
         by_name[nm].append(cl)
     for ln in list(lines):
         rep = ln["rep"]["name"]
-        spec = book.get(rep) or book.get(base_name(rep)) or {}
+        spec = book.get(rep) or book.get(base_name(rep)) or book.get(train_name(rep)) or {}
         # 선로 위에 있는데 어느 쪽에서도 못 주운 역. 奥羽本線 의 大館 은 역 노드가
         # 선로 웨이 밖에 있고 花輪線 이 불러 빠진 역 후보에서도 걸러졌다.
         if spec.get(INSERT_KEY) and cpos is not None:
@@ -2028,6 +2079,7 @@ def _build(pbfs, rel, ways, nodes):
           + (f" (제자리로 옮긴 역이 있는 계통 {reseated:,}개)" if reseated else ""),
           flush=True)
     routes = [r for r in rel.routes if len(r["seq"]) >= 2]
+    routes += hand_trains(members, pos, cpos, scale)
     # 뼈대는 각역정차 쪽에서 고른다. 통과 계통을 먼저 집으면 그 긴 회랑이
     # 뼈대가 되고 진짜 노선들이 그 밑으로 빨려 들어간다.
     # 직통 운전 계통도 뒤로 미룬다. 日比谷線 을 東武 까지 이어 달리는 계통이
@@ -2195,6 +2247,10 @@ def _build(pbfs, rel, ways, nodes):
 
     for k, ln in enumerate(lines):
         if k in through:
+            continue
+        if ln["rep"].get("hand"):
+            print(f"  손으로 적은 특급 {ln['rep']['name']} 은 밟고 갈 노선을 못 찾아 버린다",
+                  flush=True)
             continue
         rep = ln["rep"]
         base = base_name(rep["name"]) or rep["name"]
