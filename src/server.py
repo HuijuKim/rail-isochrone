@@ -21,6 +21,7 @@ import shapely  # noqa: E402
 from flask import Flask, jsonify, request, send_from_directory
 
 import make_region
+import placecount
 import region as region_mod
 from isochrone import (
     EGRESS_WALK_MAX_SEC,
@@ -272,133 +273,6 @@ def clip_geojson(geo: dict, clip) -> dict:
     return dict(geo, features=out)
 
 
-def area_rings(geom: dict, max_vertices: int = 6900, max_rings: int = 4) -> list:
-    """등시선을 구멍 없는 고리 몇 개로. Places Aggregate API 가 고리 하나씩만 받는다.
-
-    조각마다, 구멍마다 따로 물으면 요청이 수십 번이 된다. 떨어진 조각은 폭
-    2 m 통로로 잇고(조각 중심점의 최소 신장 트리를 따라), 구멍은 꼭대기에서
-    정북으로 바깥이나 다른 구멍까지 폭 20 cm 틈을 내 연다. 북쪽 틈끼리는 서로
-    엇갈리지 않고, 서로 다른 경계를 잇는 틈은 땅을 둘로 가르지 않는다. 틈이
-    통로보다 좁아야 한다. 같으면 남북으로 난 통로를 따라 올라가며 통로를 통째로
-    지워 땅이 갈렸다. 늘고 주는 넓이는 통로·틈 길이 곱하기 폭이라 무시할 만하다.
-
-    꼭짓점이 API 상한(7000)을 넘으면 트리를 따라 가까운 조각끼리 묶어 고리를
-    여럿 만든다(도쿄역에서 신칸센 180분은 조각 600개, 꼭짓점 1만 8천 개다).
-    그래도 max_rings 를 넘으면 더 줄여 다시 한다. 고리는 반시계 방향이다.
-    """
-    from scipy.sparse.csgraph import minimum_spanning_tree
-    from shapely.geometry import LineString, Polygon, box, shape
-    from shapely.geometry.polygon import orient
-    from shapely.ops import nearest_points, unary_union
-
-    half, slit = 1e-5, 1e-6    # 통로 반폭(약 1 m), 틈 반폭(약 10 cm)
-    base = shape(geom).buffer(0)
-
-    def spanning(parts):
-        if len(parts) < 2:
-            return []
-        c = np.array([[q.centroid.x, q.centroid.y] for q in parts])
-        d = np.hypot(*(c[:, None, :] - c[None, :, :]).transpose(2, 0, 1))
-        tree = minimum_spanning_tree(d + 1e-12).tocoo()
-        return list(zip(tree.row.tolist(), tree.col.tolist()))
-
-    def grouped(parts, budget):
-        # 가장 큰 조각부터 트리를 깊이 우선으로 훑으며 꼭짓점 budget 씩 끊는다
-        nbr = [[] for _ in parts]
-        for i, j in spanning(parts):
-            nbr[i].append(j)
-            nbr[j].append(i)
-        first = max(range(len(parts)), key=lambda i: parts[i].area)
-        order, seen, stack = [], {first}, [first]
-        while stack:
-            i = stack.pop()
-            order.append(i)
-            for j in nbr[i]:
-                if j not in seen:
-                    seen.add(j)
-                    stack.append(j)
-        # 통로 하나, 틈 하나에 꼭짓점이 6개쯤 붙는다. 고리 수는 최소로, 크기는 고르게.
-        size = [shapely.get_num_coordinates(parts[i]) + 6 + 6 * len(parts[i].interiors)
-                for i in order]
-        k = -(-sum(size) // budget)
-        target = sum(size) / k
-        out, cur, n = [], [], 0
-        for i, v in zip(order, size):
-            if cur and n + v > target and len(out) < k - 1:
-                out.append(cur)
-                cur, n = [], 0
-            cur.append(parts[i])
-            n += v
-        return out + [cur]
-
-    def joined(parts):
-        pieces = list(parts)
-        for i, j in spanning(parts):
-            a, b = nearest_points(parts[i], parts[j])
-            v = np.array([b.x - a.x, b.y - a.y])
-            n = float(np.hypot(*v))
-            if n == 0:
-                continue
-            # 양 끝을 조각 안으로 조금 들여야 점으로만 맞닿지 않는다
-            e = v / n * 3 * half
-            pieces.append(LineString([(a.x - e[0], a.y - e[1]), (b.x + e[0], b.y + e[1])])
-                          .buffer(half, cap_style="flat"))
-        g = unary_union(pieces)
-        for _ in range(3):
-            polys = [q for q in getattr(g, "geoms", [g]) if q.geom_type == "Polygon"]
-            main = max(polys, key=lambda q: q.area)
-            if not main.interiors:
-                # 틈이 땅을 갈랐으면 떨어져 나간 만큼 덜 센다. 그런 고리는 안 쓴다.
-                return main if main.area >= 0.999 * sum(q.area for q in polys) else None
-            edge = main.boundary
-            top = main.bounds[3] + 1
-            cuts = []
-            for h in main.interiors:
-                xy = np.asarray(h.coords)
-                x, y = xy[np.argmax(xy[:, 1])]
-                hit = LineString([(x, y), (x, top)]).intersection(edge)
-                ys = [q.y for q in getattr(hit, "geoms", [hit])
-                      if q.geom_type == "Point" and q.y > y + 1e-9]
-                if ys:
-                    cuts.append(box(x - slit, y - slit, x + slit, min(ys) + slit))
-            g = main.difference(unary_union(cuts))
-        return None
-
-    tried = {}
-
-    def at(tol):
-        # 줄이는 정도마다 한 번만 나눈다. 고리가 몇 개 필요한지 돌려준다.
-        if tol not in tried:
-            g = base.simplify(tol, preserve_topology=True)
-            # 부스러기는 버리고, 작은 구멍(약 100 m 사방보다 작은 것)은 메운다
-            parts = [Polygon(q.exterior, [h for h in q.interiors if Polygon(h).area > 1e-6])
-                     for q in getattr(g, "geoms", [g])
-                     if q.geom_type == "Polygon" and q.area > 2e-7]
-            batch = grouped(parts, max_vertices - 300) if parts else []
-            tried[tol] = (len(batch), batch, None)
-        return tried[tol][0]
-
-    def build(tol):
-        n, batch, rings = tried[tol]
-        if rings is None:
-            rings = [joined(b) for b in batch]
-            ok = all(r is not None and len(r.exterior.coords) <= max_vertices for r in rings)
-            rings = [orient(r, 1.0) for r in rings] if ok else []
-            tried[tol] = (n, batch, rings)
-        return rings
-
-    # 요청은 고리 수만큼 나가므로 고리 수를 먼저 줄인다. 한 고리 안에서는 10 m,
-    # 20 m, 40 m 로 줄여 본다(등시선도 도보 시간 어림이라 그만한 오차는 있다).
-    plans = [(k, tol) for k in range(1, max_rings + 1) for tol in (1e-4, 2e-4, 4e-4)]
-    plans += [(max_rings, tol) for tol in (8e-4, 1.6e-3, 3.2e-3)]
-    for k, tol in plans:
-        if 0 < at(tol) <= k:
-            rings = build(tol)
-            if rings:
-                return rings
-    raise BadRequest("도달 범위를 고리로 나누지 못했습니다")
-
-
 class BadRequest(Exception):
     """요청이 잘못됐을 때. 화면이 읽을 수 있는 JSON 으로 돌려준다."""
 
@@ -463,22 +337,45 @@ def parse_hhmm(text: str) -> int:
     return value
 
 
-def google_maps_key() -> str | None:
-    """환경변수나 config.json 에서 구글 지도 JS API 키를 찾는다.
-
-    키가 없으면 None 이고, 이때 화면은 OpenStreetMap 타일로 돌아간다.
-    """
-    key = os.environ.get("GOOGLE_MAPS_API_KEY", "").strip()
+def _setting(env: str, name: str) -> str | None:
+    """환경변수, 없으면 config.json 의 값. 둘 다 없으면 None."""
+    key = os.environ.get(env, "").strip()
     if key:
         return key
     cfg = ROOT / "config.json"
     if cfg.exists():
         try:
-            value = json.loads(cfg.read_text(encoding="utf-8")).get("google_maps_api_key", "")
+            value = json.loads(cfg.read_text(encoding="utf-8")).get(name, "")
             return value.strip() or None
         except (json.JSONDecodeError, OSError):
             return None
     return None
+
+
+def google_maps_key() -> str | None:
+    """구글 지도 JS API 키(브라우저용, 웹사이트 제한).
+
+    키가 없으면 None 이고, 이때 화면은 OpenStreetMap 타일로 돌아간다.
+    """
+    return _setting("GOOGLE_MAPS_API_KEY", "google_maps_api_key")
+
+
+def google_server_key() -> str | None:
+    """서버가 구글을 부를 때 쓰는 키(장소 수 세기). 브라우저에 보내지 않는다."""
+    return _setting("GOOGLE_SERVER_API_KEY", "google_server_api_key")
+
+
+_COUNTER = None
+
+
+def place_counter():
+    """장소 수 세기. 서버 키가 없으면 None 이고 화면은 그 칸을 숨긴다."""
+    global _COUNTER
+    if _COUNTER is None:
+        key = google_server_key()
+        if key:
+            _COUNTER = placecount.Counter(key)
+    return _COUNTER
 
 
 def draw_on_roads(reg, path: list[list[float]]) -> list[list[float]]:
@@ -1118,6 +1015,7 @@ def config():
     return jsonify(
         {
             "google_maps_key": google_maps_key(),
+            "place_count": place_counter() is not None,
             "walk_speed_m_per_min": round(WALK_SPEED * 60),
             "egress_default_min": EGRESS_WALK_MAX_SEC // 60,
             "egress_max_min": max_egress,
@@ -1326,16 +1224,25 @@ def isochrone():
     )
 
 
-@app.post("/api/area-rings")
-def area_rings_api():
-    """등시선 한 겹을 Places Aggregate API 에 넘길 고리들로. 화면이 범위 안 장소를
-    셀 때 쓴다. 구글 키는 웹사이트 제한이라 요청은 화면이 직접 보낸다."""
-    geom = (request.get_json(silent=True) or {}).get("geometry")
+@app.post("/api/place-count")
+def place_count():
+    """도달 범위 안 장소 수. 구글 Places Aggregate API 를 서버가 대신 부른다.
+
+    화면이 브라우저 키로 직접 부르면 Referer 를 꾸민 요청에 키가 뚫린다. 요청마다
+    과금되므로 한도와 기억은 placecount.Counter 가 맡는다.
+    """
+    counter = place_counter()
+    if counter is None:
+        raise BadRequest("장소 수 세기가 꺼져 있습니다(서버 키가 없습니다)")
+    body = request.get_json(silent=True) or {}
+    geom = body.get("geometry")
     if not isinstance(geom, dict) or geom.get("type") not in ("Polygon", "MultiPolygon"):
         raise BadRequest("geometry 는 Polygon 이나 MultiPolygon 이어야 합니다")
-    # 틈이 20 cm 라 좌표를 1 cm(소수 7자리)보다 거칠게 자르면 틈 양쪽이 겹친다
-    return jsonify({"rings": [[[round(x, 7), round(y, 7)] for x, y in r.exterior.coords]
-                              for r in area_rings(geom)]})
+    try:
+        n = counter.count(geom, body.get("type"), request.remote_addr)
+    except placecount.Refused as err:
+        return jsonify({"error": str(err)}), err.status
+    return jsonify({"count": n})
 
 
 @app.get("/api/point")
