@@ -788,6 +788,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
           <input type="checkbox" id="walk-only">
           <span data-i18n="walkOnly">전철 없이 도보만</span>
         </label>
+        <!-- 신칸센을 넣은 권역(전국)에서만 보인다. 기본은 뺀다. -->
+        <label class="check" id="shinkansen-row" hidden>
+          <input type="checkbox" id="shinkansen">
+          <span data-i18n="shinkansen">신칸센 포함</span>
+        </label>
       </div>
 
       <div class="field">
@@ -949,6 +954,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       noLimit: "제한 없음",
       walkTotalHint: "출발지에서 역까지 걷는 시간도 여기에 묶입니다. 제한을 풀면 소요 시간 상한을 넘겨서도 걷습니다. 가장 가까운 역이 몇 시간 거리인 곳에서 쓰세요.",
       walkOnly: "전철 없이 도보만",
+      shinkansen: "신칸센 포함",
       statReached: "도달 가능 역", statTotal: "전체 역",
       farTitle: "가장 멀리 닿는 역", farHint: "직선거리 순. 누르면 도착지로 지정됩니다.",
       legend: "범례", busy: "계산 중",
@@ -1057,6 +1063,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       noLimit: "制限なし",
       walkTotalHint: "出発地から駅までの徒歩もここに含まれます。制限を外すと所要時間の上限を超えても歩きます。最寄り駅まで何時間もかかる場所で使ってください。",
       walkOnly: "電車を使わず徒歩のみ",
+      shinkansen: "新幹線も使う",
       statReached: "到達可能駅", statTotal: "全駅",
       farTitle: "最も遠くまで届く駅", farHint: "直線距離順。押すと目的地に設定されます。",
       legend: "凡例", busy: "計算中",
@@ -1165,6 +1172,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       noLimit: "No limit",
       walkTotalHint: "This includes the walk from the origin to the first station. Lifting the limit lets you walk past the time limit — useful where the nearest station is hours away.",
       walkOnly: "Walking only, no trains",
+      shinkansen: "Include Shinkansen",
       statReached: "Stations reached", statTotal: "Stations total",
       farTitle: "Farthest stations", farHint: "By straight-line distance. Click to set as destination.",
       legend: "Legend", busy: "Working",
@@ -1272,6 +1280,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       noLimit: "不限",
       walkTotalHint: "从出发地走到车站的时间也计入此处。解除限制后即使超过时间上限也会继续步行，适用于最近车站需要数小时的地方。",
       walkOnly: "只步行，不乘电车",
+      shinkansen: "包括新干线",
       statReached: "可达车站", statTotal: "全部车站",
       farTitle: "最远可达车站", farHint: "按直线距离排序。点击即设为目的地。",
       legend: "图例", busy: "计算中",
@@ -1379,6 +1388,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       noLimit: "不限",
       walkTotalHint: "從出發地走到車站的時間也計入此處。解除限制後即使超過時間上限也會繼續步行，適用於最近車站需要數小時的地方。",
       walkOnly: "只步行，不乘電車",
+      shinkansen: "包括新幹線",
       statReached: "可達車站", statTotal: "全部車站",
       farTitle: "最遠可達車站", farHint: "按直線距離排序。點擊即設為目的地。",
       legend: "圖例", busy: "計算中",
@@ -3028,6 +3038,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     if (walkUnlimited.checked) p.walk_unlimited = "1";
     else p.walk_total = walkTotal.value;
     if (el("walk-only").checked) p.mode = "walk";
+    if (el("shinkansen").checked && !el("shinkansen-row").hidden) p.shinkansen = "1";
     return withScope(p);
   }
 
@@ -3673,6 +3684,14 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       run();
     });
 
+    // 신칸센은 켜고 끈 것을 기억한다
+    try { el("shinkansen").checked = localStorage.getItem("shinkansen") === "1"; }
+    catch (e) { /* 무시 */ }
+    el("shinkansen").addEventListener("change", function () {
+      try { localStorage.setItem("shinkansen", this.checked ? "1" : "0"); } catch (e) { /* 무시 */ }
+      run();
+    });
+
     el("fit").addEventListener("click", function () {
       if (lastBounds) mapView.fitBounds(lastBounds);
     });
@@ -3977,6 +3996,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     regionInfo = info;
     activeRegion = id;
     exitPickMode(false);
+    var baseInfo = regionList.filter(function (r) { return r.id === id; })[0];
+    el("shinkansen-row").hidden = !(baseInfo && baseInfo.shinkansen);
     // 조합 권역이면 조합 탭을, 아니면 권역 탭을 연다
     if (scoped ? scoped.tab !== "preset" : (info && info.custom)) {
       selectTab("combo");

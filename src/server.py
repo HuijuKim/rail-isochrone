@@ -159,17 +159,26 @@ def area_presets(reg) -> list:
     return got
 
 
+def _has_hsr(reg) -> bool:
+    return any(g.trip_hsr is not None for g in reg.graphs.values())
+
+
 def read_scope(reg):
-    """요청의 prefs. 없으면 None(권역 전체)."""
+    """요청의 prefs 와 신칸센. 거를 것이 없으면 None(권역 전체).
+
+    신칸센을 넣은 권역(전국)은 shinkansen=1 이 없으면 신칸센 운행을 뺀다. 현을
+    안 골랐어도 뺀 그래프를 쓴다(이때 clip 은 없다).
+    """
     raw = request.args.get("prefs", "").strip()
-    if not raw:
-        return None
     prefs = tuple(sorted({p.strip() for p in raw.split(",") if p.strip()}))
-    table = _pref_table(reg)
+    no_hsr = _has_hsr(reg) and request.args.get("shinkansen") not in ("1", "true", "yes")
+    if not prefs and not no_hsr:
+        return None
+    table = _pref_table(reg) if prefs else None
     unknown = [p for p in prefs if p not in table["index"]]
     if unknown:
         raise BadRequest("이 권역에 없는 현입니다: " + ", ".join(unknown))
-    key = (reg.id, prefs)
+    key = (reg.id, prefs, no_hsr)
     with _SCOPE_LOCK:
         got = _SCOPES.get(key)
         if got is not None:
@@ -177,11 +186,15 @@ def read_scope(reg):
         from router import restrict
         from shapely.ops import unary_union
 
-        keep = np.isin(table["station_pref"], [table["index"][p] for p in prefs])
-        clip = unary_union([_pref_shape(table, p) for p in prefs])
-        shapely.prepare(clip)
+        if prefs:
+            keep = np.isin(table["station_pref"], [table["index"][p] for p in prefs])
+            clip = unary_union([_pref_shape(table, p) for p in prefs])
+            shapely.prepare(clip)
+        else:
+            keep, clip = np.ones(len(reg.coords), dtype=bool), None
         got = Scope(prefs, keep, clip,
-                    {cal: restrict(g, keep) for cal, g in reg.graphs.items()})
+                    {cal: restrict(g, keep, g.trip_hsr if no_hsr else None)
+                     for cal, g in reg.graphs.items()})
         if len(_SCOPES) >= _SCOPE_KEEP:
             _SCOPES.pop(next(iter(_SCOPES)))
         _SCOPES[key] = got
@@ -565,6 +578,8 @@ def regions():
                     # 전국 권역. 있으면 화면의 현 조합 탭은 빌드 대신 이 권역에
                     # 현 목록(prefs)을 붙여 바로 계산한다.
                     "national": bool(r.meta.get("national")),
+                    # 신칸센을 넣은 권역. 화면이 "신칸센 포함" 을 보인다.
+                    "shinkansen": _has_hsr(r),
                     "areas": area_presets(r) if r.meta.get("national") else [],
                     "prefectures": r.meta.get("prefectures") or [],
                 }
@@ -904,7 +919,7 @@ def stations():
     """검색창 자동완성용 역 목록."""
     reg = pick_region()
     scope = read_scope(reg)
-    if scope:
+    if scope and scope.prefs:
         return jsonify([e for e in reg.search_index if e.get("pref") in scope.prefs])
     return jsonify(reg.search_index)
 
@@ -914,7 +929,7 @@ def prefectures():
     """도도부현 이름표. 화면 언어에 맞춰 보여주려고 언어별로 들고 있다."""
     reg = pick_region()
     scope = read_scope(reg)
-    if scope:
+    if scope and scope.prefs:
         return jsonify({k: v for k, v in reg.pref_names.items() if k in scope.prefs})
     return jsonify(reg.pref_names)
 
@@ -930,7 +945,7 @@ def railways():
     """
     reg = pick_region()
     scope = read_scope(reg)
-    return jsonify(scope_railways(reg, scope) if scope else reg.railway_shapes)
+    return jsonify(scope_railways(reg, scope) if scope and scope.prefs else reg.railway_shapes)
 
 
 @app.get("/api/config")
@@ -964,7 +979,7 @@ def coverage():
     """앱이 동작하는 범위의 윤곽선. 현을 골랐으면 그 현들의 바깥 윤곽."""
     reg = pick_region()
     scope = read_scope(reg)
-    if scope:
+    if scope and scope.clip:
         b = scope.clip.boundary
         lines = [[[round(x, 5), round(y, 5)] for x, y in g.coords]
                  for g in getattr(b, "geoms", [b])]
@@ -1036,7 +1051,7 @@ def reachable():
             return jsonify({"ok": False, "reason": "sea"})
         return jsonify({"ok": False, "reason": "outside_region"})
     scope = read_scope(reg)
-    if scope and not shapely.contains_xy(scope.clip, lon, lat):
+    if scope and scope.clip and not shapely.contains_xy(scope.clip, lon, lat):
         return jsonify({"ok": False, "reason": "outside_region"})
 
     if reg.walk is not None and reg.walk.nearest_node(lon, lat) < 0:
@@ -1077,7 +1092,7 @@ def isochrone():
         geo = contour_geojson(field, thresholds)
         return jsonify(
             {
-                "geojson": clip_geojson(geo, scope.clip) if scope else geo,
+                "geojson": clip_geojson(geo, scope.clip) if scope and scope.clip else geo,
                 "stats": {"reached": 0, "total": int(reg.supported.sum()),
                           "farthest": [], "mode": "walk"},
             }
@@ -1108,7 +1123,7 @@ def isochrone():
     else:
         field = build_field(g, lon, lat, depart, best, budget, egress_max_sec=egress)
     geojson = contour_geojson(field, thresholds)
-    if scope:
+    if scope and scope.clip:
         geojson = clip_geojson(geojson, scope.clip)
 
     elapsed = best.astype(np.float64) - depart
@@ -1152,7 +1167,7 @@ def isochrone():
             "stats": {
                 "reached": reached,
                 "total": (int(np.unique(reg.station_group[scope.keep & (reg.station_group >= 0)]).size)
-                          if scope else int(reg.supported.sum())),
+                          if scope and scope.prefs else int(reg.supported.sum())),
                 "farthest": far,
             },
         }
@@ -1172,7 +1187,7 @@ def point():
     scope = read_scope(reg)
     graphs = scope.graphs if scope else reg.graphs
     g = graphs.get(qs["calendar"]) or next(iter(graphs.values()))
-    if scope and not shapely.contains_xy(scope.clip, dest_lon, dest_lat):
+    if scope and scope.clip and not shapely.contains_xy(scope.clip, dest_lon, dest_lat):
         return jsonify({"reachable": False, "reason": "outside_region"})
     # 상한을 넘더라도 "몇 분 걸리는지" 는 알려주는 편이 쓸모 있다. 상한에
     # 맞춰 좁히면 하코네 고우라(신주쿠에서 168분)처럼 멀쩡히 갈 수 있는 곳이
