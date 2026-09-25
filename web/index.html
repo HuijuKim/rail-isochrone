@@ -493,6 +493,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 }
 .lang-field select { font-size: var(--step-1); }
 .source a { color: var(--accent); }
+/* 출처 바로 아래에 붙는 면책. 위 여백을 줄인다. */
+.source.disclaimer { padding-top: 0; margin-top: 6px; }
 .source code {
   font-family: var(--mono); font-size: var(--step-2);
   background: var(--surface-2); padding: 1px 4px; border-radius: 4px;
@@ -854,6 +856,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       <span data-i18n="srcContributors">기여자 (ODbL).</span>
       <span data-i18n="transferNote">환승은 구내 3분 · 개찰 밖 5분.</span>
     </p>
+    <!-- 면책. 시각표가 없는 권역은 나이브 모델(가상 시각표)이다. -->
+    <p class="source disclaimer" data-i18n="disclaimer">표시되는 시간은 어림값입니다. 시각표 자료가 없는 권역은 노선 배차와 역 사이 거리로 만든 가상 시각표로 계산해서 실제와 몇십 분 다를 수 있습니다. 이동 전에는 공식 시각표를 확인하세요. 특급(신칸센 포함)은 별도 요금이 듭니다.</p>
 
     <!-- 지도 바꾸기 버튼은 글이 흐르는 문단 밖에 둔다. 문단 안에 두면
          그 위의 walk-note·map-note 길이가 달라질 때마다 줄이 다시 흐르고
@@ -954,6 +958,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       legend: "범례", busy: "계산 중",
       srcTimetable: "시각표 출처", srcOrigin: "원 데이터", srcWalk: "보행망·해안선",
       srcContributors: "기여자 (ODbL).", transferNote: "환승은 구내 3분 · 개찰 밖 5분.",
+      disclaimer: "표시되는 시간은 어림값입니다. 시각표 자료가 없는 권역은 노선 배차와 역 사이 거리로 만든 가상 시각표로 계산해서 실제와 몇십 분 다를 수 있습니다. 이동 전에는 공식 시각표를 확인하세요. 특급(신칸센 포함)은 별도 요금이 듭니다.",
       fit: "권역에 맞추기", showLines: "지원 노선 표시", showStations: "지원 역 표시",
       coverage: "경계선",
       lineview: "노선별 보기", lineviewTitle: "노선을 하나씩 켜고 끕니다",
@@ -1061,6 +1066,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       legend: "凡例", busy: "計算中",
       srcTimetable: "時刻表の出典", srcOrigin: "元データ", srcWalk: "歩行ネットワーク・海岸線",
       srcContributors: "コントリビューター (ODbL)。", transferNote: "乗換は構内3分・改札外5分。",
+      disclaimer: "表示される時間は目安です。時刻表データのないエリアは、路線の運行間隔と駅間距離から作った仮の時刻表で計算するため、実際と数十分違うことがあります。移動の前には公式の時刻表をご確認ください。特急（新幹線を含む）には別途料金がかかります。",
       fit: "到達圏に合わせる", showLines: "対応路線を表示", showStations: "対応駅を表示",
       coverage: "境界線",
       lineview: "路線別表示", lineviewTitle: "路線を一つずつ表示・非表示",
@@ -1168,6 +1174,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       legend: "Legend", busy: "Working",
       srcTimetable: "Timetables from", srcOrigin: "original data", srcWalk: "Pedestrian network and coastline",
       srcContributors: "contributors (ODbL).", transferNote: "Transfers: 3 min inside a station, 5 min outside the gates.",
+      disclaimer: "Times are estimates. Where there is no timetable data, they come from a synthetic timetable built from line frequencies and station distances, so they can be off by tens of minutes. Check official timetables before you travel. Limited expresses, including the Shinkansen, need an extra fare.",
       fit: "Fit to region", showLines: "Show lines", showStations: "Show stations",
       coverage: "Boundary",
       lineview: "Browse lines", lineviewTitle: "Show or hide lines one by one",
@@ -1274,6 +1281,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       legend: "图例", busy: "计算中",
       srcTimetable: "时刻表来源", srcOrigin: "原始数据", srcWalk: "步行网络·海岸线",
       srcContributors: "贡献者 (ODbL)。", transferNote: "换乘：站内3分、出闸5分。",
+      disclaimer: "显示的时间仅供参考。没有时刻表数据的区域按线路班次和站间距离生成的虚拟时刻表计算，可能与实际相差几十分钟。出行前请查看官方时刻表。特急（含新干线）需另付费用。",
       fit: "适应范围", showLines: "显示支持线路", showStations: "显示支持车站",
       coverage: "边界线",
       lineview: "按线路查看", lineviewTitle: "逐条显示或隐藏线路",
@@ -1380,6 +1388,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       legend: "圖例", busy: "計算中",
       srcTimetable: "時刻表來源", srcOrigin: "原始資料", srcWalk: "步行網路·海岸線",
       srcContributors: "貢獻者 (ODbL)。", transferNote: "換乘：站內3分、出閘5分。",
+      disclaimer: "顯示的時間僅供參考。沒有時刻表資料的區域按路線班次和站間距離產生的虛擬時刻表計算，可能與實際相差幾十分鐘。出行前請查看官方時刻表。特急（含新幹線）需另付費用。",
       fit: "適應範圍", showLines: "顯示支援路線", showStations: "顯示支援車站",
       coverage: "邊界線",
       lineview: "按路線檢視", lineviewTitle: "逐條顯示或隱藏路線",
