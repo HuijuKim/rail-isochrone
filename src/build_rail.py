@@ -2091,6 +2091,12 @@ def _build(pbfs, rel, ways, nodes):
 
     lines, patterns = [], []
     for r in routes:
+        # 손으로 적은 특급은 접지 않는다. 제 노선으로 세웠다가 뒤에서 밟고 가는
+        # 노선들 위의 계통으로 돌린다. とかち 는 정차역이 おおぞら 노선과 겹쳐 그
+        # 부분 계통으로 접혔는데, おおぞら 노선이 계통으로 바뀌면서 함께 사라졌다.
+        if r.get("hand"):
+            lines.append({"seq": r["seq"], "rep": r, "rels": [r]})
+            continue
         best, best_ov = None, 0.0
         for k, ln in enumerate(lines):
             ov = overlap(r["seq"], ln["seq"])
