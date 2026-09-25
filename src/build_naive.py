@@ -388,7 +388,8 @@ def build(railways, express, pos, seg_head, seg_km, km, scale):
         """역 묶음 a->b 구간의 (길이 m, 등급). 선로 등급이 없으면 전철화로 본다."""
         sa, sb = f"{rid}.{a}", f"{rid}.{b}"
         v = attrs.get(f"{rid}|{sa}|{sb}") or attrs.get(f"{rid}|{sb}|{sa}")
-        cls = "hsr" if rid in hsr_ids else None
+        # 신칸센 노선이라도 도시 안 진입 구간(東京-上野 130 km/h)은 고속선이 아니다
+        cls = "hsr" if rid in hsr_ids and (not v or (v.get("vmax") or 999) >= 200) else None
         if v:
             return [(float(v["len"]), cls or seg_class(v))]
         return [(seg_km.get((a, b), km(a, b) * DETOUR) * 1000.0, cls or "rail_e")]

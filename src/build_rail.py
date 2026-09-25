@@ -112,8 +112,13 @@ _LTD_EXPRESS_NAMES = (r"ひだ|しなの|南紀|ふじかわ|伊那路|踊り子
                       r"のぞみ|ひかり|みずほ|さくら|はやぶさ|はやて|こまち|かがやき|"
                       r"はくたか|とき|やまびこ|かもめ")
 # 「にちりん」 처럼 낫표로 싸 적기도 한다.
+# OSM 신칸센 관계는 "はやぶさ列車" 처럼 列車 를 붙여 적기도 한다.
 LTD_EXPRESS = re.compile(
-    r"^「?(?:" + _LTD_EXPRESS_NAMES + r")(?:$|[\s\d０-９(（:：・=>＞、,」])")
+    r"^「?(?:" + _LTD_EXPRESS_NAMES + r")(?:$|列車|[\s\d０-９(（:：・=>＞、,」])")
+# 미니 신칸센. 신칸센 노선과 재래선(奥羽本線·田沢湖線)을 이어 달린다. 이름이
+# "山形新幹線"·"秋田新幹線" 인 관계는 그 재래선 구간이라 신칸센 노선으로 세우지 않는다.
+MINI_SHINKANSEN = re.compile(r"^「?(?:つばさ|こまち)")
+MINI_SHINKANSEN_LINE = re.compile(r"^(?:山形|秋田)新幹線")
 
 PAREN_RE = re.compile(r"[（(][^）)]*[）)]")
 # 여러 회사 노선을 이어 다니는 운행 계통. 노선이 아니라 운행이다.
@@ -1517,7 +1522,12 @@ def main():
         rel.ids, rel.routes = [i for i, _ in keep], [r for _, r in keep]
         rel.dropped |= hsr_ids
     else:
-        print(f"  신칸센 계통 관계 {len(hsr_ids)}개를 쓴다", flush=True)
+        mini = {i for i, r in zip(rel.ids, rel.routes) if MINI_SHINKANSEN_LINE.match(r["name"])}
+        keep = [(i, r) for i, r in zip(rel.ids, rel.routes) if i not in mini]
+        rel.ids, rel.routes = [i for i, _ in keep], [r for _, r in keep]
+        rel.dropped |= mini
+        print(f"  신칸센 계통 관계 {len(hsr_ids - mini)}개를 쓴다 "
+              f"(미니 신칸센 재래선 구간 {len(mini)}개 뺌)", flush=True)
     track_only = sum(1 for r in rel.routes if not r["stops"])
     print(f"  철도 계통 관계 {len(rel.routes):,}개 "
           f"(신칸센 {len(rel.dropped)}개, 못 타는 노선 {len(rel.skipped)}개 제외), "
@@ -1559,6 +1569,16 @@ def train_name(raw: str) -> str:
 def is_nickname(name: str) -> bool:
     """열차 애칭만 적힌 이름인가. 南風·こうのとり 처럼 노선 이름이 없다."""
     return bool(LTD_EXPRESS.match((name or "").strip()))
+
+
+def rides(service, line) -> bool:
+    """계통이 이 노선을 밟아도 되는가. 신칸센 계통은 신칸센 노선만, 재래선 계통은
+    재래선 노선만 밟는다. しなの 가 長野 에서 北陸新幹線 을 밟아, 신칸센을 빼면
+    함께 사라지고 켜면 신칸센 속도로 달렸다. 미니 신칸센(つばさ·こまち)은 둘 다 밟는다.
+    """
+    if MINI_SHINKANSEN.match((service.get("name") or "").strip()):
+        return True
+    return bool(service.get("shinkansen")) == bool(line.get("shinkansen"))
 
 
 def through_route(seq, others, prefer=None):
@@ -1698,8 +1718,9 @@ def split_far(lines, patterns, xy):
         ln = lines[k]
         # 선로 관계만 본다. 계통 관계는 한 열차가 실제로 도는 길이라, 먼
         # 간격은 특급 애칭 목록에 없는 특급(ひたち, スーパーはこね)이다.
+        # 신칸센은 역 사이가 40-50 km 라 가르지 않는다(東北新幹線 이 네 토막이 됐다)
         if (ln["rep"]["kind"] not in (None, "각역정차")
-                or ln["rep"].get("rtype") != "railway"):
+                or ln["rep"].get("rtype") != "railway" or ln["rep"].get("shinkansen")):
             continue
         seq = ln["seq"]
         pts = [xy(c) for c in seq]
@@ -2275,7 +2296,8 @@ def _build(pbfs, rel, ways, nodes):
             continue
         others = [(j, lines[j]["seq"]) for j in range(len(lines))
                   if j != k and len(lines[j]["seq"]) >= 2
-                  and not is_service(lines[j]["rep"]["name"])]
+                  and not is_service(lines[j]["rep"]["name"])
+                  and rides(ln["rep"], lines[j]["rep"])]
         route = through_route(ln["seq"], others)
         if route:
             through[k] = route
@@ -2371,7 +2393,8 @@ def _build(pbfs, rel, ways, nodes):
         # 따로 "직통" 으로 깐다. 이름은 붙이지 않는다(노선 이름이 이미 있다).
         through_run = not r["kind"] and THROUGH_RUN.search(r["name"])
         if (r["kind"] or through_run) and any(c not in on_line for c in r["seq"]):
-            route = through_route(r["seq"], plain, prefer=k)
+            route = through_route(r["seq"], [(j, cs) for j, cs in plain
+                                             if rides(r, lines[j]["rep"])], prefer=k)
             if route:
                 item["rows"] = [[lines[j]["lid"], c] for j, c in zip(route, r["seq"])]
                 if through_run:
