@@ -6,6 +6,25 @@
   "zh-Hans": "北海道",
   "zh-Hant": "北海道",
   "extract": "hokkaido",
+  "rail_bbox": [
+   140.2744,
+   41.6786,
+   145.5828,
+   45.4166
+  ],
+  "stations": 568,
+  "hub": {
+   "ja": "札幌",
+   "lon": 141.35105,
+   "lat": 43.06844,
+   "names": {
+    "ja": "札幌",
+    "en": "Sapporo",
+    "ko": "삿포로",
+    "zh-Hans": "札幌",
+    "zh-Hant": "札幌"
+   }
+  },
   "neighbors": []
  },
  "青森県": {
