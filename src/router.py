@@ -44,6 +44,8 @@ class Graph:
     ev_trip_start: np.ndarray
     # 운행마다 계통 번호. 각역정차는 -1, 없는 판의 파일이면 None
     trip_pat: np.ndarray | None = None
+    # 운행마다 신칸센을 달리는가. 신칸센을 넣은 권역(전국)만 있다.
+    trip_hsr: np.ndarray | None = None
 
     @property
     def n_stations(self) -> int:
@@ -67,6 +69,7 @@ def load_graph(path) -> Graph:
         tr_ptr=z["tr_ptr"],
         ev_trip_start=ev_trip_start,
         trip_pat=(z["trip_pat"] if "trip_pat" in z.files else None),
+        trip_hsr=(z["trip_hsr"] if "trip_hsr" in z.files else None),
     )
 
 

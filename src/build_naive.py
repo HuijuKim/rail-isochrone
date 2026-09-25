@@ -51,8 +51,13 @@ LANGS = ("ja", "en", "ko", "zh-Hans", "zh-Hant")
 #   순항     전철화 79.3km/h, 비전철 60.0km/h, 지하철·모노레일 87.9km/h
 # 노면전차는 쌍이 2개뿐이라 맞춘 값(77km/h) 대신 법정 최고속도 40km/h 를 쓴다
 # (軌道運転規則, 併用軌道). 한 정거장 약 1.8분으로 熊本市電 조사값(약 2분)과 맞다.
-DWELL = {"rail_e": 98.7, "rail_ne": 98.7, "urban": 73.3, "tram": 73.3}
-CRUISE_KMH = {"rail_e": 79.3, "rail_ne": 60.0, "urban": 87.9, "tram": 40.0}
+DWELL = {"rail_e": 98.7, "rail_ne": 98.7, "urban": 73.3, "tram": 73.3, "hsr": 240.0}
+CRUISE_KMH = {"rail_e": 79.3, "rail_ne": 60.0, "urban": 87.9, "tram": 40.0, "hsr": 215.0}
+# 신칸센(hsr). 순항은 東京-新大阪 のぞみ(2시간 27분)·東京-仙台 はやぶさ(1시간 31분)
+# 에 맞췄다. 각역정차(こだま)는 역마다 빠른 열차에 길을 비켜 주느라 오래 서므로
+# 정차를 길게 잡는다.
+# 신칸센과 재래선 사이 갈아타기. 승강장이 멀고 개찰을 한 번 더 지난다(東京 약 10분).
+TRANSFER_HSR = 480
 # 통과 계통은 간토에서 맞춘 비율을 그대로 쓴다. 정차 한 번에 106초, 순항은
 # 완행보다 13% 빠르다(간토 84.8 / 74.8).
 DWELL_FAST = 106.0
@@ -362,6 +367,7 @@ def track_lengths(rows, row_of, railways, pos, scale, km):
 
 def build(railways, express, pos, seg_head, seg_km, km, scale):
     """역 줄과 정차 이벤트를 만든다."""
+    hsr_ids = {r["id"] for r in railways if r.get("shinkansen")}
     # 역 줄은 (노선, 역묶음) 단위. 간토 자료도 이렇게 쪼개져 있다.
     rows, row_of = [], {}
     for r in railways:
@@ -382,9 +388,10 @@ def build(railways, express, pos, seg_head, seg_km, km, scale):
         """역 묶음 a->b 구간의 (길이 m, 등급). 선로 등급이 없으면 전철화로 본다."""
         sa, sb = f"{rid}.{a}", f"{rid}.{b}"
         v = attrs.get(f"{rid}|{sa}|{sb}") or attrs.get(f"{rid}|{sb}|{sa}")
+        cls = "hsr" if rid in hsr_ids else None
         if v:
-            return [(float(v["len"]), seg_class(v))]
-        return [(seg_km.get((a, b), km(a, b) * DETOUR) * 1000.0, "rail_e")]
+            return [(float(v["len"]), cls or seg_class(v))]
+        return [(seg_km.get((a, b), km(a, b) * DETOUR) * 1000.0, cls or "rail_e")]
 
     # 첫차 위상의 열쇠. 노선 id 는 빌드 순서로 붙는 번호(OSM.0, OSM.2 ...)라 같은
     # 노선도 권역마다 달라서, 같은 역에서 떠나도 고른 현에 따라 시각표가 통째로
@@ -397,6 +404,8 @@ def build(railways, express, pos, seg_head, seg_km, km, scale):
     # 운행 -> 계통 번호. 각역정차(노선 그 자체)는 -1 이다. 경로 패널이
     # "세토오하시선 · 특급 南風" 처럼 적으려면 운행마다 이것이 있어야 한다.
     trip_pat = []
+    # 운행 -> 신칸센을 달리는가. 화면에서 신칸센을 빼고 계산할 때 쓴다.
+    trip_hsr = []
 
     def lay(line_key, seq, headway_min, spans, fast=False, pat=-1, ltd=False):
         """seq(역 줄 번호)를 순서대로 도는 운행을 배차 간격으로 깐다.
@@ -414,11 +423,13 @@ def build(railways, express, pos, seg_head, seg_km, km, scale):
         # 첫 차가 와서 宮崎-都城 이 271분으로 나왔다.
         whole = sum(secs)
         lead = -(-whole // step) * step
+        hsr = any(rows[x][0] in hsr_ids for x in seq)
         for order, legs in ((seq, secs), (seq[::-1], secs[::-1])):
             t0 = SERVICE_FROM + offset - lead
             while t0 <= SERVICE_TO:
                 trip_start.append(len(ev_stop))
                 trip_pat.append(pat)
+                trip_hsr.append(hsr)
                 t = t0
                 for i, row in enumerate(order):
                     ev_stop.append(row)
@@ -445,6 +456,11 @@ def build(railways, express, pos, seg_head, seg_km, km, scale):
         # 瀬戸線 은 한낮에 普通 만 다니는데 급행 계통이 얹혀 1.5배가 됐다.
         # 운행 횟수 데이터를 쓰면 손으로 적은 값은 짝이 없는 구간에만 쓴다.
         spec = {} if USE_HONSU else (hand.get(r["title"].get("ja", "")) or {})
+        # 운행 횟수 자료는 추가 요금 열차를 세지 않아 신칸센 구간이 없다. 노선
+        # 이름에 per_hour 를 적으면 그 값으로 깐다.
+        per_hour = (hand.get(r["title"].get("ja", "")) or {}).get("per_hour")
+        if per_hour:
+            heads = [60.0 / float(per_hour)] * len(heads)
         if spec.get("max_per_hour"):
             heads = [max(h, 60.0 / spec["max_per_hour"]) for h in heads]
             capped.add(r["id"])
@@ -521,11 +537,11 @@ def build(railways, express, pos, seg_head, seg_km, km, scale):
         n_exp += 1
 
     trip_start.append(len(ev_stop))
-    return rows, row_of, ev_stop, ev_arr, ev_dep, trip_start, n_exp, trip_pat, pats
+    return rows, row_of, ev_stop, ev_arr, ev_dep, trip_start, n_exp, trip_pat, pats, trip_hsr
 
 
-def transfers(rows, pos, scale, title):
-    """같은 역 구내와, 걸어서 갈아타는 이웃 역 사이."""
+def transfers(rows, pos, scale, title, hsr_ids=frozenset()):
+    """같은 역 구내와, 걸어서 갈아타는 이웃 역 사이. 신칸센과 재래선 사이는 길다."""
 
     def title_of(c):
         return (title.get(c) or {}).get("ja", "")
@@ -539,7 +555,8 @@ def transfers(rows, pos, scale, title):
         for a in ids:
             for b in ids:
                 if a != b:
-                    edges.append((a, b, TRANSFER_SAME))
+                    one = (rows[a][0] in hsr_ids) != (rows[b][0] in hsr_ids)
+                    edges.append((a, b, TRANSFER_HSR if one else TRANSFER_SAME))
 
     # 이름이 달라 안 묶인 이웃 역은 걸어서 갈아탄다. 거리에 따라 값을
     # 매긴다. transfers.py 에 규칙을 두어 시각표 권역과 같은 잣대를 쓴다.
@@ -576,12 +593,13 @@ def main():
     print("  등급: " + ", ".join(f"{GRADE_NAMES[g]} {counts[g]}" for g in sorted(counts)),
           flush=True)
 
-    rows, row_of, ev_stop, ev_arr, ev_dep, trip_start, n_exp, trip_pat, pats = build(
+    rows, row_of, ev_stop, ev_arr, ev_dep, trip_start, n_exp, trip_pat, pats, trip_hsr = build(
         railways, express, pos, seg_head, seg_km, km, scale)
     print(f"  역 줄 {len(rows):,}개, 운행 {len(trip_start) - 1:,}건, "
           f"정차 이벤트 {len(ev_stop):,}개 (통과 계통 {n_exp}개)", flush=True)
 
-    edges, near = transfers(rows, pos, scale, title)
+    edges, near = transfers(rows, pos, scale, title,
+                            {r["id"] for r in railways if r.get("shinkansen")})
     print(f"  환승 간선 {len(edges):,}개 (이름이 다른 이웃 역 쌍 {near:,}개)", flush=True)
 
     tr = np.array(edges, dtype=np.int64)
@@ -620,6 +638,7 @@ def main():
             tr_to=tr[:, 1].astype(np.int32),
             tr_cost=tr[:, 2].astype(np.int32),
             tr_ptr=tr_ptr.astype(np.int64),
+            **({"trip_hsr": np.array(trip_hsr, dtype=bool)} if any(trip_hsr) else {}),
         )
         size = (BASE / f"graph-{calendar}.npz").stat().st_size
         print(f"  graph-{calendar}.npz {size / 1e6:.1f} MB", flush=True)

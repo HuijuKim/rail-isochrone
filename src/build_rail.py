@@ -17,8 +17,9 @@
 "JR京都線・JR宝塚線" 과 "JR宝塚線・JR京都線" 으로 갈라지고, 新快速 이
 JR神戸線 의 통과 계통이 아니라 별개 노선이 되어 버린다.
 
-신칸센은 뺀다. 간토 쪽 자료(ODPT)에 신칸센이 없어 권역끼리 어긋나기
-때문이다. 구별되는 태그가 없으므로 계통 이름으로 거른다.
+신칸센은 권역 설정에 "shinkansen": true 가 있을 때만 쓴다. 간토 쪽 자료(ODPT)에
+신칸센이 없어 권역끼리 어긋나므로 기존 권역과 현 조합은 뺀다. 구별되는 태그가
+없으므로 계통 이름으로 가린다. 훑기 캐시에는 표시만 붙여 남긴다.
 
 사용법: REGION=kansai python src/build_rail.py data/osm/kansai-latest.osm.pbf
 """
@@ -105,7 +106,11 @@ _LTD_EXPRESS_NAMES = (r"ひだ|しなの|南紀|ふじかわ|伊那路|踊り子
                       # 못 알아보면 소야 본선·세키쇼선 선로 관계가 그 밑으로
                       # 빨려 들어가 특급 이름의 보통열차 노선이 됐다.
                       r"北斗|おおぞら|とかち|宗谷|サロベツ|オホーツク|大雪|"
-                      r"カムイ|ライラック|すずらん")
+                      r"カムイ|ライラック|すずらん|"
+                      # 신칸센의 빠른 열차. 신칸센 노선 위 계통으로 돌린다. こだま·
+                      # つばめ·なすの·たにがわ·あさま·つるぎ 는 각역정차라 넣지 않는다.
+                      r"のぞみ|ひかり|みずほ|さくら|はやぶさ|はやて|こまち|かがやき|"
+                      r"はくたか|とき|やまびこ|かもめ")
 # 「にちりん」 처럼 낫표로 싸 적기도 한다.
 LTD_EXPRESS = re.compile(
     r"^「?(?:" + _LTD_EXPRESS_NAMES + r")(?:$|[\s\d０-９(（:：・=>＞、,」])")
@@ -340,9 +345,8 @@ class Relations(osmium.SimpleHandler):
         name = t.get("name") or t.get("name:ja") or ""
         if not name:
             return
-        if SHINKANSEN.search(name) or SHINKANSEN.search(t.get("ref", "")):
-            self.dropped.add(r.id)
-            return
+        # 신칸센은 표시만 붙여 둔다. 쓸지는 권역 설정이 정한다(main).
+        hsr = bool(SHINKANSEN.search(name) or SHINKANSEN.search(t.get("ref", "")))
         # 유원지 어트랙션은 태그가 일반 노선과 같다. 디즈니랜드의
         # ウエスタンリバー鉄道 는 route=train, operator=オリエンタルランド
         # 이고 실제로 762mm 증기기관차가 다니는 진짜 철도다. 다만
@@ -376,6 +380,7 @@ class Relations(osmium.SimpleHandler):
             "kind": kind_of(name),
             "stops": stops,
             "ways": ways,
+            "shinkansen": hsr,
         })
 
 
@@ -1506,6 +1511,13 @@ def main():
           flush=True)
 
     rel, ways, nodes = scan_osm(pbfs)
+    hsr_ids = {i for i, r in zip(rel.ids, rel.routes) if r.get("shinkansen")}
+    if not _wants_shinkansen():
+        keep = [(i, r) for i, r in zip(rel.ids, rel.routes) if i not in hsr_ids]
+        rel.ids, rel.routes = [i for i, _ in keep], [r for _, r in keep]
+        rel.dropped |= hsr_ids
+    else:
+        print(f"  신칸센 계통 관계 {len(hsr_ids)}개를 쓴다", flush=True)
     track_only = sum(1 for r in rel.routes if not r["stops"])
     print(f"  철도 계통 관계 {len(rel.routes):,}개 "
           f"(신칸센 {len(rel.dropped)}개, 못 타는 노선 {len(rel.skipped)}개 제외), "
@@ -1519,6 +1531,15 @@ def main():
     print(f"  역 노드 {len(nodes.stations):,}개, 정차 노드 {len(nodes.pos):,}개",
           flush=True)
     return _build(pbfs, rel, ways, nodes)
+
+
+def _wants_shinkansen() -> bool:
+    """권역 설정에 "shinkansen": true 가 있으면 신칸센을 넣는다(전국 권역)."""
+    meta = ROOT / "data" / "regions" / REGION / "region.json"
+    try:
+        return bool(json.loads(meta.read_text(encoding="utf-8")).get("shinkansen"))
+    except (OSError, ValueError):
+        return False
 
 
 def train_name(raw: str) -> str:
@@ -2107,6 +2128,10 @@ def _build(pbfs, rel, ways, nodes):
             continue
         best, best_ov = None, 0.0
         for k, ln in enumerate(lines):
+            # 신칸센과 재래선은 서로 접지 않는다. こだま 정차역 대부분이 東海道本線
+            # 역과 같은 묶음이라 그대로 두면 재래선 노선에 접힌다.
+            if bool(r.get("shinkansen")) != bool(ln["rep"].get("shinkansen")):
+                continue
             ov = overlap(r["seq"], ln["seq"])
             if ov > best_ov:
                 best, best_ov = k, ov
@@ -2324,7 +2349,8 @@ def _build(pbfs, rel, ways, nodes):
         wiki = next((r.get("wikipedia") for r in ln["rels"] if r.get("wikipedia")), "")
         railways.append({"id": lid, "title": titles, "stations": order,
                          "operator": rep["operator"], "colour": rep["colour"],
-                         "clusters": ln["seq"], "wikipedia": wiki})
+                         "clusters": ln["seq"], "wikipedia": wiki,
+                         **({"shinkansen": True} if rep.get("shinkansen") else {})})
         ln["lid"] = lid
 
     plain = [(j, lines[j]["seq"]) for j in range(len(lines))
