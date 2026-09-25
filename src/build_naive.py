@@ -69,14 +69,20 @@ def seg_class(v):
     return "rail_e" if v.get("elec", 1.0) >= 0.5 else "rail_ne"
 
 
-def leg_seconds(parts, fast=False):
-    """한 번 서고 달리는 구간의 시간. parts 는 (길이 m, 등급) 목록."""
+def leg_seconds(parts, fast=False, ltd=False):
+    """한 번 서고 달리는 구간의 시간. parts 는 (길이 m, 등급) 목록.
+
+    ltd 는 특급이다. 비전철 선로의 속도(60 km/h)는 한적한 선의 디젤 완행 기준이라,
+    디젤 특급(キハ261 은 최고 120 km/h)이 그 속도로 달려 北斗 札幌-函館 이 302분
+    (실제 220분)이 됐다. 특급은 비전철 선로에서도 전철 선로 속도로 달린다.
+    """
     if not parts:
         return 0
     main = max(parts, key=lambda p: p[0])[1]
     dwell = DWELL_FAST if fast else DWELL[main]
     mult = FAST_MULT if fast else 1.0
-    run = sum(m / (CRUISE_KMH[c] * mult / 3.6) for m, c in parts)
+    run = sum(m / (CRUISE_KMH["rail_e" if ltd and c == "rail_ne" else c] * mult / 3.6)
+              for m, c in parts)
     return int(round(dwell + run))
 
 
@@ -392,13 +398,13 @@ def build(railways, express, pos, seg_head, seg_km, km, scale):
     # "세토오하시선 · 특급 南風" 처럼 적으려면 운행마다 이것이 있어야 한다.
     trip_pat = []
 
-    def lay(line_key, seq, headway_min, spans, fast=False, pat=-1):
+    def lay(line_key, seq, headway_min, spans, fast=False, pat=-1, ltd=False):
         """seq(역 줄 번호)를 순서대로 도는 운행을 배차 간격으로 깐다.
 
         역 줄은 (노선, 역 묶음) 이라, 줄 번호를 받으면 한 운행이 여러 노선을
         이어 달릴 수 있다. 南風 은 瀬戸大橋線·予讃線·土讃線 을 이어 간다.
         spans 는 정차 사이마다 (길이 m, 등급) 목록이다."""
-        secs = [leg_seconds(p, fast) for p in spans]
+        secs = [leg_seconds(p, fast, ltd) for p in spans]
         step = max(int(round(headway_min * 60)), 60)
         offset = phase_of(line_key, step)
         # 왕복 모두 깐다. 한 방향만 깔면 되돌아오는 경로가 없어진다.
@@ -509,7 +515,7 @@ def build(railways, express, pos, seg_head, seg_km, km, scale):
         # 직통 운전은 각역정차라 빠르게 달리지 않는다
         lay(f"{line_key_of.get(on[0][0], on[0][0])}|exp:{e.get('name') or ''}:{e['kind']}",
             [row_of[k] for k in on], head, legs,
-            fast=e["kind"] != "직통", pat=len(pats))
+            fast=e["kind"] != "직통", pat=len(pats), ltd=e["kind"] == "특급")
         pats.append({"kind": e["kind"], "name": e.get("name", ""),
                      "railway": on[0][0]})
         n_exp += 1
