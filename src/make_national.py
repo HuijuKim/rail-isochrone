@@ -51,6 +51,9 @@ def setup() -> None:
     meta = mr.region_json(RID, prefs)
     meta.pop("custom", None)
     meta["national"] = True      # build_names 가 기존 권역의 노선 이름을 빌려 온다
+    # 전국판은 모두 OSM 이라 간토 ODPT 와 어긋날 일이 없다. 신칸센을 넣고, 화면의
+    # "신칸센 포함" 을 켤 때만 쓴다(서버가 신칸센 운행을 빼고 계산한다).
+    meta["shinkansen"] = True
     meta["names"] = {"ja": "全国", "en": "Japan", "ko": "전국",
                      "zh-Hans": "全国", "zh-Hant": "全國"}
     meta["grid"] = dict(NATIONAL, ocean_seeds="auto")
