@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>철도 등시선 온라인 준비</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@400;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* 앱(web/index.html)과 같은 색·글꼴 체계. 한글은 IBM Plex Sans KR 로 받는다. */
+:root {
+  color-scheme: light;
+  --bg:        #E4E9EE;
+  --surface:   #FFFFFF;
+  --surface-2: #F2F5F8;
+  --ink:       #111922;
+  --ink-2:     #3C4A59;
+  --muted:     #6B7B8C;
+  --line:      #CBD5DE;
+  --line-soft: #DDE4EA;
+  --accent:    #1A5C72;
+  --accent-soft: #D7E7EC;
+  --ok:        #2E6B45;
+  --ok-soft:   #DCEBE0;
+  --warn:      #A8422A;
+  --warn-soft: #F3E0DA;
+  --hold:      #8A6A12;
+  --hold-soft: #F2EAD2;
+  --seg-1: #1A5C72;
+  --seg-2: #4F8FA3;
+  --seg-3: #8DB9C6;
+  --seg-4: #B9CBD6;
+  --seg-5: #D6E0E7;
+  --sans: "IBM Plex Sans KR", "Zen Kaku Gothic New", "Malgun Gothic", "Yu Gothic", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  --step-1: .8rem;
+  --step0: .95rem;
+  --step1: 1.12rem;
+  --step2: 1.45rem;
+  --step3: 1.95rem;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg:        #0B1116;
+    --surface:   #131C24;
+    --surface-2: #1A242E;
+    --ink:       #E3EAF1;
+    --ink-2:     #B3C1CE;
+    --muted:     #7E8F9F;
+    --line:      #26333F;
+    --line-soft: #1E2A34;
+    --accent:    #5FB6CE;
+    --accent-soft: #15313B;
+    --ok:        #7CC596;
+    --ok-soft:   #16301F;
+    --warn:      #E8916F;
+    --warn-soft: #3A1E16;
+    --hold:      #E0BE62;
+    --hold-soft: #332A12;
+    --seg-1: #5FB6CE;
+    --seg-2: #3F8599;
+    --seg-3: #2E6272;
+    --seg-4: #29444F;
+    --seg-5: #22323B;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg:        #0B1116;
+  --surface:   #131C24;
+  --surface-2: #1A242E;
+  --ink:       #E3EAF1;
+  --ink-2:     #B3C1CE;
+  --muted:     #7E8F9F;
+  --line:      #26333F;
+  --line-soft: #1E2A34;
+  --accent:    #5FB6CE;
+  --accent-soft: #15313B;
+  --ok:        #7CC596;
+  --ok-soft:   #16301F;
+  --warn:      #E8916F;
+  --warn-soft: #3A1E16;
+  --hold:      #E0BE62;
+  --hold-soft: #332A12;
+  --seg-1: #5FB6CE;
+  --seg-2: #3F8599;
+  --seg-3: #2E6272;
+  --seg-4: #29444F;
+  --seg-5: #22323B;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: var(--step0);
+  line-height: 1.7;
+  padding: env(safe-area-inset-top, 0px) 20px env(safe-area-inset-bottom, 0px);
+}
+.page {
+  max-width: 820px;
+  margin: 0 auto;
+  padding-block: 40px 64px;
+  display: flex; flex-direction: column; gap: 22px;
+}
+a { color: var(--accent); text-underline-offset: 2px; }
+a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+code, .mono { font-family: var(--mono); font-size: .88em; }
+code { background: var(--surface-2); border: 1px solid var(--line-soft); border-radius: 5px; padding: 0 5px; word-break: break-all; }
+h1, h2, h3 { text-wrap: balance; margin: 0; line-height: 1.3; }
+
+/* 머리 */
+.head { display: flex; flex-direction: column; gap: 10px; padding-bottom: 6px; }
+.eyebrow {
+  font-family: var(--mono); font-size: var(--step-1); letter-spacing: .08em;
+  color: var(--muted); text-transform: uppercase;
+}
+h1 { font-size: var(--step3); font-weight: 700; letter-spacing: -.01em; }
+.lede { margin: 0; color: var(--ink-2); max-width: 62ch; }
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: var(--step-1); font-weight: 700; line-height: 1.4;
+  padding: 2px 10px; border-radius: 999px; white-space: nowrap;
+}
+.pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.pill.hold { color: var(--hold); background: var(--hold-soft); }
+.pill.ok   { color: var(--ok);   background: var(--ok-soft); }
+.pill.no   { color: var(--warn); background: var(--warn-soft); }
+.pill.info { color: var(--accent); background: var(--accent-soft); }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; color: var(--muted); font-size: var(--step-1); }
+
+/* 구역 */
+section {
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 22px 24px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+section > h2 { font-size: var(--step2); font-weight: 700; }
+section > h3 { font-size: var(--step1); font-weight: 700; margin-top: 6px; }
+section p { margin: 0; max-width: 68ch; }
+.note { color: var(--muted); font-size: var(--step-1); }
+
+/* 요약 */
+.summary { display: grid; grid-template-columns: max-content 1fr; gap: 10px 18px; margin: 0; }
+.summary dt { font-weight: 700; color: var(--ink-2); }
+.summary dd { margin: 0; }
+
+/* 용량 막대 */
+.bar {
+  display: flex; height: 22px; border-radius: 6px; overflow: hidden;
+  border: 1px solid var(--line);
+}
+.bar span { display: block; height: 100%; }
+.legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 6px 18px; margin: 0; padding: 0; list-style: none; }
+.legend li { display: flex; align-items: baseline; gap: 8px; font-size: var(--step-1); }
+.legend i { flex: none; width: 10px; height: 10px; border-radius: 2px; transform: translateY(1px); }
+.legend b { font-family: var(--mono); font-weight: 500; font-variant-numeric: tabular-nums; margin-left: auto; }
+
+/* 숫자 */
+.figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.fig { border-top: 2px solid var(--accent); padding-top: 8px; display: flex; flex-direction: column; gap: 2px; }
+.fig .n { font-family: var(--mono); font-size: var(--step2); font-weight: 500; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.fig .k { font-size: var(--step-1); color: var(--muted); }
+
+/* 표 */
+.scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table { border-collapse: collapse; width: 100%; font-size: var(--step-1); }
+th, td { text-align: left; vertical-align: top; padding: 9px 10px; border-bottom: 1px solid var(--line-soft); }
+th { font-weight: 700; color: var(--muted); white-space: nowrap; border-bottom-color: var(--line); }
+td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+td:first-child code { white-space: nowrap; word-break: normal; }
+tr:last-child td { border-bottom: 0; }
+
+/* 목록 */
+ul.plain, ol.steps { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 8px; }
+ol.steps > li::marker { font-family: var(--mono); color: var(--accent); font-weight: 500; }
+ol.steps li p { margin-top: 2px; color: var(--ink-2); }
+
+pre {
+  margin: 0; overflow-x: auto;
+  background: var(--surface-2); border: 1px solid var(--line-soft); border-radius: 8px;
+  padding: 12px 14px; font-family: var(--mono); font-size: .82rem; line-height: 1.6;
+}
+pre code { background: none; border: 0; padding: 0; word-break: normal; }
+
+.sources { font-size: var(--step-1); color: var(--ink-2); display: flex; flex-direction: column; gap: 4px; margin: 0; padding-left: 1.2em; }
+.sources a { word-break: break-all; }
+
+@media (max-width: 560px) {
+  section { padding: 18px 16px; }
+  .summary { grid-template-columns: 1fr; gap: 2px 0; }
+  .summary dd { margin-bottom: 8px; }
+  h1 { font-size: var(--step2); }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+<main class="page">
+
+  <header class="head">
+    <span class="eyebrow">rail-isochrone · 전국판을 서버에 올리는 일</span>
+    <h1>철도 등시선 온라인 준비</h1>
+    <div class="meta">
+      <span class="pill hold">보류</span>
+      <span>2026-09-26 정리</span>
+      <span>코드 위치: <code>google-maps-api</code> 브랜치</span>
+    </div>
+    <p class="lede">전국판을 온라인에 올리는 일은 데이터가 커서 무료로 두기 어렵다고 보고 미뤄 두었습니다. 그동안 재 본 규모, 알아본 호스팅과 구글 지도 API, 준비해 둔 코드, 다시 시작할 때 할 일을 한곳에 모았습니다.</p>
+  </header>
+
+  <section aria-labelledby="s-summary">
+    <h2 id="s-summary">한눈에</h2>
+    <dl class="summary">
+      <dt>지금 상태</dt>
+      <dd>운영에 필요한 코드는 <code>google-maps-api</code> 브랜치에 있습니다. master 에는 아직 합치지 않았습니다. 로컬 시험 서버 5174 가 운영과 같은 방식(waitress)으로 돕니다.</dd>
+      <dt>막힌 곳</dt>
+      <dd>서버 하나가 메모리 약 1GB, 디스크 약 3GB 를 씁니다. 대부분의 무료 등급은 여기서 걸립니다. Oracle Always Free 는 사양상 들어가지만 조건이 자주 바뀝니다.</dd>
+      <dt>다시 시작하면</dt>
+      <dd>서버 전용 구글 키 만들기, master 합치기, 호스트 고르기 순으로 합니다(아래 “다시 시작할 때”).</dd>
+    </dl>
+  </section>
+
+  <section aria-labelledby="s-size">
+    <h2 id="s-size">앱 규모</h2>
+    <p>전국 권역 폴더 <code>data/national/regions/national</code> 은 2,915MB 입니다(du 기준). 절반 가까이는 서버가 스스로 다시 만들 수 있는 사본입니다.</p>
+    <div class="bar" role="img" aria-label="전국 권역 2,915MB 구성: 풀어 둔 보행망 사본 1,305, 도보 경로선 도형 958, 보행망 413, 원자료 126, 도보권·해안 92, 시각표 그래프 22">
+      <span style="width:44.8%; background:var(--seg-1)"></span>
+      <span style="width:32.9%; background:var(--seg-2)"></span>
+      <span style="width:14.2%; background:var(--seg-3)"></span>
+      <span style="width:4.3%;  background:var(--seg-4)"></span>
+      <span style="width:3.2%;  background:var(--seg-5)"></span>
+      <span style="width:0.6%;  background:var(--line)"></span>
+    </div>
+    <ul class="legend">
+      <li><i style="background:var(--seg-1)"></i>보행망 사본 <code>walk/mm</code><b>1,305MB</b></li>
+      <li><i style="background:var(--seg-2)"></i>도보 경로선 도형 <code>fine_*</code><b>958MB</b></li>
+      <li><i style="background:var(--seg-3)"></i>보행망 <code>graph.npz</code><b>413MB</b></li>
+      <li><i style="background:var(--seg-4)"></i>원자료 <code>raw/</code><b>126MB</b></li>
+      <li><i style="background:var(--seg-5)"></i>도보권·해안 <code>sheds</code> <code>coast</code><b>92MB</b></li>
+      <li><i style="background:var(--line)"></i>시각표 그래프 두 벌<b>22MB</b></li>
+    </ul>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>줄이는 방법</th><th>올릴 양</th><th>비고</th></tr></thead>
+        <tbody>
+          <tr><td>그대로</td><td class="num">2.9GB</td><td>—</td></tr>
+          <tr><td><code>walk/mm</code> 빼기</td><td class="num">약 1.6GB</td><td><code>graph.npz</code>·<code>sheds.npz</code> 를 풀어 둔 것이라 서버가 첫 실행 때 다시 만듭니다. 디스크는 결국 2.9GB 가 필요합니다.</td></tr>
+          <tr><td><code>fine_*</code> 도 빼기</td><td class="num">약 0.65GB</td><td>도보 경로선을 실제 도로 위에 그리는 데만 씁니다. 없을 때 서버가 거친 선으로 떨어지는지는 <strong>확인 안 함</strong>.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="figures">
+      <div class="fig"><span class="n">0.54GB</span><span class="k">서버 전용 메모리, 올린 직후</span></div>
+      <div class="fig"><span class="n">1.0GB</span><span class="k">요청을 좀 받은 뒤(5174 실측)</span></div>
+      <div class="fig"><span class="n">0.7초</span><span class="k">東京駅 60분 등시선</span></div>
+      <div class="fig"><span class="n">1.7초</span><span class="k">東京駅 신칸센 180분</span></div>
+    </div>
+    <p class="note">보행망은 메모리 매핑(<code>WALK_MMAP=1</code>)으로 읽어서 서버 프로세스가 여럿이어도 한 벌을 함께 씁니다. 현을 고른 첫 요청은 거른 그래프를 만드느라 1.5초쯤 걸리고, 그 결과는 8개까지 기억합니다. 필요한 패키지는 flask, numpy, scipy, shapely, matplotlib, waitress 입니다(<code>requirements.txt</code>).</p>
+  </section>
+
+  <section aria-labelledby="s-host">
+    <h2 id="s-host">무료로 올릴 수 있나</h2>
+    <p>필요한 것은 메모리 2GB 이상(여유 포함), 디스크 5GB 이상, 계속 켜 두는 서버입니다. 2026-09-26 에 확인한 조건입니다.</p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>곳</th><th>무료 사양</th><th>판단</th><th>주의</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Oracle Cloud Always Free</td>
+            <td>Ampere A1(ARM) 2코어·12GB, 블록 저장소 200GB</td>
+            <td><span class="pill ok">들어감</span></td>
+            <td>2026-06-15 에 예고 없이 4코어·24GB 에서 반으로 줄였고, 한도를 넘는 인스턴스는 8/18 부터 종료한다고 알렸습니다. 조건이 또 바뀔 수 있고 ARM 자리가 없을 때가 있습니다.</td>
+          </tr>
+          <tr>
+            <td>Google Cloud 무료 e2-micro</td>
+            <td>메모리 1GB, 디스크 30GB, 미국 리전 3곳</td>
+            <td><span class="pill no">메모리 부족</span></td>
+            <td>서버만 1GB 를 씁니다.</td>
+          </tr>
+          <tr>
+            <td>Hugging Face Spaces</td>
+            <td>CPU basic 2코어·16GB, 디스크 50GB(재시작하면 지워짐)</td>
+            <td><span class="pill no">유료 필요</span></td>
+            <td>Docker 로 도는 Space 는 이제 유료 플랜이 있어야 만들 수 있습니다. 무료는 정적 페이지뿐입니다.</td>
+          </tr>
+          <tr>
+            <td>유료 VPS</td>
+            <td>메모리 4GB, 2코어, 디스크 20GB 이상</td>
+            <td><span class="pill info">넉넉함</span></td>
+            <td>Hetzner, Vultr, DigitalOcean, Lightsail 등. 가격은 <strong>확인 안 함</strong>.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="s-code">
+    <h2 id="s-code">준비된 코드</h2>
+    <p>작업 폴더 <code>C:\Users\Huiju\rail-isochrone-national</code> 에 <code>google-maps-api</code> 가 체크아웃돼 있습니다. 이 폴더의 <code>data</code> 는 원래 폴더 <code>data</code> 로 이어 둔 연결(junction)입니다.</p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>브랜치</th><th>끝 커밋</th><th>담긴 것</th></tr></thead>
+        <tbody>
+          <tr><td><code>master</code></td><td class="num">74c1789</td><td>5173 로컬판. 권역별 빌드, 현 조합 빌드, 신칸센 빌드, 면책 문구.</td></tr>
+          <tr><td><code>national-grid-trial</code></td><td class="num">3277409</td><td>master + 전국 권역 하나, 현 목록 필터(현 조합을 빌드 없이), 지방 프리셋, 신칸센 켜고 끄기, 섬을 뺀 현 윤곽.</td></tr>
+          <tr><td><code>google-maps-api</code></td><td class="num">f377a4f</td><td>위 + 구글 장소 검색, 범위 안 장소 수, 운영 입구.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <h3>google-maps-api 에서 더한 것</h3>
+    <div class="scroll">
+      <table>
+        <tbody>
+          <tr><td class="num">d1ce77b</td><td>검색창에 구글 장소 후보(Places API New). 역 목록 아래 “Google Maps” 로 붙고, 고르면 좌표만 받아 지도 클릭과 같은 판정을 거칩니다.</td></tr>
+          <tr><td class="num">9abaca8</td><td>등시선을 구멍 없는 고리로 바꾸기. 조각은 2m 통로로 잇고 구멍은 정북 20cm 틈으로 엽니다. 꼭짓점 7,000개를 넘으면 고리를 최대 4개로 나눕니다.</td></tr>
+          <tr><td class="num">41e1856</td><td>화면에 “범위 안 장소” 칸. 음식점·카페·편의점·슈퍼마켓·병원·숙소 중 골라 누를 때만 셉니다.</td></tr>
+          <tr><td class="num">f6b5d53</td><td>장소 수는 서버가 서버 전용 키로 대신 묻습니다(<code>/api/place-count</code>, <code>src/placecount.py</code>). 같은 범위·종류는 기억, IP 당 시간당 20번, 하루 구글 요청 150건. 단위 테스트 7개.</td></tr>
+          <tr><td class="num">0b689a0</td><td>화면에서 구글을 직접 부르던 코드를 걷어 냈습니다. 서버에 키가 있을 때만 칸이 보입니다.</td></tr>
+          <tr><td class="num">f377a4f</td><td>운영 입구 <code>src/wsgi.py</code>(waitress, 기본 전국 권역만, <code>TRUST_PROXY=1</code> 이면 nginx 의 X-Forwarded-For 를 믿음)와 <code>requirements.txt</code>.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">서버가 전국 권역을 올리면 온라인 모드가 되어 현 조합 빌드·삭제·열기가 막히고(403), 현 조합 탭은 현 목록 필터로 돕니다.</p>
+  </section>
+
+  <section aria-labelledby="s-google">
+    <h2 id="s-google">구글 지도 API</h2>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>API</th><th>쓰는 곳</th><th>월 무료</th><th>넘으면 1,000건당</th></tr></thead>
+        <tbody>
+          <tr><td>Maps JavaScript (Dynamic Maps)</td><td>지도. 페이지를 열 때마다 1건</td><td class="num">10,000</td><td class="num">$7.00</td></tr>
+          <tr><td>Places API (New) 자동완성</td><td>장소 검색. 입력을 멈출 때마다 1건</td><td class="num">10,000</td><td class="num">$2.83</td></tr>
+          <tr><td>Place Details Essentials</td><td>고른 장소의 좌표. 고를 때마다 1건</td><td class="num">10,000</td><td class="num">$5.00</td></tr>
+          <tr><td>Places Aggregate</td><td>범위 안 장소 수. 고리 하나에 1건</td><td class="num">5,000</td><td class="num">$10.00</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">자동완성은 세션 토큰으로 묶어 좌표 요청으로 끝내면 13번째부터 무료입니다. 무료 한도는 결제 계정 기준, API 마다 따로 셉니다.</p>
+    <h3>키</h3>
+    <ul class="plain">
+      <li><strong>브라우저 키</strong>(<code>config.json</code> 의 <code>google_maps_api_key</code>): 웹사이트 제한. 로컬 5173·5174 를 허용해 둠. 올릴 때 <code>https://도메인/*</code> 추가. 화면이 더는 Aggregate 를 부르지 않으니 허용 API 에서 Places Aggregate 는 빼기.</li>
+      <li><strong>서버 키</strong>(<code>google_server_api_key</code> 또는 환경 변수 <code>GOOGLE_SERVER_API_KEY</code>): <strong>아직 없음</strong>. Places Aggregate 만 허용, 서버 IP 로 제한. 없으면 장소 수 칸이 숨습니다.</li>
+      <li>API 마다 하루 할당량 상한과 결제 알림을 걸어 둘 것. 장소 수 한도는 <code>src/placecount.py</code> 맨 위 <code>PER_IP_HOUR</code>, <code>PER_DAY</code> 에서 바꿉니다.</li>
+    </ul>
+    <h3>알아봤지만 안 쓰는 것</h3>
+    <ul class="plain">
+      <li>Routes API 대중교통: 일본에서 빈 응답이나 도보만 오는 결과가 난다는 보고(2026-09-05). 우리 추정과 비교하는 데 못 씀.</li>
+      <li>Isochrones API: 미리보기 단계이고 자동차·이륜·자전거·도보뿐, 대중교통 없음.</li>
+      <li>TransitLayer: 일본에서 노선이 공식 색으로 나오지만, 노선별로 고르거나 색을 바꾸거나 좌표를 받을 수 없어 우리 노선 그리기를 대신 못 함. 배경 켜고 끄기로는 쓸 수 있음. 다크 스타일은 대중교통 선을 한 색으로 칠함.</li>
+      <li>Map Tiles API: 렌더러를 하나로 합칠 수 있지만 지금 두 갈래가 잘 돌아 얻는 게 적음.</li>
+      <li><code>google.maps.Marker</code> 는 2024-02 부터 권장 안 함(중단 일정은 없음). 새 마커로 옮기려면 Map ID 가 필요하고 지금의 스타일 설정이 안 먹음.</li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="s-resume">
+    <h2 id="s-resume">다시 시작할 때</h2>
+    <p>앞 단계가 뒤 단계의 전제라 순서대로 합니다.</p>
+    <ol class="steps">
+      <li><strong>서버 키 만들기.</strong>
+        <p>Places Aggregate 만 허용. <code>C:\Users\Huiju\rail-isochrone\config.json</code> 에 <code>google_server_api_key</code> 로 넣고 5174 에서 장소 수를 끝까지 세 봅니다(키가 없는 지금은 “서버 키가 없습니다” 로 거절, 브라우저 키로 부르면 구글이 Referer 가 비었다고 거절하는 것까지 확인함).</p></li>
+      <li><strong>master 에 합치기.</strong>
+        <p>5173 은 <code>index.html</code> 을 요청마다 읽어서 합치는 순간 화면만 새 코드로 바뀝니다. 조합 빌드가 없을 때(<code>/api/combo/status</code>) 합치고 바로 5173 을 다시 띄웁니다.</p></li>
+      <li><strong>호스트와 도메인 고르기.</strong>
+        <p>Oracle Always Free(ARM 2코어·12GB) 또는 메모리 4GB VPS.</p></li>
+      <li><strong>서버 설치.</strong>
+        <p>리눅스, Python 3.13 가상환경, <code>pip install -r requirements.txt</code>. 전국 권역을 <code>data/regions/national</code> 로 올림(<code>walk/mm</code> 빼고 약 1.6GB). waitress 를 systemd 로 띄우고(<code>TRUST_PROXY=1</code>, 키는 환경 변수), 앞에 nginx(HTTPS, 요청 속도 제한). 윈도우에서 만든 npz·npy 는 그대로 읽힙니다.</p></li>
+      <li><strong>구글 키 정리.</strong>
+        <p>브라우저 키에 도메인 추가, 서버 키를 서버 IP 로 제한, 할당량·결제 알림.</p></li>
+      <li><strong>공개 전 확인.</strong>
+        <p>公共交通オープンデータセンター 자료를 공개 서비스에 써도 되는지(일부는 개발자 한정), 동시 접속 부하 시험.</p></li>
+    </ol>
+  </section>
+
+  <section aria-labelledby="s-local">
+    <h2 id="s-local">로컬 시험 서버 5174</h2>
+    <p>운영과 같은 입구로 전국판만 띄웁니다. 5173 과 따로 돌고, 구글 키는 원래 폴더의 <code>config.json</code> 에서 읽습니다(키를 화면에 찍지 않음). PowerShell:</p>
+<pre><code>$cfg = Get-Content C:\Users\Huiju\rail-isochrone\config.json -Raw | ConvertFrom-Json
+$env:GOOGLE_MAPS_API_KEY = $cfg.google_maps_api_key
+$env:GOOGLE_SERVER_API_KEY = $cfg.google_server_api_key   # 없으면 비어 있어도 됨
+$env:REGIONS_DIR = "C:/Users/Huiju/rail-isochrone/data/national/regions"
+cd C:\Users\Huiju\rail-isochrone-national\src
+waitress-serve --host=127.0.0.1 --port=5174 --threads=8 wsgi:app</code></pre>
+    <p class="note">브라우저 키의 웹사이트 제한에 <code>http://127.0.0.1:5174/*</code> 가 있어야 5174 에서 구글 지도가 뜹니다.</p>
+  </section>
+
+  <section aria-labelledby="s-open">
+    <h2 id="s-open">확인 안 한 것</h2>
+    <ul class="plain">
+      <li><code>fine_*</code> 를 뺐을 때 서버가 거친 도보 경로선으로 떨어지는지.</li>
+      <li><code>raw/</code> 가운데 서버가 실제로 읽는 파일(노선·현 경계 등)만 추리면 얼마인지.</li>
+      <li>公共交通オープンデータセンター 약관의 공개 서비스 조건.</li>
+      <li>동시에 몇 명까지 버티는지. waitress 는 한 프로세스라 파이썬 계산은 사실상 한 코어씩 돕니다.</li>
+      <li>유료 VPS 가격.</li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="s-src">
+    <h2 id="s-src">출처</h2>
+    <ul class="sources">
+      <li><a href="https://developers.google.com/maps/billing-and-pricing/pricing" target="_blank" rel="noopener">https://developers.google.com/maps/billing-and-pricing/pricing</a></li>
+      <li><a href="https://developers.google.com/maps/documentation/places/web-service/session-pricing" target="_blank" rel="noopener">https://developers.google.com/maps/documentation/places/web-service/session-pricing</a></li>
+      <li><a href="https://developers.google.com/maps/documentation/places/web-service/policies" target="_blank" rel="noopener">https://developers.google.com/maps/documentation/places/web-service/policies</a></li>
+      <li><a href="https://developers.google.com/maps/documentation/places-aggregate/request-parameters" target="_blank" rel="noopener">https://developers.google.com/maps/documentation/places-aggregate/request-parameters</a></li>
+      <li><a href="https://developers.google.com/maps/documentation/places-aggregate/coverage" target="_blank" rel="noopener">https://developers.google.com/maps/documentation/places-aggregate/coverage</a></li>
+      <li><a href="https://developers.google.com/maps/documentation/places-aggregate/policies" target="_blank" rel="noopener">https://developers.google.com/maps/documentation/places-aggregate/policies</a></li>
+      <li><a href="https://github.com/jyje/mungchilog/issues/85" target="_blank" rel="noopener">https://github.com/jyje/mungchilog/issues/85</a> (일본 대중교통 경로 빈 응답)</li>
+      <li><a href="https://traveltime.com/blog/google-isochrones-api-vs-traveltime" target="_blank" rel="noopener">https://traveltime.com/blog/google-isochrones-api-vs-traveltime</a> (Isochrones API 이동 수단)</li>
+      <li><a href="https://developers.google.com/maps/documentation/javascript/advanced-markers/migration" target="_blank" rel="noopener">https://developers.google.com/maps/documentation/javascript/advanced-markers/migration</a></li>
+      <li><a href="https://www.infoq.com/news/2026/07/oracle-cloud-free-tier-limits/" target="_blank" rel="noopener">https://www.infoq.com/news/2026/07/oracle-cloud-free-tier-limits/</a></li>
+      <li><a href="https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm" target="_blank" rel="noopener">https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm</a></li>
+      <li><a href="https://cloud.google.com/free/docs/compute-getting-started" target="_blank" rel="noopener">https://cloud.google.com/free/docs/compute-getting-started</a></li>
+      <li><a href="https://huggingface.co/docs/hub/en/spaces-overview" target="_blank" rel="noopener">https://huggingface.co/docs/hub/en/spaces-overview</a></li>
+    </ul>
+  </section>
+
+</main>
+</body>
+</html>
