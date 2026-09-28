@@ -43,6 +43,7 @@ RAIL_KINDS = ("rail", "subway", "light_rail", "monorail", "narrow_gauge",
 # 역을 선로에 붙일 때 이만큼까지 본다. 플랫폼 노드가 선로에서 떨어져 있다.
 SNAP_M = 400.0
 SNAP_TRIES = 12             # 가까운 선로 노드 몇 개까지 시도할지
+EDGE_STEP_M = 100.0         # 선로 선분을 이 길이 이하로 쪼개 역이 붙을 노드를 둔다
 # 찾은 경로가 직선거리의 이 배를 넘으면 엉뚱한 선로로 샌 것으로 본다.
 # geometry.py 가 2.5 배를 넘는 호를 아예 버리므로 그보다 넉넉하게 잡으면
 # 애써 찾은 경로가 그쪽에서 버려지고 더 거친 선형이 대신 뽑힌다.
@@ -235,7 +236,33 @@ def build_edges(ways, pos, scale):
     owner = np.asarray(owner, dtype=np.int64)
     w = np.hypot(x[rows] - x[cols], y[rows] - y[cols])
     keep = w > 0
-    return (rows[keep], cols[keep], w[keep], owner[keep]), xy, x, y
+    rows, cols, w, owner = rows[keep], cols[keep], w[keep], owner[keep]
+
+    # 긴 선분에 노드를 채운다. 역은 가까운 선로 노드(SNAP_M 안)에 붙는데, 곧게
+    # 뻗은 구간은 OSM 꼭짓점이 1km 넘게 떨어져 있다. 室蘭本線 苫小牧-糸井 는
+    # 1.4km 간격이라 선로 2m 옆 青葉 가 어느 노드에도 못 붙어 그 구간 선이 끊겼다.
+    long = w > EDGE_STEP_M
+    if long.any():
+        r, c, o, lw = rows[long], cols[long], owner[long], w[long]
+        n = np.ceil(lw / EDGE_STEP_M).astype(np.int64)        # 조각 수
+        first = len(xy) + np.concatenate([[0], np.cumsum(n - 1)[:-1]])
+        e = np.repeat(np.arange(len(r)), n - 1)
+        t = ((np.arange((n - 1).sum()) - np.repeat(np.cumsum(n - 1) - (n - 1), n - 1) + 1)
+             / np.repeat(n, n - 1))
+        extra = xy[r[e]] + (xy[c[e]] - xy[r[e]]) * t[:, None]
+        # 조각 p 는 (앞 노드, 뒤 노드). 첫 조각은 원래 시작점에서, 끝 조각은 원래 끝점으로.
+        p = np.arange(n.sum()) - np.repeat(np.cumsum(n) - n, n)
+        k = np.repeat(np.arange(len(r)), n)
+        a = np.where(p == 0, r[k], first[k] + p - 1)
+        b = np.where(p == n[k] - 1, c[k], first[k] + p)
+        rows = np.concatenate([rows[~long], a])
+        cols = np.concatenate([cols[~long], b])
+        owner = np.concatenate([owner[~long], o[k]])
+        w = np.concatenate([w[~long], (lw / n)[k]])
+        xy = np.vstack([xy, extra])
+        x = xy[:, 0] * scale * 111_320.0
+        y = xy[:, 1] * 111_132.0
+    return (rows, cols, w, owner), xy, x, y
 
 
 def to_csr(edges, n):
