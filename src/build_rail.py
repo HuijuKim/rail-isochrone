@@ -298,6 +298,19 @@ def base_name(name):
 _EXCLUDE: set[str] | None = None
 
 
+def _excluded_by_stations() -> dict:
+    """data/excluded-lines.json 의 사전 항목: 이름 -> 이 역을 모두 지나면 버린다."""
+    got = {}
+    try:
+        for val in json.loads((ROOT / "data" / "excluded-lines.json").read_text(
+                encoding="utf-8")).values():
+            if isinstance(val, dict):
+                got.update({k: set(v) for k, v in val.items() if isinstance(v, list)})
+    except (OSError, ValueError):
+        pass
+    return got
+
+
 def _excluded(name: str) -> bool:
     global _EXCLUDE
     if _EXCLUDE is None:
@@ -2158,6 +2171,18 @@ def _build(pbfs, rel, ways, nodes):
     print(f"  선로 옆에서 더 주운 역 {picked_up:,}개", flush=True)
     print(f"  선로에서 정차 순서를 되살린 관계 {recovered:,}개 "
           f"(웨이 노드 {by_node:,}, 선로 옆 {recovered - by_node:,})", flush=True)
+
+    # excluded-lines.json 의 "역으로 가리는 것". 이름이 같은 진짜 계통이 있어 이름만으로는
+    # 못 버리는 것을 정차역으로 가린다. 예전에는 화면의 선만 지우고 운행은 남아, 2022년에
+    # 없어진 재래선 특급 かもめ(浦上 경유)가 博多-長崎 를 달렸다.
+    by_st = _excluded_by_stations()
+    if by_st:
+        keep = [(i, r) for i, r in zip(rel.ids, rel.routes)
+                if not ((want := by_st.get(PAREN_RE.sub("", r["name"]).strip()))
+                        and want <= {_name_key(nodes.pos[n]) for n in r["stops"] if n in nodes.pos})]
+        if len(keep) < len(rel.routes):
+            print(f"  정차역으로 가려 버린 계통 {len(rel.routes) - len(keep)}개", flush=True)
+            rel.ids, rel.routes = [i for i, _ in keep], [r for _, r in keep]
 
     used = {n for r in rel.routes for n in r["stops"]}
     # 갈래·차례에 적은 역은 어느 계통도 안 불렀어도 역으로 둔다. 室蘭本線 室蘭支線 의
