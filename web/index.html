@@ -3157,14 +3157,16 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     if (walkUnlimited.checked) p.walk_unlimited = "1";
     else p.walk_total = walkTotal.value;
     if (el("walk-only").checked) p.mode = "walk";
-    if (el("shinkansen").checked && !el("shinkansen-row").hidden) p.shinkansen = "1";
     return withScope(p);
   }
 
   /* 전국 권역을 현 몇 개로 거를 때는 요청마다 현 목록(prefs)을 붙인다. 조합을
-     따로 빌드하지 않고 서버가 그 자리에서 거른다. */
+     따로 빌드하지 않고 서버가 그 자리에서 거른다. 신칸센 여부도 모든 요청에
+     붙인다. 서버는 신칸센을 켜고 홋카이도를 고르면 아오모리현을 더하므로, 역·
+     경계·노선 요청도 같은 값을 보내야 등시선과 모양이 맞는다. */
   function withScope(p) {
     if (scope && p.region === nationalId) p.prefs = scope.join(",");
+    if (el("shinkansen").checked && !el("shinkansen-row").hidden) p.shinkansen = "1";
     return p;
   }
 
@@ -3870,7 +3872,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     catch (e) { /* 무시 */ }
     el("shinkansen").addEventListener("change", function () {
       try { localStorage.setItem("shinkansen", this.checked ? "1" : "0"); } catch (e) { /* 무시 */ }
-      run();
+      // 현을 골라 둔 전국 권역은 범위가 바뀔 수 있다(홋카이도 + 아오모리현)
+      (scope ? reloadScopeData() : Promise.resolve()).then(run);
     });
 
     el("fit").addEventListener("click", function () {
@@ -4242,6 +4245,42 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       el("q").value = st.names.ja;
       fitNext = true;
       return lines;
+    }).catch(function (err) {
+      notice(t("regionFailed"), err.message);
+    }).then(function () { busy(false); });
+  }
+
+  /* 신칸센을 켜고 끄면 현을 골라 둔 전국 권역의 범위가 바뀔 수 있다(홋카이도를
+     고르면 아오모리현이 들고 난다). 역·경계·현 이름·노선만 다시 받는다. 출발지와
+     보던 화면, 현별·노선별 거르기는 그대로 둔다. */
+  function reloadScopeData() {
+    var id = activeRegion;
+    busy(true);
+    return Promise.all([
+      getJSON("/api/stations?" + regionQS(id)),
+      getJSON("/api/coverage?" + regionQS(id)),
+      getJSON("/api/prefectures?" + regionQS(id))
+        .catch(function () { return {}; })
+    ]).then(function (res) {
+      if (activeRegion !== id) return;
+      stations = res[0];
+      coverageGeo = res[1];
+      prefNames = res[2] || {};
+      Object.keys(MENU).forEach(function (k) {
+        if (!el(MENU[k].menu).hidden) buildPrefMenu(k);
+      });
+      if (!mapView) return;
+      showCoverage();
+      mapView.clearStations();
+      refreshStations();
+      if (!railwayShapes) return;
+      return getJSON("/api/railways?" + regionQS(id)).then(function (list) {
+        if (activeRegion !== id) return;
+        railwayShapes = list;
+        mapView.clearLines();
+        refreshLines();
+        if (!el("lineview-menu").hidden) buildLineviewMenu();
+      });
     }).catch(function (err) {
       notice(t("regionFailed"), err.message);
     }).then(function () { busy(false); });
