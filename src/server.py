@@ -173,6 +173,11 @@ def read_scope(reg):
     raw = request.args.get("prefs", "").strip()
     prefs = tuple(sorted({p.strip() for p in raw.split(",") if p.strip()}))
     no_hsr = _has_hsr(reg) and request.args.get("shinkansen") not in ("1", "true", "yes")
+    # 홋카이도는 신칸센으로만 혼슈와 이어진다. 신칸센을 켜고 홋카이도를 골랐으면
+    # 종점 新青森 이 있는 아오모리현을 함께 넣는다. 안 그러면 北海道新幹線 이 도
+    # 경계(木古内) 에서 끊긴다.
+    if _has_hsr(reg) and not no_hsr and "北海道" in prefs and "青森県" not in prefs:
+        prefs = tuple(sorted(prefs + ("青森県",)))
     if not prefs and not no_hsr:
         return None
     table = _pref_table(reg) if prefs else None
