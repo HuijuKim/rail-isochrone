@@ -1785,6 +1785,7 @@ def split_far(lines, patterns, xy):
 DROP_KEY = "빼는 역"
 BRANCH_KEY = "갈래"
 INSERT_KEY = "끼울 역"
+ORDER_KEY = "차례"
 
 
 def hand_trains(members, pos, cpos, scale):
@@ -1834,14 +1835,44 @@ def hand_trains(members, pos, cpos, scale):
     return out
 
 
-def _branch_station_nodes(nodes) -> set:
-    """data/line-extensions.json 의 "갈래" 에 적은 이름의 여객역 노드."""
+def _hand_station_nodes(nodes) -> set:
+    """data/line-extensions.json 의 "갈래"·"차례" 에 적은 이름의 여객역 노드."""
     path = ROOT / "data" / "line-extensions.json"
     if not path.exists():
         return set()
-    want = {nm for spec in book_for(path, REGION).values() if isinstance(spec, dict)
-            for names in (spec.get(BRANCH_KEY) or {}).values() for nm in names}
+    want = set()
+    for spec in book_for(path, REGION).values():
+        if isinstance(spec, dict):
+            for names in (spec.get(BRANCH_KEY) or {}).values():
+                want.update(names)
+            want.update(spec.get(ORDER_KEY) or ())
     return {n for n in nodes.rail if _name_key(nodes.stations[n]) in want}
+
+
+def _ordered(names, by_name, cpos, scale):
+    """역 이름 차례를 역 묶음 차례로. 권역에 없는 이름은 건너뛴다.
+
+    이름이 여럿인 역(전국의 余部 는 姫新線 과 山陰本線 에 하나씩)은 앞뒤에서
+    이미 정한 역에 가장 가까운 것을 고른다.
+    """
+    got = [g for g in ([c for c in by_name.get(nm, ()) if c in cpos] for nm in names) if g]
+    pick = [g[0] if len(g) == 1 else None for g in got]
+
+    def d2(a, b):
+        return ((cpos[a][0] - cpos[b][0]) * scale) ** 2 + (cpos[a][1] - cpos[b][1]) ** 2
+
+    for _ in range(3):
+        for i, g in enumerate(got):
+            if pick[i] is None:
+                near = [pick[j] for j in (i - 1, i + 1) if 0 <= j < len(pick) and pick[j] is not None]
+                if near:
+                    pick[i] = min(g, key=lambda c: min(d2(c, n) for n in near))
+    out = []
+    for p, g in zip(pick, got):
+        p = g[0] if p is None else p
+        if not out or out[-1] != p:
+            out.append(p)
+    return out
 
 
 def trim_lines(lines, members, pos, cpos=None, scale=1.0):
@@ -1868,6 +1899,14 @@ def trim_lines(lines, members, pos, cpos=None, scale=1.0):
     for ln in list(lines):
         rep = ln["rep"]["name"]
         spec = book.get(rep) or book.get(base_name(rep)) or book.get(train_name(rep)) or {}
+        # 선로에서 정차 순서를 되살리지 못하는 노선은 적힌 차례대로 세운다. 전국판
+        # JR姫新線 은 관계 하나가 姫路-新見 전체를 담는데, 웨이를 잇는 순서가 뒤엉켜
+        # 역이 뒤섞이고 姫路·中国勝山·新見 이 빠졌다. 권역 밖 역은 건너뛴다.
+        if spec.get(ORDER_KEY) and cpos is not None:
+            seq = _ordered(spec[ORDER_KEY], by_name, cpos, scale)
+            if len(seq) >= 2:
+                ln["seq"] = seq
+                print(f"  {rep}: 적힌 차례대로 {len(seq)}역을 세웠다", flush=True)
         # 선로 위에 있는데 어느 쪽에서도 못 주운 역. 奥羽本線 의 大館 은 역 노드가
         # 선로 웨이 밖에 있고 花輪線 이 불러 빠진 역 후보에서도 걸러졌다.
         if spec.get(INSERT_KEY) and cpos is not None:
@@ -1959,7 +1998,7 @@ def extend_lines(lines, members, pos):
             continue
         for end, names in ext.items():
             # "source" 같은 설명 글은 건너뛴다. 글자를 하나씩 역 이름으로 읽었다.
-            if end in (DROP_KEY, BRANCH_KEY, INSERT_KEY) or not isinstance(names, list):
+            if end in (DROP_KEY, BRANCH_KEY, INSERT_KEY, ORDER_KEY) or not isinstance(names, list):
                 continue
             seq = ln["seq"]
             # 노선이 이어 붙일 역 가운데 하나에서 끝나면 그 뒤만 잇는다. 관계가 이미
@@ -2121,9 +2160,9 @@ def _build(pbfs, rel, ways, nodes):
           f"(웨이 노드 {by_node:,}, 선로 옆 {recovered - by_node:,})", flush=True)
 
     used = {n for r in rel.routes for n in r["stops"]}
-    # 갈래에 적은 역은 어느 계통도 안 불렀어도 역으로 둔다. 室蘭本線 室蘭支線 의
+    # 갈래·차례에 적은 역은 어느 계통도 안 불렀어도 역으로 둔다. 室蘭本線 室蘭支線 의
     # 輪西·御崎·母恋·室蘭 은 선로 관계에 지선이 없어 어디에도 안 들어갔다.
-    used |= _branch_station_nodes(nodes)
+    used |= _hand_station_nodes(nodes)
     pos = {n: nodes.pos[n] for n in used if n in nodes.pos}
 
     # 노선 관계가 이름 없는 stop_position 을 가리키는 경우가 있다. 그대로
