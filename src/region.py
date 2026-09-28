@@ -847,7 +847,9 @@ _NAMED = {"red": "#ff0000", "blue": "#0000ff", "green": "#008000",
           "magenta": "#ff00ff", "cyan": "#00ffff", "lime": "#00ff00",
           "gold": "#ffd700", "silver": "#c0c0c0", "maroon": "#800000",
           "darkgreen": "#006400", "darkblue": "#00008b", "darkred": "#8b0000",
-          "white": "#dddddd", "violet": "#ee82ee", "indigo": "#4b0082"}
+          "white": "#dddddd", "violet": "#ee82ee", "indigo": "#4b0082",
+          # ODPT 가 적어 둔 것. 없으면 JR東北本線利府支線 등이 회색으로 나왔다.
+          "deepskyblue": "#00bfff", "mediumseagreen": "#3cb371"}
 _canon_table: dict[str, str] | None = None
 
 
