@@ -1801,7 +1801,7 @@ INSERT_KEY = "끼울 역"
 ORDER_KEY = "차례"
 
 
-def hand_trains(members, pos, cpos, scale):
+def hand_trains(members, pos, cpos, scale, hsr_cl=frozenset()):
     """data/line-express.json 에 손으로 적은 특급을 OSM 운행 관계처럼 만든다.
 
     OSM 에 운행 관계가 없는 특급이 있다(홋카이도의 カムイ·ライラック·とかち·
@@ -1820,10 +1820,18 @@ def hand_trains(members, pos, cpos, scale):
             v = pos[ns[0]]
             by_name[(v[2].get("ja") or v[3] or "").strip()].append(cl)
     out = []
+    hsr_ok = _wants_shinkansen()
     for name, spec in book.items():
         if not isinstance(spec, dict):
             continue
+        # 신칸센 열차(ひかり·さくら 는 OSM 에 운행 관계가 없다)는 신칸센을 쓰는 권역에서만,
+        # 신칸센 노선만 밟게 표시해 둔다. 표시가 없으면 신칸센 노선을 못 밟아 버려진다.
+        hsr = bool(spec.get("shinkansen"))
+        if hsr and not hsr_ok:
+            continue
         cands = [by_name.get(n, []) for n in spec.get("stops", [])]
+        if hsr:
+            cands = [[k for k in c if k in hsr_cl] or c for c in cands]
         sure = [c[0] for c in cands if len(c) == 1]
         if not sure:
             continue
@@ -1843,9 +1851,64 @@ def hand_trains(members, pos, cpos, scale):
         out.append({"name": name, "rtype": "train", "titles": titles,
                     "operator": spec.get("operator", ""), "ref": "", "colour": "",
                     "wikipedia": "", "kind": kind_of(name), "stops": [], "ways": [],
-                    "listed": set(), "seq": seq, "hand": True})
+                    "listed": set(), "seq": seq, "hand": True,
+                    **({"shinkansen": True} if hsr else {})})
         print(f"  손으로 적은 특급 {name}: 역 {len(seq)}/{len(cands)}개", flush=True)
     return out
+
+
+def trim_services(routes, members, pos, cpos, scale, hsr_cl=frozenset()):
+    """손질 사전의 "빼는 역"·"끼울 역" 을 애칭 특급 계통에도 적용한다.
+
+    trim_lines 는 노선에만 걸린다. はやぶさ·とき 처럼 역이 모두 한 노선 안에 있어 노선
+    위 계통으로만 남는 열차는 거기에 안 걸려, 仙台-盛岡 을 각역에 서는 はやぶさ 가
+    그대로 남았다. 끼울 역은 끼워서 늘어나는 길이가 20 km 안인 같은 이름 역을 고르고,
+    신칸센 열차면 신칸센 승강장 묶음을 먼저 본다.
+    """
+    path = ROOT / "data" / "line-extensions.json"
+    if not path.exists():
+        return
+    book = book_for(path, REGION)
+    by_name = defaultdict(list)
+    for cl, ns in enumerate(members):
+        if ns:
+            v = pos[ns[0]]
+            by_name[(v[2].get("ja") or v[3] or "").strip()].append(cl)
+
+    def xy(c):
+        return (cpos[c][0] * scale * 111_320.0, cpos[c][1] * 111_132.0) if c in cpos else None
+
+    def length(seq):
+        pts = [xy(c) for c in seq if xy(c) is not None]
+        return sum(np.hypot(a[0] - b[0], a[1] - b[1]) for a, b in zip(pts, pts[1:]))
+
+    def longer(seq, c):
+        trial = list(seq)
+        _insert_cheapest(trial, c, xy)
+        return length(trial) - length(seq)
+
+    for r in routes:
+        name = r["name"]
+        if not is_nickname(name):
+            continue
+        spec = book.get(name) or book.get(base_name(name)) or book.get(train_name(name)) or {}
+        drop = {c for nm in spec.get(DROP_KEY, ()) for c in by_name.get(nm, ())}
+        seq = [c for c in r["seq"] if c not in drop]
+        for nm in spec.get(INSERT_KEY, ()):
+            got = [c for c in by_name.get(nm, ()) if xy(c) is not None]
+            if r.get("shinkansen"):
+                got = [c for c in got if c in hsr_cl] or got
+            if not got or any(c in seq for c in got):
+                continue
+            # 역과의 거리로 보면 とき 의 高崎 를 놓친다. 이웃 정차역 大宮·越後湯沢 에서
+            # 70 km 씩 떨어져 있지만 그 사이 선로 위라 끼워도 길이는 몇 km 만 는다.
+            cost = {c: longer(seq, c) for c in got}
+            best = min(got, key=cost.get)
+            if cost[best] <= 20_000:
+                _insert_cheapest(seq, best, xy)
+        if seq != r["seq"]:
+            print(f"  {name}: 손질 사전대로 역을 고쳤다 ({len(r['seq'])} -> {len(seq)}역)", flush=True)
+            r["seq"] = seq
 
 
 def _hand_station_nodes(nodes) -> set:
@@ -1926,14 +1989,25 @@ def trim_lines(lines, members, pos, cpos=None, scale=1.0):
             def xy(c):
                 return ((cpos[c][0] * scale * 111_320.0, cpos[c][1] * 111_132.0)
                         if c in cpos else None)
+            here = [xy(c) for c in ln["seq"] if xy(c) is not None]
             for nm in spec[INSERT_KEY]:
-                got = by_name.get(nm) or []
-                if len(got) == 1 and got[0] not in ln["seq"]:
+                got = [c for c in (by_name.get(nm) or []) if xy(c) is not None]
+                # 계통 단계(trim_services)에서 이미 넣었으면 다른 승강장 묶음을 또 넣지 않는다.
+                if any(c in ln["seq"] for c in got):
+                    continue
+                # 이름이 여럿이면(전국의 上野) 노선에서 가장 가까운 것. 20 km 넘게
+                # 떨어져 있으면 이 노선의 역이 아니다.
+                best = min(got, key=lambda c: min(np.hypot(xy(c)[0] - a, xy(c)[1] - b)
+                                                  for a, b in here)) if got and here else None
+                if best is not None and min(np.hypot(xy(best)[0] - a, xy(best)[1] - b)
+                                            for a, b in here) > 20_000:
+                    best = None
+                if best is not None and best not in ln["seq"]:
                     ln["seq"] = list(ln["seq"])
-                    _insert_cheapest(ln["seq"], got[0], xy)
+                    _insert_cheapest(ln["seq"], best, xy)
                     print(f"  {rep}: {nm} 를 끼웠다", flush=True)
-                elif len(got) != 1:
-                    print(f"  !! 끼울 역 {nm} 이 {len(got)}개라 {rep} 에 넣지 않는다",
+                elif best is None:
+                    print(f"  !! 끼울 역 {nm} 을 {rep} 근처에서 못 찾아 넣지 않는다",
                           flush=True)
         want = set(spec.get(DROP_KEY, ()))
         # 뺄 역 없이 갈래만 세우는 노선도 있다. 室蘭本線 은 선로 관계에
@@ -2274,7 +2348,11 @@ def _build(pbfs, rel, ways, nodes):
           + (f" (제자리로 옮긴 역이 있는 계통 {reseated:,}개)" if reseated else ""),
           flush=True)
     routes = [r for r in rel.routes if len(r["seq"]) >= 2]
-    routes += hand_trains(members, pos, cpos, scale)
+    # 신칸센 관계가 부르는 역 묶음. 손으로 적은 신칸센 열차는 같은 이름의 묶음 가운데
+    # 이것을 고른다(東京 은 재래선·신칸센 승강장 묶음이 따로 있다).
+    hsr_cl = {c for r in routes if r.get("shinkansen") for c in r["seq"]}
+    routes += hand_trains(members, pos, cpos, scale, hsr_cl)
+    trim_services(routes, members, pos, cpos, scale, hsr_cl)
     # 뼈대는 각역정차 쪽에서 고른다. 통과 계통을 먼저 집으면 그 긴 회랑이
     # 뼈대가 되고 진짜 노선들이 그 밑으로 빨려 들어간다.
     # 직통 운전 계통도 뒤로 미룬다. 日比谷線 을 東武 까지 이어 달리는 계통이
@@ -2294,6 +2372,10 @@ def _build(pbfs, rel, ways, nodes):
             continue
         best, best_ov = None, 0.0
         for k, ln in enumerate(lines):
+            # 손으로 적은 특급 노선에도 접지 않는다. 그 노선은 뒤에서 계통으로 바뀌며
+            # 접힌 계통을 버린다. みずほ 가 정차역이 모두 겹치는 さくら 에 접혀 사라졌다.
+            if ln["rep"].get("hand"):
+                continue
             # 신칸센과 재래선은 서로 접지 않는다. こだま 정차역 대부분이 東海道本線
             # 역과 같은 묶음이라 그대로 두면 재래선 노선에 접힌다.
             if bool(r.get("shinkansen")) != bool(ln["rep"].get("shinkansen")):
