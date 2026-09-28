@@ -9,6 +9,7 @@ line-extensions·line-headways·line-operators 는 "권역 -> 노선 -> ..." 로
 from __future__ import annotations
 
 import json
+import os
 from functools import lru_cache
 from pathlib import Path
 
@@ -18,10 +19,15 @@ REGIONS_DIR = ROOT / "data" / "regions"
 
 @lru_cache(maxsize=None)
 def _meta(region_id: str) -> dict:
-    try:
-        return json.loads((REGIONS_DIR / region_id / "region.json").read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return {}
+    # 전국 권역은 따로 둔 폴더(REGIONS_DIR 환경변수)에 있다. 서버가 그것을 올릴
+    # 때 여기서 못 찾아, 이웃 권역의 손질(운영사 등)을 하나도 못 빌렸다.
+    extra = os.environ.get("REGIONS_DIR")
+    for base in ([Path(extra)] if extra else []) + [REGIONS_DIR]:
+        try:
+            return json.loads((base / region_id / "region.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+    return {}
 
 
 def prefectures_of(region_id: str) -> frozenset:
