@@ -1834,6 +1834,16 @@ def hand_trains(members, pos, cpos, scale):
     return out
 
 
+def _branch_station_nodes(nodes) -> set:
+    """data/line-extensions.json 의 "갈래" 에 적은 이름의 여객역 노드."""
+    path = ROOT / "data" / "line-extensions.json"
+    if not path.exists():
+        return set()
+    want = {nm for spec in book_for(path, REGION).values() if isinstance(spec, dict)
+            for names in (spec.get(BRANCH_KEY) or {}).values() for nm in names}
+    return {n for n in nodes.rail if _name_key(nodes.stations[n]) in want}
+
+
 def trim_lines(lines, members, pos, cpos=None, scale=1.0):
     """data/line-extensions.json 의 "빼는 역" 을 노선에서 빼고 "갈래" 를 세운다.
 
@@ -2111,6 +2121,9 @@ def _build(pbfs, rel, ways, nodes):
           f"(웨이 노드 {by_node:,}, 선로 옆 {recovered - by_node:,})", flush=True)
 
     used = {n for r in rel.routes for n in r["stops"]}
+    # 갈래에 적은 역은 어느 계통도 안 불렀어도 역으로 둔다. 室蘭本線 室蘭支線 의
+    # 輪西·御崎·母恋·室蘭 은 선로 관계에 지선이 없어 어디에도 안 들어갔다.
+    used |= _branch_station_nodes(nodes)
     pos = {n: nodes.pos[n] for n in used if n in nodes.pos}
 
     # 노선 관계가 이름 없는 stop_position 을 가리키는 경우가 있다. 그대로
