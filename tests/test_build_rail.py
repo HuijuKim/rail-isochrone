@@ -447,6 +447,30 @@ def test_bridge_fills_between_neighbours_only():
     assert _bridge([0, 1, 2, 3], [1, 9, 2], xy, lambda c: c != 9) is None
 
 
+def test_trim_services_drops_and_inserts_on_the_train(monkeypatch):
+    """애칭 특급 계통에도 손질 사전의 빼는 역·끼울 역을 건다.
+
+    はやぶさ 가 仙台-盛岡 각역에 서고 上野 를 건너뛰었다. 이름이 같은 역이 여럿이면
+    신칸센 승강장 묶음을 고르고, 이웃 정차역에서 멀어도 그 사이 선로 위면 넣는다
+    (とき 의 高崎 는 大宮·越後湯沢 에서 70 km 씩 떨어져 있다).
+    """
+    import build_rail
+
+    monkeypatch.setattr(build_rail, "book_for", lambda path, region: {
+        "はやぶさ": {"빼는 역": ["古川"], "끼울 역": ["上野", "高崎"]}})
+    spots = [("東京", 0.0, 0.0), ("上野", 0.03, 0.005), ("上野", 0.03, 0.0),
+             ("高崎", 0.6, 0.0), ("大宮", 0.3, 0.0), ("古川", 1.0, 0.0), ("仙台", 1.2, 0.0)]
+    members = [[k] for k in range(len(spots))]
+    pos = {k: (139.0 + x, 35.7 + y, {"ja": nm}, nm) for k, (nm, x, y) in enumerate(spots)}
+    cpos = {k: v[:2] for k, v in pos.items()}
+    ride = {"name": "はやぶさ", "seq": [0, 4, 5, 6], "shinkansen": True}
+    local = {"name": "東北本線", "seq": [0, 2, 4, 5, 6]}
+    build_rail.trim_services([ride, local], members, pos, cpos, np.cos(np.radians(35.7)),
+                             hsr_cl={0, 1, 3, 4, 5, 6})
+    assert ride["seq"] == [0, 1, 4, 3, 6]
+    assert local["seq"] == [0, 2, 4, 5, 6]
+
+
 def test_false_close_only_when_the_closing_gap_jumps():
     """편도 계통 끝에 출발역이 또 적힌 것만 떼고 순환선은 둔다."""
     from build_rail import _false_close
