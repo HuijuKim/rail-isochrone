@@ -263,6 +263,11 @@ details#walk-advanced[open] > summary::before { content: "▾ "; }
   font-size: var(--step-2); color: var(--muted);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+.results .src {
+  font-size: var(--step-2); color: var(--muted);
+  padding: 6px 9px 2px; margin-top: 4px; border-top: 1px solid var(--line);
+}
+.results .src:first-child { margin-top: 0; border-top: 0; }
 
 /* 슬라이더 */
 .slider-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
@@ -790,6 +795,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
           <input type="checkbox" id="walk-only">
           <span data-i18n="walkOnly">전철 없이 도보만</span>
         </label>
+        <!-- 신칸센을 넣은 권역(전국)에서만 보인다. 기본은 뺀다. -->
+        <label class="check" id="shinkansen-row" hidden>
+          <input type="checkbox" id="shinkansen">
+          <span data-i18n="shinkansen">신칸센 포함</span>
+        </label>
       </div>
 
       <div class="field">
@@ -953,6 +963,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       noLimit: "제한 없음",
       walkTotalHint: "출발지에서 역까지 걷는 시간도 여기에 묶입니다. 제한을 풀면 소요 시간 상한을 넘겨서도 걷습니다. 가장 가까운 역이 몇 시간 거리인 곳에서 쓰세요.",
       walkOnly: "전철 없이 도보만",
+      shinkansen: "신칸센 포함",
       statReached: "도달 가능 역", statTotal: "전체 역",
       farTitle: "가장 멀리 닿는 역", farHint: "직선거리 순. 누르면 도착지로 지정됩니다.",
       legend: "범례", busy: "계산 중",
@@ -1018,12 +1029,13 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       keyHintReferrer: "키의 HTTP 리퍼러 제한에 http://127.0.0.1:5173/* 가 있는지 확인하세요.",
       googleTrouble: "구글 지도에 문제가 생겨 OpenStreetMap 으로 표시합니다 — {msg}",
       googleLoadFailed: "구글 지도를 불러오지 못했습니다", googleNoResponse: "구글 지도 응답 없음",
-      regionFailed: "권역을 불러오지 못했습니다", regionListFailed: "권역 목록을 받지 못했습니다",
+      regionFailed: "권역을 불러오지 못했습니다", placeFailed: "장소 위치를 받지 못했습니다", regionListFailed: "권역 목록을 받지 못했습니다",
       tabPreset: "권역", tabCombo: "현 조합", comboMade: "만든 조합",
       comboNone: "아직 만든 조합이 없습니다.", comboPick: "현 고르기",
       comboBuild: "이 조합 만들기", comboOpen: "열기", comboLoad: "서버에 올려 열기",
       comboRebuild: "다시 만들기", comboBuilding: "만드는 중", comboClear: "선택 지우기",
       comboHint: "고른 현을 한 권역으로 새로 빌드합니다. 10-40분 걸리고, 그동안 다른 권역은 그대로 쓸 수 있습니다.",
+      comboScopeHint: "고른 현 안의 역과 노선만으로 바로 계산합니다. 현을 더하거나 빼면 다시 그립니다.",
       comboSize: "격자 {w}×{h} km · 추출본 {ex}",
       comboHeavy: "격자가 커서 빌드에 메모리가 많이 듭니다.",
       comboTooBig: "너무 넓어 만들 수 없습니다. 현을 나눠 주세요.",
@@ -1061,6 +1073,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       noLimit: "制限なし",
       walkTotalHint: "出発地から駅までの徒歩もここに含まれます。制限を外すと所要時間の上限を超えても歩きます。最寄り駅まで何時間もかかる場所で使ってください。",
       walkOnly: "電車を使わず徒歩のみ",
+      shinkansen: "新幹線も使う",
       statReached: "到達可能駅", statTotal: "全駅",
       farTitle: "最も遠くまで届く駅", farHint: "直線距離順。押すと目的地に設定されます。",
       legend: "凡例", busy: "計算中",
@@ -1126,12 +1139,13 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       keyHintReferrer: "キーの HTTP リファラ制限に http://127.0.0.1:5173/* があるか確認してください。",
       googleTrouble: "Google マップに問題が起きたため OpenStreetMap で表示します — {msg}",
       googleLoadFailed: "Google マップを読み込めませんでした", googleNoResponse: "Google マップの応答がありません",
-      regionFailed: "エリアを読み込めませんでした", regionListFailed: "エリア一覧を取得できませんでした",
+      regionFailed: "エリアを読み込めませんでした", placeFailed: "場所の位置を取得できませんでした", regionListFailed: "エリア一覧を取得できませんでした",
       tabPreset: "エリア", tabCombo: "県の組み合わせ", comboMade: "作った組み合わせ",
       comboNone: "まだ組み合わせはありません。", comboPick: "県を選ぶ",
       comboBuild: "この組み合わせを作る", comboOpen: "開く", comboLoad: "読み込んで開く",
       comboRebuild: "作り直す", comboBuilding: "作成中", comboClear: "選択を解除",
       comboHint: "選んだ県をひとつのエリアとして新しくビルドします。10-40分かかり、その間もほかのエリアはそのまま使えます。",
+      comboScopeHint: "選んだ県の駅と路線だけですぐに計算します。県を足したり外したりすると描き直します。",
       comboSize: "格子 {w}×{h} km · 抽出データ {ex}",
       comboHeavy: "格子が大きく、ビルドに多くのメモリを使います。",
       comboTooBig: "範囲が広すぎて作れません。県を分けてください。",
@@ -1169,6 +1183,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       noLimit: "No limit",
       walkTotalHint: "This includes the walk from the origin to the first station. Lifting the limit lets you walk past the time limit — useful where the nearest station is hours away.",
       walkOnly: "Walking only, no trains",
+      shinkansen: "Include Shinkansen",
       statReached: "Stations reached", statTotal: "Stations total",
       farTitle: "Farthest stations", farHint: "By straight-line distance. Click to set as destination.",
       legend: "Legend", busy: "Working",
@@ -1234,12 +1249,13 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       keyHintReferrer: "Check that the key allows the HTTP referrer http://127.0.0.1:5173/*.",
       googleTrouble: "Google Maps had a problem, showing OpenStreetMap — {msg}",
       googleLoadFailed: "Could not load Google Maps", googleNoResponse: "No response from Google Maps",
-      regionFailed: "Could not load the region", regionListFailed: "Could not get the region list",
+      regionFailed: "Could not load the region", placeFailed: "Could not get the place location", regionListFailed: "Could not get the region list",
       tabPreset: "Regions", tabCombo: "Combine prefectures", comboMade: "Your combinations",
       comboNone: "No combinations yet.", comboPick: "Pick prefectures",
       comboBuild: "Build this combination", comboOpen: "Open", comboLoad: "Load and open",
       comboRebuild: "Build again", comboBuilding: "Building", comboClear: "Clear",
       comboHint: "Builds the selected prefectures as one new region. It takes 10-40 minutes, and the other regions stay usable meanwhile.",
+      comboScopeHint: "Computes right away with only the stations and lines in the selected prefectures. Adding or removing one redraws the map.",
       comboSize: "Grid {w}×{h} km · extracts {ex}",
       comboHeavy: "Large grid: the build needs a lot of memory.",
       comboTooBig: "Too large to build. Split the prefectures.",
@@ -1276,6 +1292,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       noLimit: "不限",
       walkTotalHint: "从出发地走到车站的时间也计入此处。解除限制后即使超过时间上限也会继续步行，适用于最近车站需要数小时的地方。",
       walkOnly: "只步行，不乘电车",
+      shinkansen: "包括新干线",
       statReached: "可达车站", statTotal: "全部车站",
       farTitle: "最远可达车站", farHint: "按直线距离排序。点击即设为目的地。",
       legend: "图例", busy: "计算中",
@@ -1341,12 +1358,13 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       keyHintReferrer: "请确认密钥的 HTTP 来源限制中包含 http://127.0.0.1:5173/*。",
       googleTrouble: "Google 地图出现问题，改用 OpenStreetMap — {msg}",
       googleLoadFailed: "无法载入 Google 地图", googleNoResponse: "Google 地图无响应",
-      regionFailed: "无法载入区域", regionListFailed: "无法取得区域列表",
+      regionFailed: "无法载入区域", placeFailed: "无法取得地点位置", regionListFailed: "无法取得区域列表",
       tabPreset: "区域", tabCombo: "组合县", comboMade: "已建的组合",
       comboNone: "还没有组合。", comboPick: "选择县",
       comboBuild: "建立此组合", comboOpen: "打开", comboLoad: "载入并打开",
       comboRebuild: "重新建立", comboBuilding: "建立中", comboClear: "清除选择",
       comboHint: "把所选的县作为一个区域重新构建。需要10-40分钟，其间其他区域照常可用。",
+      comboScopeHint: "只用所选县内的车站和线路立即计算。增减县时会重新绘制。",
       comboSize: "网格 {w}×{h} km · 数据 {ex}",
       comboHeavy: "网格较大，构建需要大量内存。",
       comboTooBig: "范围太大，无法构建。请分开选择。",
@@ -1383,6 +1401,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       noLimit: "不限",
       walkTotalHint: "從出發地走到車站的時間也計入此處。解除限制後即使超過時間上限也會繼續步行，適用於最近車站需要數小時的地方。",
       walkOnly: "只步行，不乘電車",
+      shinkansen: "包括新幹線",
       statReached: "可達車站", statTotal: "全部車站",
       farTitle: "最遠可達車站", farHint: "按直線距離排序。點擊即設為目的地。",
       legend: "圖例", busy: "計算中",
@@ -1448,12 +1467,13 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       keyHintReferrer: "請確認金鑰的 HTTP 來源限制中包含 http://127.0.0.1:5173/*。",
       googleTrouble: "Google 地圖發生問題，改用 OpenStreetMap — {msg}",
       googleLoadFailed: "無法載入 Google 地圖", googleNoResponse: "Google 地圖無回應",
-      regionFailed: "無法載入區域", regionListFailed: "無法取得區域列表",
+      regionFailed: "無法載入區域", placeFailed: "無法取得地點位置", regionListFailed: "無法取得區域列表",
       tabPreset: "區域", tabCombo: "組合縣", comboMade: "已建的組合",
       comboNone: "還沒有組合。", comboPick: "選擇縣",
       comboBuild: "建立此組合", comboOpen: "開啟", comboLoad: "載入並開啟",
       comboRebuild: "重新建立", comboBuilding: "建立中", comboClear: "清除選擇",
       comboHint: "把所選的縣作為一個區域重新建置。需要10-40分鐘，期間其他區域照常可用。",
+      comboScopeHint: "只用所選縣內的車站和路線立即計算。增減縣時會重新繪製。",
       comboSize: "網格 {w}×{h} km · 資料 {ex}",
       comboHeavy: "網格較大，建置需要大量記憶體。",
       comboTooBig: "範圍太大，無法建置。請分開選擇。",
@@ -1565,6 +1585,14 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       o.value = r.id;
       o.textContent = localName(r.names) + " " + t("stationCount", { n: r.stations.toLocaleString() });
       sel.appendChild(o);
+      // 전국 권역이면 지방마다 현 목록으로 거른 프리셋을 그 아래에 둔다
+      (r.areas || []).forEach(function (a) {
+        var ao = document.createElement("option");
+        ao.value = a.id;
+        ao.textContent = "\u00a0\u00a0" + localName(a.names) + " "
+          + t("stationCount", { n: a.stations.toLocaleString() });
+        sel.appendChild(ao);
+      });
     });
     if (keep) sel.value = keep;
   }
@@ -2878,10 +2906,45 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     return head.concat(tail).slice(0, 20);
   }
 
-  function attachSearch(input, box, onPick) {
-    function render(list) {
+  /* 장소 검색(Google Places API New). 역 이름이 아닌 곳(호텔, 관광지, 주소)도
+     찾는다. 구글 지도 스크립트가 올라왔을 때만 쓴다. 입력부터 고르기까지를
+     세션 하나로 묶고 좌표만 받아야(Place Details Essentials) 자동완성 요청이
+     거의 과금되지 않는다. 키에 Places API 가 꺼져 있으면 한 번 실패한 뒤로는
+     묻지 않는다. */
+  var places = { lib: null, off: false, token: null };
+
+  function placeSuggestions(term) {
+    if (!googleReady || places.off || norm(term).trim().length < 2) return Promise.resolve([]);
+    return (places.lib ? Promise.resolve(places.lib) : google.maps.importLibrary("places"))
+      .then(function (lib) {
+        places.lib = lib;
+        if (!places.token) places.token = new lib.AutocompleteSessionToken();
+        var req = { input: term, sessionToken: places.token, includedRegionCodes: ["jp"] };
+        // 지금 출발지 가까운 곳을 먼저 보인다(반경 상한 50 km)
+        if (origin) req.locationBias = { center: { lat: origin.lat, lng: origin.lon }, radius: 50000 };
+        return lib.AutocompleteSuggestion.fetchAutocompleteSuggestions(req);
+      })
+      .then(function (res) {
+        return res.suggestions.map(function (x) { return x.placePrediction; }).filter(Boolean);
+      })
+      .catch(function () { places.off = true; return []; });
+  }
+
+  function placeLocation(prediction) {
+    var place = prediction.toPlace();
+    return place.fetchFields({ fields: ["location"] }).then(function () {
+      places.token = null;   // 좌표를 받으면 세션이 끝난다
+      return { lat: place.location.lat(), lon: place.location.lng() };
+    });
+  }
+
+  // onPlace 가 있으면 역 아래에 구글 장소 후보를 덧붙인다
+  function attachSearch(input, box, onPick, onPlace) {
+    var placeSeq = 0, placeTimer = null;
+    function render(list, found) {
       box.textContent = "";
-      if (!list.length) { box.hidden = true; return; }
+      found = found || [];
+      if (!list.length && !found.length) { box.hidden = true; return; }
       list.forEach(function (s) {
         var b = document.createElement("button");
         b.type = "button";
@@ -2918,12 +2981,52 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
         });
         box.appendChild(b);
       });
+      if (found.length) {
+        // 구글 장소임을 밝힌다(약관의 출처 표기. "Google Maps" 는 옮기지 않는다)
+        var src = document.createElement("div");
+        src.className = "src";
+        src.textContent = "Google Maps";
+        box.appendChild(src);
+      }
+      found.forEach(function (pr) {
+        var b = document.createElement("button");
+        b.type = "button";
+        var main = pr.mainText ? pr.mainText.text : pr.text.text;
+        var nm = document.createElement("span");
+        nm.className = "ja";
+        nm.textContent = main;
+        b.appendChild(nm);
+        if (pr.secondaryText) {
+          var sub = document.createElement("span");
+          sub.className = "ops";
+          sub.textContent = pr.secondaryText.text;
+          b.appendChild(sub);
+        }
+        b.addEventListener("click", function () {
+          input.value = main;
+          box.hidden = true;
+          placeLocation(pr)
+            .then(function (at) { onPlace(at.lat, at.lon, main); })
+            .catch(function (err) { notice(t("placeFailed"), err.message); });
+        });
+        box.appendChild(b);
+      });
       box.hidden = false;
     }
     // 지금 권역에서만 찾는다. 예전에는 못 찾으면 다른 권역 역 목록을 모두
     // 받아 뒤졌는데, 초성 같은 짧은 입력마다 역 2만 7천 개를 훑어 화면이 멎었다.
     input.addEventListener("input", function () {
-      render(search(input.value));
+      var term = input.value, list = search(term);
+      render(list);
+      if (!onPlace) return;
+      // 장소는 치는 동안 묻지 않고 멈추면 묻는다. 늦게 온 옛 응답은 버린다.
+      var seq = ++placeSeq;
+      clearTimeout(placeTimer);
+      placeTimer = setTimeout(function () {
+        placeSuggestions(term).then(function (found) {
+          if (seq === placeSeq && found.length) render(list, found);
+        });
+      }, 300);
     });
     input.addEventListener("keydown", function (e) { if (e.key === "Escape") box.hidden = true; });
     document.addEventListener("click", function (e) {
@@ -3024,7 +3127,21 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     if (walkUnlimited.checked) p.walk_unlimited = "1";
     else p.walk_total = walkTotal.value;
     if (el("walk-only").checked) p.mode = "walk";
+    return withScope(p);
+  }
+
+  /* 전국 권역을 현 몇 개로 거를 때는 요청마다 현 목록(prefs)을 붙인다. 조합을
+     따로 빌드하지 않고 서버가 그 자리에서 거른다. 신칸센 여부도 모든 요청에
+     붙인다. 서버는 신칸센을 켜고 홋카이도를 고르면 아오모리현을 더하므로, 역·
+     경계·노선 요청도 같은 값을 보내야 등시선과 모양이 맞는다. */
+  function withScope(p) {
+    if (scope && p.region === nationalId) p.prefs = scope.join(",");
+    if (el("shinkansen").checked && !el("shinkansen-row").hidden) p.shinkansen = "1";
     return p;
+  }
+
+  function regionQS(id) {
+    return new URLSearchParams(withScope({ region: id })).toString();
   }
 
   /* ---------- 그리기 ---------- */
@@ -3456,7 +3573,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 
   /* 찍기 전에 쓸 수 있는 지점인지 먼저 확인한다. 바다나 권역 밖을 찍어두고
      빈 결과를 보는 것보다, 찍히지 않는 편이 낫다. */
-  function handleMapClick(lat, lon, forced) {
+  // label 이 있으면 검색으로 고른 장소다. 입력칸에 이름을 남기고 화면을 맞춘다.
+  function handleMapClick(lat, lon, forced, label) {
     if (combo && combo.picking) return;
     // 지도를 갈아낀 직후에는 좌표 변환이 어긋나 엉뚱한 값이 온다.
     // 지구 밖 좌표로 서버를 부르면 "범위를 벗어났습니다" 만 뜬다.
@@ -3467,9 +3585,9 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     }
     var target = forced || clickMode;
     getJSON("/api/reachable?" + new URLSearchParams(
-      walkUnlimited.checked
+      withScope(walkUnlimited.checked
         ? { region: activeRegion, lon: lon, lat: lat, walk_unlimited: "1" }
-        : { region: activeRegion, lon: lon, lat: lat, walk_total: walkTotal.value }
+        : { region: activeRegion, lon: lon, lat: lat, walk_total: walkTotal.value })
     ))
       .then(function (res) {
         if (!res.ok) {
@@ -3482,19 +3600,20 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
         }
         el("notice").hidden = true;
         if (target === "dest") {
-          setDestination(lon, lat, null);
-          el("dq").value = "";
+          setDestination(lon, lat, label || null);
+          el("dq").value = label || "";
           runPoint();
         } else {
-          setOrigin(lon, lat, null);
-          el("q").value = "";
+          setOrigin(lon, lat, label || null);
+          el("q").value = label || "";
+          if (label) fitNext = true;
           run();
         }
       })
       .catch(function () {
         // 확인에 실패하면 막지 않고 그대로 진행한다
-        if (target === "dest") { setDestination(lon, lat, null); runPoint(); }
-        else { setOrigin(lon, lat, null); run(); }
+        if (target === "dest") { setDestination(lon, lat, label || null); runPoint(); }
+        else { setOrigin(lon, lat, label || null); run(); }
       });
   }
 
@@ -3506,11 +3625,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       // 보던 자리가 튀면 성가시다.
       fitNext = true;
       run();
-    });
+    }, function (lat, lon, label) { handleMapClick(lat, lon, "origin", label); });
     attachSearch(el("dq"), el("dest-results"), function (s) {
       setDestination(s.lon, s.lat, stationLabel(s), s);
       runPoint();
-    });
+    }, function (lat, lon, label) { handleMapClick(lat, lon, "dest", label); });
 
     /* 찍어둔 핀을 가장 가까운 역으로 옮긴다. 역 앞을 대충 찍었을 때
        정확한 역 위치로 맞추는 용도다. */
@@ -3553,7 +3672,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 
       var seq = ++seqs.snap;
       busy(true);
-      getJSON("/api/nearest?" + new URLSearchParams({ region: activeRegion, lon: pin.lon, lat: pin.lat }))
+      getJSON("/api/nearest?" + new URLSearchParams(withScope({ region: activeRegion, lon: pin.lon, lat: pin.lat })))
         .then(function (res) {
           // 그 사이 다른 스냅이나 맞바꾸기가 있었으면 이 답은 옛 핀 기준이다.
           // 그대로 쓰면 출발지와 도착지가 한 점으로 합쳐진다.
@@ -3658,6 +3777,15 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       run();
     });
 
+    // 신칸센은 켜고 끈 것을 기억한다
+    try { el("shinkansen").checked = localStorage.getItem("shinkansen") === "1"; }
+    catch (e) { /* 무시 */ }
+    el("shinkansen").addEventListener("change", function () {
+      try { localStorage.setItem("shinkansen", this.checked ? "1" : "0"); } catch (e) { /* 무시 */ }
+      // 현을 골라 둔 전국 권역은 범위가 바뀔 수 있다(홋카이도 + 아오모리현)
+      (scope ? reloadScopeData() : Promise.resolve()).then(run);
+    });
+
     el("fit").addEventListener("click", function () {
       if (lastBounds) mapView.fitBounds(lastBounds);
     });
@@ -3678,7 +3806,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       if (!on) { mapView.clearLines(); return; }
       if (railwayShapes) { refreshLines(); return; }
       busy(true);
-      getJSON("/api/railways?region=" + encodeURIComponent(activeRegion))
+      getJSON("/api/railways?" + regionQS(activeRegion))
         .then(function (list) {
           railwayShapes = list;
           refreshLines();
@@ -3705,7 +3833,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       // 먼저 눌러야만 쓸 수 있으면 노선을 살펴볼 때 번거롭다.
       busy(true);
       buildLineviewMenu();
-      getJSON("/api/railways?region=" + encodeURIComponent(activeRegion))
+      getJSON("/api/railways?" + regionQS(activeRegion))
         .then(function (list) {
           railwayShapes = list;
           el("toggle-lines").setAttribute("aria-pressed", "true");
@@ -3949,30 +4077,37 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   }
 
   /* 권역이 바뀌면 그 권역의 역 목록과 범위를 새로 받아 처음부터 다시 그린다 */
-  function loadRegion(id) {
-    var info = null;
-    for (var i = 0; i < regionList.length; i++) {
-      if (regionList[i].id === id) info = regionList[i];
+  // scoped 는 현 목록으로 거른 전국 권역의 이름과 첫 출발지(scopeInfo). 없으면
+  // 거르기를 푼다.
+  function loadRegion(id, scoped) {
+    var info = scoped || null;
+    if (!scoped) {
+      scope = null;
+      for (var i = 0; i < regionList.length; i++) {
+        if (regionList[i].id === id) info = regionList[i];
+      }
     }
     regionInfo = info;
     activeRegion = id;
     exitPickMode(false);
+    var baseInfo = regionList.filter(function (r) { return r.id === id; })[0];
+    el("shinkansen-row").hidden = !(baseInfo && baseInfo.shinkansen);
     // 조합 권역이면 조합 탭을, 아니면 권역 탭을 연다
-    if (info && info.custom) {
+    if (scoped ? scoped.tab !== "preset" : (info && info.custom)) {
       selectTab("combo");
     } else {
       selectTab("preset");
-      el("region").value = id;
+      el("region").value = scoped ? scoped.value : id;
     }
     if (combo.data) renderCombo();
     // 출발지 예시는 권역을 따른다. 간사이로 옮겼는데 신주쿠를 예로 들 수는 없다.
     applyLanguage();
     busy(true);
     return Promise.all([
-      getJSON("/api/stations?region=" + encodeURIComponent(id)),
-      getJSON("/api/coverage?region=" + encodeURIComponent(id)),
+      getJSON("/api/stations?" + regionQS(id)),
+      getJSON("/api/coverage?" + regionQS(id)),
       // 현 정보는 없어도 나머지는 돌아간다
-      getJSON("/api/prefectures?region=" + encodeURIComponent(id))
+      getJSON("/api/prefectures?" + regionQS(id))
         .catch(function () { return {}; })
     ]).then(function (res) {
       stations = res[0];
@@ -3998,7 +4133,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
           // 이 요청도 바깥 체인이 기다리게 돌려준다. 안 그러면 권역을
           // 빠르게 두 번 바꿨을 때 늦게 온 이전 권역 노선이 새 지도 위에
           // 얹힌다. 도착한 응답이 지금 권역 것인지도 다시 본다.
-          lines = getJSON("/api/railways?region=" + encodeURIComponent(id))
+          lines = getJSON("/api/railways?" + regionQS(id))
             .then(function (list) {
               if (activeRegion !== id) return;
               railwayShapes = list;
@@ -4024,6 +4159,42 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
     }).then(function () { busy(false); });
   }
 
+  /* 신칸센을 켜고 끄면 현을 골라 둔 전국 권역의 범위가 바뀔 수 있다(홋카이도를
+     고르면 아오모리현이 들고 난다). 역·경계·현 이름·노선만 다시 받는다. 출발지와
+     보던 화면, 현별·노선별 거르기는 그대로 둔다. */
+  function reloadScopeData() {
+    var id = activeRegion;
+    busy(true);
+    return Promise.all([
+      getJSON("/api/stations?" + regionQS(id)),
+      getJSON("/api/coverage?" + regionQS(id)),
+      getJSON("/api/prefectures?" + regionQS(id))
+        .catch(function () { return {}; })
+    ]).then(function (res) {
+      if (activeRegion !== id) return;
+      stations = res[0];
+      coverageGeo = res[1];
+      prefNames = res[2] || {};
+      Object.keys(MENU).forEach(function (k) {
+        if (!el(MENU[k].menu).hidden) buildPrefMenu(k);
+      });
+      if (!mapView) return;
+      showCoverage();
+      mapView.clearStations();
+      refreshStations();
+      if (!railwayShapes) return;
+      return getJSON("/api/railways?" + regionQS(id)).then(function (list) {
+        if (activeRegion !== id) return;
+        railwayShapes = list;
+        mapView.clearLines();
+        refreshLines();
+        if (!el("lineview-menu").hidden) buildLineviewMenu();
+      });
+    }).catch(function (err) {
+      notice(t("regionFailed"), err.message);
+    }).then(function () { busy(false); });
+  }
+
   /* ---------- 현 조합 ----------
      현을 골라 권역 하나로 새로 빌드한다(서버가 make_region.py 를 돌린다).
      빌드가 10-40분 걸리므로 진행을 몇 초마다 물어 본다. 만든 조합은 권역
@@ -4034,6 +4205,72 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   var combo = { data: null, pick: [], plan: null, planError: "", seq: 0,
                 poll: null, planTimer: null, picking: false, savedView: null,
                 outlineSeq: 0 };
+
+  /* 서버에 전국 권역이 있으면(온라인판) 조합을 빌드하지 않는다. 현을 고르면 전국
+     권역에 그 현 목록을 붙여 바로 계산한다(서버가 역·운행을 거르고 등시선을
+     현 경계로 자른다). 만든 조합 목록과 빌드·멈추기는 쓰지 않는다. */
+  var nationalId = null;
+  var scope = null;          // 거르는 현(일본어 이름) 목록. null 이면 거르지 않는다
+  var scopeTimer = null;
+
+  function enableScopeMode(id) {
+    nationalId = id;
+    el("combo-made").parentElement.hidden = true;
+    el("combo-job").hidden = true;
+    el("combo-plan").hidden = true;
+    el("combo-build").hidden = true;
+    var hint = document.querySelector("#pane-combo .combo-fold-body .hint");
+    if (hint) hint.setAttribute("data-i18n", "comboScopeHint");
+    applyLanguage();
+  }
+
+  // 현 이름과 첫 출발지. 출발지는 고른 현 가운데 역이 가장 많은 현의 중심역이다.
+  function scopeInfo(prefs) {
+    var byJa = {};
+    combo.data.areas.forEach(function (a) {
+      a.prefectures.forEach(function (p) { byJa[p.ja] = p; });
+    });
+    var names = {};
+    LANGS.forEach(function (lang) {
+      names[lang] = prefs.map(function (ja) {
+        var p = byJa[ja];
+        return (p && p.names && p.names[lang]) || ja;
+      }).join(lang === "en" ? " / " : lang === "ja" ? "・" : "·");
+    });
+    var top = prefs.slice().sort(function (a, b) {
+      return ((byJa[b] || {}).stations || 0) - ((byJa[a] || {}).stations || 0);
+    })[0];
+    var hub = (byJa[top] || {}).hub;
+    var nat = regionList.filter(function (r) { return r.id === nationalId; })[0] || {};
+    var start = nat.start;
+    if (hub) {
+      var hubNames = hub.names || {};
+      if (!hubNames.ja) {
+        hubNames = {};
+        LANGS.forEach(function (lang) { hubNames[lang] = hub.ja; });
+      }
+      start = { lon: hub.lon, lat: hub.lat, names: hubNames };
+    }
+    return { id: nationalId, names: names, start: start, zoom: nat.zoom || 11,
+             custom: false, scoped: true };
+  }
+
+  function scheduleScope() {
+    clearTimeout(scopeTimer);
+    scopeTimer = setTimeout(applyScope, 400);
+  }
+
+  // 고른 현으로 전국 권역을 다시 연다. 다 뺐으면 빈 일본 지도로 돌아간다.
+  function applyScope() {
+    clearTimeout(scopeTimer);
+    if (!combo.pick.length) {
+      scope = null;
+      enterPickMode();
+      return Promise.resolve();
+    }
+    scope = combo.pick.slice().sort();
+    return loadRegion(nationalId, scopeInfo(scope)).then(run);
+  }
 
   /* 현을 고르는 동안은 지도에서 권역의 것(등시선, 권역 경계, 노선, 역, 핀)을
      걷고 일본 전체를 보인다. 고른 현들을 합친 경계만 칠한다. 권역 탭으로
@@ -4125,7 +4362,31 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 
   function switchRegion(id) {
     try { localStorage.setItem("region", id); } catch (e) { /* 무시 */ }
-    return loadRegion(id).then(run);
+    return (isArea(id) ? openArea(id) : loadRegion(id)).then(run);
+  }
+
+  /* 지방 프리셋(area:関東 등). 전국 권역을 그 지방의 현 목록으로 거른다. */
+  function isArea(id) {
+    return typeof id === "string" && id.indexOf("area:") === 0;
+  }
+
+  function areaOf(id) {
+    var nat = regionList.filter(function (r) { return r.id === nationalId; })[0];
+    return ((nat && nat.areas) || []).filter(function (a) { return a.id === id; })[0] || null;
+  }
+
+  function openArea(id) {
+    var a = areaOf(id);
+    if (!a) return loadRegion(nationalId);
+    // 첫 출발지를 고르려면 현마다의 중심역·역 수가 든 조합 탭 자료가 있어야 한다
+    return (combo.data ? Promise.resolve() : refreshCombo()).then(function () {
+      scope = a.prefectures.slice().sort();
+      var info = scopeInfo(scope);
+      info.names = a.names;
+      info.tab = "preset";
+      info.value = id;
+      return loadRegion(nationalId, info);
+    });
   }
 
   function refreshRegionList() {
@@ -4246,6 +4507,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
           if (i >= 0) combo.pick.splice(i, 1); else combo.pick.push(p.ja);
           // 고른 것이 바뀌면 켤 현도 달라진다
           renderCombo();
+          if (nationalId) {
+            // 빌드하지 않고 전국 권역을 거른다. 여러 현을 연달아 누를 때를 위해 잠깐 기다린다.
+            if (combo.pick.length) scheduleScope(); else applyScope();
+            return;
+          }
           schedulePlan();
           enterPickMode();
         });
@@ -4269,6 +4535,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   }
 
   function updatePlan() {
+    if (nationalId) return;
     var seq = ++combo.seq;
     if (!combo.pick.length) {
       combo.plan = null;
@@ -4425,6 +4692,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 
   function renderJob(job) {
     var box = el("combo-job");
+    if (nationalId) { box.hidden = true; return; }
     // 끝난 빌드는 10분 동안만 알린다
     if (!job || !job.started || (job.ended && Date.now() / 1000 - job.ended > 600)) {
       box.hidden = true;
@@ -4478,8 +4746,9 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 
   el("tab-preset").addEventListener("click", function () {
     selectTab("preset");
-    // 조합을 보던 중이면 드롭다운에 있는 권역으로 돌아간다
-    if (isCustom(activeRegion) && el("region").value) {
+    // 조합을 보던 중이면(현으로 거른 전국 권역도) 드롭다운에 있는 권역으로 돌아간다
+    if ((isCustom(activeRegion) || (regionInfo && regionInfo.scoped && regionInfo.tab !== "preset"))
+        && el("region").value) {
       exitPickMode(false);
       switchRegion(el("region").value);
     } else {
@@ -4488,6 +4757,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   });
   el("tab-combo").addEventListener("click", function () {
     selectTab("combo");
+    // 필터 모드에서 골라 둔 현이 있으면 그것으로 연다
+    if (nationalId && combo.pick.length) {
+      if (!(regionInfo && regionInfo.scoped && regionInfo.tab !== "preset")) applyScope();
+      return;
+    }
     // 빈 일본 지도에서 현을 고른다. 만든 조합은 목록에서 눌러 연다.
     enterPickMode();
   });
@@ -4509,6 +4783,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   el("combo-clear").addEventListener("click", function () {
     combo.pick = [];
     renderCombo();
+    if (nationalId) { applyScope(); return; }
     schedulePlan();
     drawPickOutline();
   });
@@ -4519,13 +4794,16 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   getJSON("/api/regions")
     .then(function (data) {
       regionList = data.regions;
+      var nat = regionList.filter(function (r) { return r.national; })[0];
+      if (nat) enableScopeMode(nat.id);
       var sel = el("region");
       buildRegionOptions();
       // 새로고침해도 보던 권역에 머문다. 저장이 막힌 브라우저면 기본값.
       var want = data.default;
       try {
         var saved = localStorage.getItem("region");
-        if (saved && regionList.some(function (r) { return r.id === saved; })) {
+        if (saved && (regionList.some(function (r) { return r.id === saved; })
+                      || (isArea(saved) && areaOf(saved)))) {
           want = saved;
         }
       } catch (e) { /* 사생활 보호 창 등 */ }
@@ -4534,7 +4812,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       // 권역이 하나뿐이어도 현 조합 탭이 있으니 늘 보인다
       el("field-region").hidden = false;
       sel.addEventListener("change", function () { switchRegion(sel.value); });
-      return loadRegion(want);
+      return isArea(want) ? openArea(want) : loadRegion(want);
     })
     .catch(function (err) { notice(t("regionListFailed"), err.message); });
 

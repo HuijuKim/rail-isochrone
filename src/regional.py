@@ -9,6 +9,7 @@ line-extensions·line-headways·line-operators 는 "권역 -> 노선 -> ..." 로
 from __future__ import annotations
 
 import json
+import os
 from functools import lru_cache
 from pathlib import Path
 
@@ -18,10 +19,15 @@ REGIONS_DIR = ROOT / "data" / "regions"
 
 @lru_cache(maxsize=None)
 def _meta(region_id: str) -> dict:
-    try:
-        return json.loads((REGIONS_DIR / region_id / "region.json").read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return {}
+    # 전국 권역은 따로 둔 폴더(REGIONS_DIR 환경변수)에 있다. 서버가 그것을 올릴
+    # 때 여기서 못 찾아, 이웃 권역의 손질(운영사 등)을 하나도 못 빌렸다.
+    extra = os.environ.get("REGIONS_DIR")
+    for base in ([Path(extra)] if extra else []) + [REGIONS_DIR]:
+        try:
+            return json.loads((base / region_id / "region.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+    return {}
 
 
 def prefectures_of(region_id: str) -> frozenset:
@@ -50,7 +56,10 @@ def merge_books(book: dict, region_id: str) -> dict:
     own = book.get(region_id)
     if isinstance(own, dict):
         return own
-    if not is_custom(region_id):
+    # 전국 권역(실험)도 현을 모은 권역이라 조합처럼 겹치는 권역 것을 모은다.
+    # 이것이 없으면 マリンライナー 배차, 瀬戸大橋線 연장 같은 손질이 전국판에서
+    # 하나도 먹지 않았다.
+    if not (is_custom(region_id) or _meta(region_id).get("national")):
         return {}
     merged: dict = {}
     for rid in neighbours(region_id, [k for k, v in book.items() if isinstance(v, dict)]):

@@ -17,6 +17,7 @@ from pathlib import Path
 os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
 
 import numpy as np  # noqa: E402
+import shapely  # noqa: E402
 from flask import Flask, jsonify, request, send_from_directory
 
 import make_region
@@ -57,7 +58,11 @@ app = Flask(__name__, static_folder=None)
 # 쓰이고 도보권은 아직 옛것이라 그 권역만 짝이 안 맞는데, 예전에는 그
 # 때문에 서버 전체가 안 떴다. 못 올린 권역은 목록에서 빠진다.
 REGIONS = {}
+# 올릴 권역을 고른다(쉼표로). 온라인에서는 전국 권역 하나만 올린다.
+_SERVE = [r for r in os.environ.get("SERVE_REGIONS", "").split(",") if r]
 for _rid in region_mod.available():
+    if _SERVE and _rid not in _SERVE:
+        continue
     try:
         REGIONS[_rid] = region_mod.load(_rid)
     except Exception as _err:      # noqa: BLE001 - 어떤 이유든 그 권역만 뺀다
@@ -80,6 +85,208 @@ def pick_region():
         raise BadRequest(f"모르는 권역입니다: {name!r} (쓸 수 있는 것: "
                          + ", ".join(sorted(REGIONS)) + ")")
     return REGIONS[name]
+
+
+# ---------- 현 목록 필터 ----------
+#
+# 요청에 prefs=東京都,神奈川県 가 붙으면 그 현들 안의 역만 쓰고 등시선을 그
+# 경계로 자른다. 전국 권역 하나로 모든 현 조합을 흉내 낸다(따로 빌드하지 않는다).
+# 거른 그래프는 현 목록마다 만들어 두고 몇 개만 들고 있는다.
+
+class Scope:
+    def __init__(self, prefs, keep, clip, graphs):
+        self.prefs, self.keep, self.clip, self.graphs = prefs, keep, clip, graphs
+
+
+_SCOPES: dict = {}
+_SCOPE_KEEP = 8
+_SCOPE_LOCK = threading.Lock()
+
+
+def _pref_table(reg) -> dict:
+    """역마다 든 현 번호와 현 경계. 처음 쓸 때 한 번 만든다.
+
+    역의 현은 build_admin 이 행정경계로 매겨 prefectures.json 에 적어 둔 것을
+    쓴다(화면의 현별 거르기도 이것을 쓴다). 도형으로 다시 물으면 전국에서 3초
+    걸렸다. 현 도형은 고른 현만 처음 쓸 때 만든다(_pref_shape).
+    """
+    got = getattr(reg, "_pref_table", None)
+    if got is not None:
+        return got
+    rings = json.loads((reg.dir / "raw" / "prefecture-rings.json").read_text(encoding="utf-8"))
+    names = sorted(rings)
+    index = {n: k for k, n in enumerate(names)}
+    try:
+        by_id = json.loads((reg.dir / "prefectures.json").read_text(encoding="utf-8")).get("stations", {})
+    except (OSError, ValueError):
+        by_id = {}
+    station_pref = np.array([index.get(by_id.get(sid), -1) for sid in reg.stops["ids"]],
+                            dtype=np.int16)
+    got = {"names": names, "index": index, "station_pref": station_pref,
+           "rings": rings, "shapes": {}}
+    reg._pref_table = got
+    return got
+
+
+def _pref_shape(table, name):
+    got = table["shapes"].get(name)
+    if got is None:
+        from shapely.geometry import Polygon
+        from shapely.ops import unary_union
+
+        got = unary_union([Polygon(r).buffer(0) for r in table["rings"][name] if len(r) >= 4])
+        shapely.prepare(got)
+        table["shapes"][name] = got
+    return got
+
+
+def area_presets(reg) -> list:
+    """전국 권역을 지방 단위로 거를 때 쓸 현 목록. 권역 탭의 프리셋으로 보인다."""
+    got = getattr(reg, "_area_presets", None)
+    if got is not None:
+        return got
+    table = _pref_table(reg)
+    got = []
+    for names, members in make_region.AREAS:
+        prefs = [p for p in members if p in table["index"]]
+        if not prefs:
+            continue
+        keep = np.isin(table["station_pref"], [table["index"][p] for p in prefs])
+        n = int(np.unique(reg.station_group[keep & (reg.station_group >= 0)]).size)
+        got.append({"id": "area:" + names["ja"], "names": names, "prefectures": prefs,
+                    "stations": n})
+    reg._area_presets = got
+    return got
+
+
+def _has_hsr(reg) -> bool:
+    return any(g.trip_hsr is not None for g in reg.graphs.values())
+
+
+def read_scope(reg):
+    """요청의 prefs 와 신칸센. 거를 것이 없으면 None(권역 전체).
+
+    신칸센을 넣은 권역(전국)은 shinkansen=1 이 없으면 신칸센 운행을 뺀다. 현을
+    안 골랐어도 뺀 그래프를 쓴다(이때 clip 은 없다).
+    """
+    raw = request.args.get("prefs", "").strip()
+    prefs = tuple(sorted({p.strip() for p in raw.split(",") if p.strip()}))
+    no_hsr = _has_hsr(reg) and request.args.get("shinkansen") not in ("1", "true", "yes")
+    # 홋카이도는 신칸센으로만 혼슈와 이어진다. 신칸센을 켜고 홋카이도를 골랐으면
+    # 종점 新青森 이 있는 아오모리현을 함께 넣는다. 안 그러면 北海道新幹線 이 도
+    # 경계(木古内) 에서 끊긴다.
+    if _has_hsr(reg) and not no_hsr and "北海道" in prefs and "青森県" not in prefs:
+        prefs = tuple(sorted(prefs + ("青森県",)))
+    if not prefs and not no_hsr:
+        return None
+    table = _pref_table(reg) if prefs else None
+    unknown = [p for p in prefs if p not in table["index"]]
+    if unknown:
+        raise BadRequest("이 권역에 없는 현입니다: " + ", ".join(unknown))
+    key = (reg.id, prefs, no_hsr)
+    with _SCOPE_LOCK:
+        got = _SCOPES.get(key)
+        if got is not None:
+            return got
+        from router import restrict
+        from shapely.ops import unary_union
+
+        if prefs:
+            keep = np.isin(table["station_pref"], [table["index"][p] for p in prefs])
+            clip = unary_union([_pref_shape(table, p) for p in prefs])
+            shapely.prepare(clip)
+        else:
+            keep, clip = np.ones(len(reg.coords), dtype=bool), None
+        got = Scope(prefs, keep, clip,
+                    {cal: restrict(g, keep, g.trip_hsr if no_hsr else None)
+                     for cal, g in reg.graphs.items()})
+        if len(_SCOPES) >= _SCOPE_KEEP:
+            _SCOPES.pop(next(iter(_SCOPES)))
+        _SCOPES[key] = got
+        return got
+
+
+def scope_railways(reg, scope) -> list:
+    """고른 현을 지나는 노선만, 고르지 않은 현의 땅에 들어간 부분을 잘라서.
+    현 목록마다 한 번 만든다.
+
+    고른 현의 땅으로 자르면 현 경계가 해안선으로 잘려 있어 바다 위 구간(세토대교·
+    関門トンネル·青函トンネル)이 통째로 떨어져 나갔다. 남의 현 땅만 잘라 낸다.
+    """
+    got = getattr(scope, "railways", None)
+    if got is not None:
+        return got
+    from shapely.geometry import LineString
+    from shapely.ops import unary_union
+
+    want = set(scope.prefs)
+    cands = [r for r in reg.railway_shapes if want & set(r.get("prefs") or ())]
+    table = _pref_table(reg)
+    others = sorted({p for r in cands for p in r.get("prefs") or ()
+                     if p not in want and p in table["index"]})
+    # 경계역에서 선이 딱 잘리면 역 점만 덩그러니 남는다. 남의 땅도 300 m 는 남긴다.
+    block = (unary_union([_pref_shape(table, p) for p in others]).buffer(-0.003)
+             if others else None)
+    if block is not None and block.is_empty:
+        block = None
+    if block is not None:
+        shapely.prepare(block)
+    out = []
+    for r in cands:
+        line = LineString(r["path"])
+        if block is None or not block.intersects(line):
+            out.append(r)
+            continue
+        cut = line.difference(block)
+        for part in getattr(cut, "geoms", [cut]):
+            if part.geom_type == "LineString" and len(part.coords) >= 2:
+                out.append(dict(r, path=[[round(x, 5), round(y, 5)] for x, y in part.coords]))
+    scope.railways = out
+    return out
+
+
+def scope_outline(reg, scope) -> list:
+    """고른 현들의 바깥 윤곽(선 목록). 권역 윤곽과 같은 잣대로 섬을 뺀다.
+
+    현 경계를 그대로 그리면 東京都 를 골랐을 때 오가사와라까지 들어가 지도가
+    멀리 물러났다. 역이 든 땅과 거기서 걸어서 이어진 땅(江の島 등)만 남긴다.
+    등시선을 자르는 경계(clip)는 그대로 둔다.
+    """
+    got = getattr(scope, "outline", None)
+    if got is not None:
+        return got
+    from shapely.geometry import Polygon
+    from shapely.ops import unary_union
+
+    from coverage import _pieces_in_region, _walk_reach
+
+    table = _pref_table(reg)
+    rings = [r for p in scope.prefs for r in table["rings"][p] if len(r) >= 4]
+    pts = reg.coords[scope.keep & np.isfinite(reg.coords[:, 0])][:, :2]
+    keep = _pieces_in_region(rings, pts, _walk_reach(reg.walk) if reg.walk is not None else None)
+    if any(keep):
+        rings = [r for r, ok in zip(rings, keep) if ok]
+    b = unary_union([Polygon(r).buffer(0) for r in rings]).boundary
+    scope.outline = [[[round(x, 5), round(y, 5)] for x, y in g.coords]
+                     for g in getattr(b, "geoms", [b])]
+    return scope.outline
+
+
+def clip_geojson(geo: dict, clip) -> dict:
+    """등시선을 고른 현 경계로 자른다."""
+    from shapely.geometry import MultiPolygon, mapping, shape
+
+    out = []
+    for f in geo["features"]:
+        g = shape(f["geometry"]).intersection(clip)
+        # 경계에 닿는 곳에서 선이나 점이 섞인 도형 모음이 나온다. 화면은 면만
+        # 그리므로 면만 남긴다(모음을 그대로 보내면 화면이 좌표를 못 찾는다).
+        polys = [p for p in getattr(g, "geoms", [g])
+                 if p.geom_type in ("Polygon", "MultiPolygon") and not p.is_empty]
+        polys = [q for p in polys for q in getattr(p, "geoms", [p])]
+        if polys:
+            out.append(dict(f, geometry=mapping(MultiPolygon(polys))))
+    return dict(geo, features=out)
 
 
 class BadRequest(Exception):
@@ -146,22 +353,27 @@ def parse_hhmm(text: str) -> int:
     return value
 
 
-def google_maps_key() -> str | None:
-    """환경변수나 config.json 에서 구글 지도 JS API 키를 찾는다.
-
-    키가 없으면 None 이고, 이때 화면은 OpenStreetMap 타일로 돌아간다.
-    """
-    key = os.environ.get("GOOGLE_MAPS_API_KEY", "").strip()
+def _setting(env: str, name: str) -> str | None:
+    """환경변수, 없으면 config.json 의 값. 둘 다 없으면 None."""
+    key = os.environ.get(env, "").strip()
     if key:
         return key
     cfg = ROOT / "config.json"
     if cfg.exists():
         try:
-            value = json.loads(cfg.read_text(encoding="utf-8")).get("google_maps_api_key", "")
+            value = json.loads(cfg.read_text(encoding="utf-8")).get(name, "")
             return value.strip() or None
         except (json.JSONDecodeError, OSError):
             return None
     return None
+
+
+def google_maps_key() -> str | None:
+    """구글 지도 JS API 키(브라우저용, 웹사이트 제한).
+
+    키가 없으면 None 이고, 이때 화면은 OpenStreetMap 타일로 돌아간다.
+    """
+    return _setting("GOOGLE_MAPS_API_KEY", "google_maps_api_key")
 
 
 def draw_on_roads(reg, path: list[list[float]]) -> list[list[float]]:
@@ -412,6 +624,12 @@ def regions():
                     "note": r.meta.get("note", ""),
                     # 현을 골라 만든 권역은 화면의 "현 조합" 탭에 따로 모인다.
                     "custom": bool(r.meta.get("custom")),
+                    # 전국 권역. 있으면 화면의 현 조합 탭은 빌드 대신 이 권역에
+                    # 현 목록(prefs)을 붙여 바로 계산한다.
+                    "national": bool(r.meta.get("national")),
+                    # 신칸센을 넣은 권역. 화면이 "신칸센 포함" 을 보인다.
+                    "shinkansen": _has_hsr(r),
+                    "areas": area_presets(r) if r.meta.get("national") else [],
                     "prefectures": r.meta.get("prefectures") or [],
                 }
                 # 역이 많은 권역부터 보인다.
@@ -451,8 +669,14 @@ def _kill_tree(proc) -> None:
         proc.kill()
 
 
+# 전국 권역을 올린 서버(온라인판)는 조합을 빌드하지 않는다. 현은 요청마다 거른다.
+# 역방향 프록시 뒤에서는 모든 요청이 127.0.0.1 에서 온 것으로 보여서, 주소만
+# 보면 누구나 빌드를 걸 수 있게 된다. 빌드·삭제·열기를 통째로 막는다.
+ONLINE = any(r.meta.get("national") for r in REGIONS.values())
+
+
 def _from_this_machine() -> bool:
-    return request.remote_addr in ("127.0.0.1", "::1")
+    return not ONLINE and request.remote_addr in ("127.0.0.1", "::1")
 
 
 def _combo_running() -> bool:
@@ -557,6 +781,8 @@ def combo():
                 # 이어진 현만 고르게 하려고 함께 보낸다. 바다 위 경계도 이웃이라
                 # 다리로 이어진 岡山-香川, 広島-愛媛 이 들어 있다.
                 "neighbors": info.get("neighbors", []),
+                # 현만 골라 전국 권역을 거를 때 첫 출발지로 쓴다
+                "hub": info.get("hub"),
             })
         areas.append({"names": {"zh-Hans": names["ja"], "zh-Hant": names["ja"], **names},
                       "prefectures": prefs})
@@ -740,13 +966,21 @@ def combo_open():
 @app.get("/api/stations")
 def stations():
     """검색창 자동완성용 역 목록."""
-    return jsonify(pick_region().search_index)
+    reg = pick_region()
+    scope = read_scope(reg)
+    if scope and scope.prefs:
+        return jsonify([e for e in reg.search_index if e.get("pref") in scope.prefs])
+    return jsonify(reg.search_index)
 
 
 @app.get("/api/prefectures")
 def prefectures():
     """도도부현 이름표. 화면 언어에 맞춰 보여주려고 언어별로 들고 있다."""
-    return jsonify(pick_region().pref_names)
+    reg = pick_region()
+    scope = read_scope(reg)
+    if scope and scope.prefs:
+        return jsonify({k: v for k, v in reg.pref_names.items() if k in scope.prefs})
+    return jsonify(reg.pref_names)
 
 
 @app.get("/api/railways")
@@ -759,7 +993,8 @@ def railways():
     조각으로 끊겨 오므로 줄 수는 노선 수보다 많다.
     """
     reg = pick_region()
-    return jsonify(reg.railway_shapes)
+    scope = read_scope(reg)
+    return jsonify(scope_railways(reg, scope) if scope and scope.prefs else reg.railway_shapes)
 
 
 @app.get("/api/config")
@@ -790,8 +1025,14 @@ def config():
 
 @app.get("/api/coverage")
 def coverage():
-    """앱이 동작하는 범위의 윤곽선."""
-    return jsonify(pick_region().coverage_geojson)
+    """앱이 동작하는 범위의 윤곽선. 현을 골랐으면 그 현들의 바깥 윤곽."""
+    reg = pick_region()
+    scope = read_scope(reg)
+    if scope and scope.clip:
+        return jsonify({"type": "Feature", "properties": {},
+                        "geometry": {"type": "MultiLineString",
+                                     "coordinates": scope_outline(reg, scope)}})
+    return jsonify(reg.coverage_geojson)
 
 
 @app.get("/api/nearest")
@@ -808,6 +1049,9 @@ def nearest():
     # 가장 가까운 역이 답이고, 더 멀리 볼 이유가 없다.
     g = next(iter(reg.graphs.values()))
     coords_ok = np.isfinite(reg.coords[:, 0])
+    scope = read_scope(reg)
+    if scope:
+        coords_ok &= scope.keep       # 고른 현 밖 역으로는 맞추지 않는다
     for limit in (ACCESS_GATE_SEC, ACCESS_UNLIMITED_SEC):
         secs = np.where(coords_ok, access_seconds(g, lon, lat, limit, reg.walk), np.inf)
         if np.isfinite(secs).any():
@@ -853,6 +1097,9 @@ def reachable():
         if cover.is_sea(lon, lat):
             return jsonify({"ok": False, "reason": "sea"})
         return jsonify({"ok": False, "reason": "outside_region"})
+    scope = read_scope(reg)
+    if scope and scope.clip and not shapely.contains_xy(scope.clip, lon, lat):
+        return jsonify({"ok": False, "reason": "outside_region"})
 
     if reg.walk is not None and reg.walk.nearest_node(lon, lat) < 0:
         if cover is not None and cover.is_sea(lon, lat):
@@ -881,15 +1128,18 @@ def isochrone():
     thresholds, egress = qs["thresholds"], qs["egress"]
 
     reg = pick_region()
-    g = reg.graphs.get(qs["calendar"]) or next(iter(reg.graphs.values()))
+    scope = read_scope(reg)
+    graphs = scope.graphs if scope else reg.graphs
+    g = graphs.get(qs["calendar"]) or next(iter(graphs.values()))
     budget = max(thresholds)
 
     # 도보 전용 모드: 전철을 아예 빼고 걷기만 한다
     if request.args.get("mode") == "walk" and reg.walk is not None:
         field = build_walk_only_field(reg.walk, lon, lat, budget)
+        geo = contour_geojson(field, thresholds)
         return jsonify(
             {
-                "geojson": contour_geojson(field, thresholds),
+                "geojson": clip_geojson(geo, scope.clip) if scope and scope.clip else geo,
                 "stats": {"reached": 0, "total": int(reg.supported.sum()),
                           "farthest": [], "mode": "walk"},
             }
@@ -902,6 +1152,8 @@ def isochrone():
     best = earliest_arrivals(
         g, lon, lat, depart, budget, walk=reg.walk, access_limit=access_limit
     )
+    if scope:
+        best[~scope.keep] = INF      # 걸어서 닿았어도 고른 현 밖 역에서는 타지 못한다
 
     # 출발지에서 그냥 걸어가는 범위. 역에 닿을 수 있으면 전철이 훨씬 멀리
     # 가므로 도보 원은 어차피 그 안에 묻힌다. 상한만큼 크게 그리려면 반경이
@@ -918,6 +1170,8 @@ def isochrone():
     else:
         field = build_field(g, lon, lat, depart, best, budget, egress_max_sec=egress)
     geojson = contour_geojson(field, thresholds)
+    if scope and scope.clip:
+        geojson = clip_geojson(geojson, scope.clip)
 
     elapsed = best.astype(np.float64) - depart
     # 역 수는 사람이 아는 "역" 단위로 센다. 역 목록은 노선별로 쪼개져 있어서
@@ -959,7 +1213,8 @@ def isochrone():
             "geojson": geojson,
             "stats": {
                 "reached": reached,
-                "total": int(reg.supported.sum()),
+                "total": (int(np.unique(reg.station_group[scope.keep & (reg.station_group >= 0)]).size)
+                          if scope and scope.prefs else int(reg.supported.sum())),
                 "farthest": far,
             },
         }
@@ -976,7 +1231,11 @@ def point():
     dest_lon, dest_lat = need_point("dest_")
 
     reg = pick_region()
-    g = reg.graphs.get(qs["calendar"]) or next(iter(reg.graphs.values()))
+    scope = read_scope(reg)
+    graphs = scope.graphs if scope else reg.graphs
+    g = graphs.get(qs["calendar"]) or next(iter(graphs.values()))
+    if scope and scope.clip and not shapely.contains_xy(scope.clip, dest_lon, dest_lat):
+        return jsonify({"reachable": False, "reason": "outside_region"})
     # 상한을 넘더라도 "몇 분 걸리는지" 는 알려주는 편이 쓸모 있다. 상한에
     # 맞춰 좁히면 하코네 고우라(신주쿠에서 168분)처럼 멀쩡히 갈 수 있는 곳이
     # "닿지 않음" 으로 나온다. 넓혀도 비용은 0.25초에서 0.28초 정도다.
@@ -999,6 +1258,8 @@ def point():
             g, lon, lat, depart, horizon, walk=reg.walk, trace=True, access_limit=horizon
         )
 
+    if scope:
+        best[~scope.keep] = INF
     elapsed = best.astype(np.float64) - depart
     if reg.walk is not None:
         # 도착지에서 역 쪽으로 걸어가는 시간 (보행로는 양방향이라 그대로 쓴다)

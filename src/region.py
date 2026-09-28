@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import functools
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -19,7 +20,9 @@ import numpy as np
 import geometry as geometry_mod
 
 ROOT = Path(__file__).resolve().parent.parent
-REGIONS_DIR = ROOT / "data" / "regions"
+# 전국 권역(실험)은 data/national/regions/ 에 따로 둔다. 원래 서버와 조합 빌드가
+# 기존 권역을 훑을 때 섞이지 않게. 그 서버는 REGIONS_DIR 로 이곳을 가리킨다.
+REGIONS_DIR = Path(os.environ.get("REGIONS_DIR") or ROOT / "data" / "regions")
 
 # 화면이 고를 수 있는 언어. 역 이름을 이만큼 내보낸다.
 LANGS = ("ja", "en", "ko", "zh-Hans", "zh-Hant")
@@ -133,6 +136,9 @@ def load(region_id: str) -> Region:
         got = operator_in_name((r.get("title") or {}).get("ja", ""))
         if got:
             r["operator"] = got
+    # 여기까지(태그·이름)가 확실한 것이다. 아래는 짐작이라, 전국 권역에서 JR
+    # 회사가 나오면 역마다 현으로 다시 가린다(_jr_by_pref).
+    sure_op = {rid for rid, r in railways.items() if (r.get("operator") or "").strip()}
 
     # 손으로 적은 것이 짐작(3)보다 먼저다. JR伊東線 은 도카이 권역에서
     # 흔한 JR도카이로 짐작되지만 JR동일본 노선이다.
@@ -417,12 +423,6 @@ def load(region_id: str) -> Region:
     # (広島 -> 廣島 / 广岛). 가나가 든 이름은 뜻으로 옮겨야 해서 두지 않는다.
     _fill_zh(stops, railways)
 
-    index, groups, n_groups = build_search_index(
-        base, stops, coords,
-        {rid: _operator_label(r) for rid, r in railways.items()
-         if (_operator_label(r) or {}).get("ja")})
-    supported = supported_mask(walk, coords, groups, n_groups)
-
     # 역 -> 도도부현. build_admin.py 가 OSM 행정경계로 만들어 둔다.
     pref_path = base / "prefectures.json"
     pref_data = (
@@ -430,6 +430,14 @@ def load(region_id: str) -> Region:
     )
     prefectures = pref_data.get("stations", {})
     pref_names = pref_data.get("names", {})
+
+    index, groups, n_groups = build_search_index(
+        base, stops, coords,
+        {rid: _operator_label(r) for rid, r in railways.items()
+         if (_operator_label(r) or {}).get("ja")},
+        relabel=(_jr_by_pref(railways, sure_op, stops, prefectures)
+                 if meta.get("national") else None))
+    supported = supported_mask(walk, coords, groups, n_groups)
     row_of = {sid: i for i, sid in enumerate(stops["ids"])}
     for entry in index:
         i = row_of.get(entry["id"], -1)
@@ -484,9 +492,58 @@ def load(region_id: str) -> Region:
     )
 
 
+# 회사별로 JR 여객 노선이 다니는 현. 회사 경계역(熱海·米原·猪谷·新宮 등) 언저리
+# 몇 역은 옆 회사로 나올 수 있다.
+_JR_HOME = {
+    "北海道旅客鉄道": ("北海道",),
+    "東日本旅客鉄道": ("青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県", "茨城県",
+                 "栃木県", "群馬県", "埼玉県", "千葉県", "東京都", "神奈川県", "新潟県",
+                 "山梨県", "長野県"),
+    "東海旅客鉄道": ("静岡県", "愛知県", "岐阜県", "三重県"),
+    "西日本旅客鉄道": ("富山県", "石川県", "福井県", "滋賀県", "京都府", "大阪府", "兵庫県",
+                 "奈良県", "和歌山県", "鳥取県", "島根県", "岡山県", "広島県", "山口県"),
+    "四国旅客鉄道": ("徳島県", "香川県", "愛媛県", "高知県"),
+    "九州旅客鉄道": ("福岡県", "佐賀県", "長崎県", "熊本県", "大分県", "宮崎県", "鹿児島県"),
+}
+_JR_OF_PREF = {p: c for c, ps in _JR_HOME.items() for p in ps}
+
+
+def _jr_by_pref(railways: dict, sure: set, stops: dict, prefectures: dict):
+    """전국 권역에서 운영사를 짐작으로 얻은 JR 노선은 역마다 현으로 JR 회사를 가린다.
+
+    東海道本線·紀勢本線·高山本線 은 한 관계가 JR 두세 회사에 걸친다. 권역별 사전을
+    모으면 먼저 나온 것이 이겨 大阪 역까지 JR동일본으로 나왔다. OSM 태그나 이름으로
+    회사를 안 노선은 그대로 둔다. 다만 태그에 JR 회사가 둘 적힌 노선(北陸新幹線 의
+    "東日本旅客鉄道;西日本旅客鉄道")은 적힌 회사 안에서 현으로 고른다. 안 그러면
+    앞의 것만 써서 富山 역에 JR동일본이 붙었다.
+    """
+    from operators import _canon_operator, rail_operator
+
+    allowed = {}      # 노선 id -> 고를 수 있는 JR 회사(None 이면 아무 JR)
+    for rid, r in railways.items():
+        parts = _re.split(r"[;、,]", (r.get("operator") or "").strip())
+        jr = {c for c in (_canon_operator(p.strip()) for p in parts) if c in _JR_HOME}
+        if len(jr) >= 2:
+            allowed[rid] = jr
+        elif jr and rid not in sure:
+            allowed[rid] = None
+    labels = {c: rail_operator(c) for c in _JR_HOME}
+
+    def relabel(i, lid, label):
+        if lid not in allowed:
+            return label
+        c = _JR_OF_PREF.get(prefectures.get(stops["ids"][i]))
+        if c is None or (allowed[lid] is not None and c not in allowed[lid]):
+            return label
+        return labels[c]
+    return relabel
+
+
 def build_search_index(base: Path, stops: dict, coords: np.ndarray,
-                       op_of: dict | None = None):
+                       op_of: dict | None = None, relabel=None):
     """검색창에 쓸 역 목록. 같은 역은 한 줄로 합친다.
+
+    relabel(역 번호, 노선 id, 운영사) 가 있으면 역마다 운영사를 바꿔 쓴다.
 
     신주쿠처럼 여러 철도사가 들어오는 역은 노선 수만큼 항목이 생기는데,
     이용자 입장에서는 전부 같은 "신주쿠역" 이다. station-groups.json 의
@@ -577,6 +634,8 @@ def build_search_index(base: Path, stops: dict, coords: np.ndarray,
         for i in members:
             lid = stops["railway"][i]
             label = (op_of or {}).get(lid)
+            if relabel is not None:
+                label = relabel(i, lid, label)
             if label:
                 got.setdefault(label["ja"], label)
         if got:

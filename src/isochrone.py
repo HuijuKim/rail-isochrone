@@ -275,7 +275,9 @@ def _field_from_cells(walk, lon: float, lat: float,
     lon_w = walk.lon0 + (x0 + 0.5) * walk.shed_cell_m / walk.m_per_deg_lon
     lat_s = walk.lat0 + (y0 + 0.5) * walk.shed_cell_m / walk.m_per_deg_lat
     m_per_deg_lon = 111_320.0 * np.cos(np.radians(lat))
-    x_axis = (lon_w - lon) * m_per_deg_lon + np.arange(w) * cell_m
+    # 저장 칸의 동서 폭은 격자 기준 위도에서만 cell_m 이다. 전국 격자(기준 36도)는
+    # 홋카이도에서 좁고 규슈에서 넓으므로 출발지 위도의 실제 폭으로 편다.
+    x_axis = (lon_w - lon) * m_per_deg_lon + np.arange(w) * cell_m * (m_per_deg_lon / walk.m_per_deg_lon)
     y_axis = (lat_s - lat) * 111_132.0 + np.arange(h) * cell_m
 
     field = Field(lon, lat, x=x_axis, y=y_axis, cell=cell_m)

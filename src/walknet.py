@@ -8,6 +8,7 @@ build_walk.py 가 만들어 둔 그래프와 역별 도보권을 올려두고,
 from __future__ import annotations
 
 import heapq
+import os
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -97,7 +98,9 @@ class WalkNet:
             return -1
 
         cand = np.concatenate(picked)
-        dx = (self.node_lon[cand] - lon) * self.m_per_deg_lon
+        # 칸을 고를 때는 격자의 경도 폭을 쓰지만 거리는 그 위도의 실제 폭으로 잰다.
+        # 전국 격자(기준 36도)에서는 둘이 홋카이도에서 14% 어긋난다.
+        dx = (self.node_lon[cand] - lon) * 111_320.0 * np.cos(np.radians(lat))
         dy = (self.node_lat[cand] - lat) * self.m_per_deg_lat
         dist = np.hypot(dx, dy)
         k = int(np.argmin(dist))
@@ -238,6 +241,48 @@ class WalkNet:
         return out
 
 
+GRAPH_KEYS = ("node_cell", "node_lon", "node_lat", "node_shed", "indptr", "indices", "data",
+              "grid", "shed_grid")
+SHED_KEYS = ("station_node", "shed_cell", "shed_sec", "shed_ptr")
+
+
+def _mapped(walk_dir: Path, graph_path: Path, sheds_path: Path):
+    """graph.npz·sheds.npz 를 압축 없는 .npy 로 풀어 둔 것을 메모리 매핑으로 연다.
+
+    npz 는 통째로 풀어 올려야 한다. 전국 보행망이면 프로세스마다 1.2 GB 다.
+    풀어 둔 .npy 를 매핑하면 쓰는 쪽만 디스크에서 읽고, 서버 프로세스가 여럿이어도
+    한 벌을 함께 쓴다. 풀어 둔 것이 없거나 원본(크기·수정 시각)이 바뀌었으면 새로
+    푼다. 다른 프로세스가 매핑해 둔 파일은 윈도우에서 덮어쓰지 못하므로, 그때는
+    None 을 돌려 npz 를 그대로 올리게 한다.
+    """
+    import json
+
+    mm = walk_dir / "mm"
+    stamp = {p.name: [p.stat().st_size, p.stat().st_mtime_ns] for p in (graph_path, sheds_path)}
+    stamp_path = mm / "stamp.json"
+    try:
+        fresh = json.loads(stamp_path.read_text(encoding="utf-8")) == stamp
+    except (OSError, ValueError):
+        fresh = False
+    if not fresh:
+        try:
+            mm.mkdir(exist_ok=True)
+            stamp_path.unlink(missing_ok=True)
+            for src, keys in ((graph_path, GRAPH_KEYS), (sheds_path, SHED_KEYS)):
+                z = np.load(src)
+                for k in keys:
+                    tmp = mm / f"{k}.part.npy"      # np.save 는 .npy 로 안 끝나면 덧붙인다
+                    np.save(tmp, z[k])
+                    os.replace(tmp, mm / f"{k}.npy")
+            stamp_path.write_text(json.dumps(stamp), encoding="utf-8")
+        except OSError:
+            return None
+    # np.asarray 로 memmap 을 보통 배열 뷰로 바꾼다(복사하지 않는다). memmap 을
+    # 그대로 두면 다익스트라의 원소 하나씩 읽기가 서브클래스를 거쳐 느려진다.
+    return {k: np.asarray(np.load(mm / f"{k}.npy", mmap_mode="r"))
+            for k in GRAPH_KEYS + SHED_KEYS}
+
+
 def load(walk_dir) -> WalkNet | None:
     """보행망이 준비돼 있으면 올리고, 없으면 None (직선거리 근사로 돌아간다)."""
     walk_dir = Path(walk_dir)
@@ -245,8 +290,13 @@ def load(walk_dir) -> WalkNet | None:
     if not (graph_path.exists() and sheds_path.exists()):
         return None
 
-    g = np.load(graph_path)
-    s = np.load(sheds_path)
+    # 풀어 둔 파일은 권역마다 수백 MB 라, 서버를 띄울 때 켤 때만 만든다
+    got = (_mapped(walk_dir, graph_path, sheds_path)
+           if os.environ.get("WALK_MMAP") == "1" else None)
+    if got is None:
+        g, s = np.load(graph_path), np.load(sheds_path)
+    else:
+        g = s = got
     lon0, lat0, cell_m, grid_w, grid_h, mlon, mlat = g["grid"]
     _, _, shed_m, shed_w, shed_h, _, _ = g["shed_grid"]
     return WalkNet(

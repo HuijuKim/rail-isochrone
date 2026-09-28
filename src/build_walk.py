@@ -105,9 +105,15 @@ GRID_W = int(np.ceil(GRID_SPAN_X / CELL_M))
 GRID_H = int(np.ceil(GRID_SPAN_Y / CELL_M))
 SHED_W = int(np.ceil(GRID_SPAN_X / SHED_CELL_M))
 SHED_H = int(np.ceil(GRID_SPAN_Y / SHED_CELL_M))
-# 격자가 덮는 위경도 범위. 추출본을 읽을 때 밖은 버린다.
+# 격자가 덮는 위경도 범위.
 GRID_LON1 = GRID_LON0 + GRID_SPAN_X / M_PER_DEG_LON
 GRID_LAT1 = GRID_LAT0 + GRID_SPAN_Y / M_PER_DEG_LAT
+# 추출본에서 읽을 범위. 밖은 버린다. 전국 격자 위에서 한 지역만 빌드할 때는
+# grid.window 에 [서, 남, 동, 북] 을 적는다. 칸 번호는 격자를 따르므로 따로
+# 빌드한 지역끼리 번호가 맞는다. 없으면 격자 전체를 읽는다.
+_WINDOW = _GRID.get("window")
+WIN_LON0, WIN_LAT0, WIN_LON1, WIN_LAT1 = (
+    [float(v) for v in _WINDOW] if _WINDOW else [GRID_LON0, GRID_LAT0, GRID_LON1, GRID_LAT1])
 
 
 # 셀 번호와 CSR 포인터를 int32 로 담는다. 611만 노드에서 90 MB 가 줄어든다.
@@ -260,8 +266,8 @@ def extract_ways() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
             continue
         lon = x.astype(np.float64) / 1e7
         lat = y.astype(np.float64) / 1e7
-        inside = ((GRID_LON0 <= lon) & (lon <= GRID_LON1)
-                  & (GRID_LAT0 <= lat) & (lat <= GRID_LAT1))
+        inside = ((WIN_LON0 <= lon) & (lon <= WIN_LON1)
+                  & (WIN_LAT0 <= lat) & (lat <= WIN_LAT1))
         n_in = np.add.reduceat(inside.astype(np.int64), bounds[:-1])
         ok = n_in >= 2
         way_of = np.repeat(np.arange(len(n_in)), np.diff(bounds))
@@ -310,10 +316,10 @@ def build_graph(points, steps) -> dict:
     sums_lat = np.add.reduceat(lat[order], first)
     node_lon = (sums_lon / counts).astype(np.float32)
     node_lat = (sums_lat / counts).astype(np.float32)
-    node_of = np.full(int(used.max()) + 1, -1, dtype=np.int32)
-    node_of[used] = np.arange(len(used), dtype=np.int32)
-
-    node_id = np.where(cells >= 0, node_of[np.clip(cells, 0, None)], -1)
+    # 칸 번호 -> 노드 번호. 번호 크기만큼 표를 잡으면 전국 격자에서 수 GB 다.
+    node_id = np.full(len(cells), -1, dtype=np.int32)
+    valid_pt = cells >= 0
+    node_id[valid_pt] = np.searchsorted(used, cells[valid_pt]).astype(np.int32)
 
     # way 안의 연속한 두 점을 잇는다 (way 경계를 넘지 않도록 마스크)
     a = node_id[:-1]
@@ -334,7 +340,11 @@ def build_graph(points, steps) -> dict:
     # 가로지르게 된다.
     ay, ax = np.divmod(used[a], GRID_W)
     by, bx = np.divmod(used[b], GRID_W)
-    dist = np.hypot((bx - ax) * CELL_M, (by - ay) * CELL_M)
+    # 칸의 동서 폭은 기준 위도에서만 CELL_M 이다. 전국 격자(기준 36도)라면
+    # 홋카이도에서 14% 좁고 규슈 남단에서 5% 넓다. 간선이 놓인 위도로 고친다.
+    lat_a = GRID_LAT0 + (ay + 0.5) * CELL_M / M_PER_DEG_LAT
+    kx = np.cos(np.radians(lat_a)) / np.cos(np.radians(GRID_LAT_REF))
+    dist = np.hypot((bx - ax) * CELL_M * kx, (by - ay) * CELL_M)
 
     cost = dist / WALK_SPEED
     cost = np.where(is_step[valid], cost * STEP_PENALTY, cost)
@@ -489,7 +499,8 @@ def shed_of(indptr, indices, data, node_shed: np.ndarray, source: int,
 # 2,409역에 40초가 걸린다. 역을 묶음으로 나눠 여러 프로세스에 돌린다. 그래프는
 # 공유 메모리에 한 벌만 올리고 프로세스들이 함께 읽는다. 8개로 10초인데,
 # 16개로 늘려도 9초라(코어 14개 노트북) 8개에서 멈춘다.
-SHED_WORKERS = min(os.cpu_count() or 1, 8)
+# 전국 그래프(2,857만 노드)는 프로세스마다 거리 배열이 230 MB 라 WALK_WORKERS 로 줄인다.
+SHED_WORKERS = int(os.environ.get("WALK_WORKERS") or 0) or min(os.cpu_count() or 1, 8)
 SHED_CHUNK = 32         # 한 번에 넘기는 역 수. 작을수록 느린 역이 고르게 흩어진다
 _worker: dict = {}
 
