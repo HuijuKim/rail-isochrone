@@ -582,8 +582,10 @@ def build_search_index(base: Path, stops: dict, coords: np.ndarray,
         if got:
             ops = [got[k] for k in sorted(got)]
         else:
+            # OSM 권역 역 id 의 앞머리 "OSM" 은 회사가 아니다. 모르면 비워 둔다.
+            # 그대로 두면 화면에 운영사가 "OSM" 으로 나왔다.
             ops = [{lang: operator_title(p, lang) for lang in LANGS}
-                   for p in sorted({operator_of(stops["ids"][i]) for i in members},
+                   for p in sorted({operator_of(stops["ids"][i]) for i in members} - {"OSM"},
                                    key=sort_key)]
         # 지도에 찍는 자리는 승강장마다 따로 둔다. 검색과 세는 단위는
         # 한 줄이지만, 豊島園 처럼 이름만 같고 승강장이 따로인 역을
