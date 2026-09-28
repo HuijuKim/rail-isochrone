@@ -630,8 +630,10 @@ def build_search_index(base: Path, stops: dict, coords: np.ndarray,
         if got:
             ops = [got[k] for k in sorted(got)]
         else:
+            # OSM 권역 역 id 의 앞머리 "OSM" 은 회사가 아니다. 모르면 비워 둔다.
+            # 그대로 두면 화면에 운영사가 "OSM" 으로 나왔다.
             ops = [{lang: operator_title(p, lang) for lang in LANGS}
-                   for p in sorted({operator_of(stops["ids"][i]) for i in members},
+                   for p in sorted({operator_of(stops["ids"][i]) for i in members} - {"OSM"},
                                    key=sort_key)]
         # 지도에 찍는 자리는 승강장마다 따로 둔다. 검색과 세는 단위는
         # 한 줄이지만, 豊島園 처럼 이름만 같고 승강장이 따로인 역을
@@ -1081,10 +1083,20 @@ def _zh_table():
     return got.get("chars") or {}, got.get("words") or {}
 
 
+# 한자 사이의 이음 가나는 중국어 표기 관례대로 옮긴다. ヶ·ツ 는 빼고(茅ヶ崎 →
+# 茅崎, 四ツ谷 → 四谷), ノ·の·が 는 之 로 쓴다(中ノ島 → 中之島, 自由が丘 → 自由之丘).
+# 전국 역 가운데 250개쯤이 이것 하나 때문에 중국어 이름이 비어 있었다.
+_LINK_KANA = _re.compile(r"(?<=[^぀-ヿ])[ヶケヵツつノのが](?=[^぀-ヿ])")
+
+
 def to_zh(ja: str):
-    """일본어 한자 이름을 (번체, 간체) 로. 가나가 들었거나 표가 없으면 None."""
+    """일본어 한자 이름을 (번체, 간체) 로. 가나 낱말이 들었거나 표가 없으면 None."""
     chars, words = _zh_table()
-    if not ja or not chars or _KANA.search(ja):
+    if not ja or not chars:
+        return None
+    ja = _LINK_KANA.sub(lambda m: "" if m.group(0) in "ヶケヵツつ" else "之",
+                        ja.replace("・", "·"))
+    if _KANA.search(ja):
         return None
     s = _re.sub("(.)々", lambda m: m.group(1) * 2, ja)
     t, h = s, s
