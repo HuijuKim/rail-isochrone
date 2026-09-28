@@ -437,13 +437,6 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 }
 .stat .k { font-size: var(--step-1); color: var(--muted); }
 
-.poi { display: flex; flex-direction: column; gap: 8px; }
-.poi-row { display: flex; gap: 8px; }
-.poi-row select { flex: 1; width: auto; min-width: 0; }
-.poi-result { margin: 0; font-size: var(--step-1); color: var(--ink-2); font-variant-numeric: tabular-nums; }
-/* 구글 출처 표기. 약관상 글자를 바꾸면 안 되므로 대문자 변환을 받지 않는 자리에 둔다 */
-.poi-src { color: var(--muted); font-size: var(--step-2); }
-
 .far-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .far-list li { border-bottom: 1px dashed var(--line-soft); }
 .far-list li:last-child { border-bottom: 0; }
@@ -856,23 +849,6 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
         <div class="stat"><span class="n" id="stat-total">—</span><span class="k" data-i18n="statTotal">전체 역</span></div>
       </div>
 
-      <!-- 도달 범위 안 장소 수(Google Places Aggregate). 누를 때만 묻는다. -->
-      <div class="poi" id="poi-wrap" hidden>
-        <p class="legend-title" data-i18n="poiTitle">범위 안 장소</p>
-        <div class="poi-row">
-          <select id="poi-type">
-            <option value="restaurant" data-i18n="poiRestaurant">음식점</option>
-            <option value="cafe" data-i18n="poiCafe">카페</option>
-            <option value="convenience_store" data-i18n="poiConvenience">편의점</option>
-            <option value="supermarket" data-i18n="poiSupermarket">슈퍼마켓</option>
-            <option value="hospital" data-i18n="poiHospital">병원</option>
-            <option value="lodging" data-i18n="poiLodging">숙소</option>
-          </select>
-          <button type="button" class="primary-btn" id="poi-count" data-i18n="poiCount">세기</button>
-        </div>
-        <p class="poi-result"><span id="poi-result"></span> <span class="poi-src">Google Maps</span></p>
-      </div>
-
       <div id="far-wrap" hidden>
         <p class="legend-title" data-i18n="farTitle">가장 멀리 닿는 역</p>
         <p class="hint" data-i18n="farHint">직선거리 순. 누르면 도착지로 지정됩니다.</p>
@@ -1053,8 +1029,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       keyHintReferrer: "키의 HTTP 리퍼러 제한에 http://127.0.0.1:5173/* 가 있는지 확인하세요.",
       googleTrouble: "구글 지도에 문제가 생겨 OpenStreetMap 으로 표시합니다 — {msg}",
       googleLoadFailed: "구글 지도를 불러오지 못했습니다", googleNoResponse: "구글 지도 응답 없음",
-      regionFailed: "권역을 불러오지 못했습니다", placeFailed: "장소 위치를 받지 못했습니다",
-      poiTitle: "범위 안 장소", poiCount: "세기", poiCounting: "세는 중…", poiResult: "{m}분 안 {type} {n}곳", poiFailed: "장소 수를 받지 못했습니다", poiRestaurant: "음식점", poiCafe: "카페", poiConvenience: "편의점", poiSupermarket: "슈퍼마켓", poiHospital: "병원", poiLodging: "숙소", regionListFailed: "권역 목록을 받지 못했습니다",
+      regionFailed: "권역을 불러오지 못했습니다", placeFailed: "장소 위치를 받지 못했습니다", regionListFailed: "권역 목록을 받지 못했습니다",
       tabPreset: "권역", tabCombo: "현 조합", comboMade: "만든 조합",
       comboNone: "아직 만든 조합이 없습니다.", comboPick: "현 고르기",
       comboBuild: "이 조합 만들기", comboOpen: "열기", comboLoad: "서버에 올려 열기",
@@ -1164,8 +1139,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       keyHintReferrer: "キーの HTTP リファラ制限に http://127.0.0.1:5173/* があるか確認してください。",
       googleTrouble: "Google マップに問題が起きたため OpenStreetMap で表示します — {msg}",
       googleLoadFailed: "Google マップを読み込めませんでした", googleNoResponse: "Google マップの応答がありません",
-      regionFailed: "エリアを読み込めませんでした", placeFailed: "場所の位置を取得できませんでした",
-      poiTitle: "範囲内の場所", poiCount: "数える", poiCounting: "集計中…", poiResult: "{m}分以内の{type}：{n}件", poiFailed: "場所の数を取得できませんでした", poiRestaurant: "飲食店", poiCafe: "カフェ", poiConvenience: "コンビニ", poiSupermarket: "スーパー", poiHospital: "病院", poiLodging: "宿泊施設", regionListFailed: "エリア一覧を取得できませんでした",
+      regionFailed: "エリアを読み込めませんでした", placeFailed: "場所の位置を取得できませんでした", regionListFailed: "エリア一覧を取得できませんでした",
       tabPreset: "エリア", tabCombo: "県の組み合わせ", comboMade: "作った組み合わせ",
       comboNone: "まだ組み合わせはありません。", comboPick: "県を選ぶ",
       comboBuild: "この組み合わせを作る", comboOpen: "開く", comboLoad: "読み込んで開く",
@@ -1275,8 +1249,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       keyHintReferrer: "Check that the key allows the HTTP referrer http://127.0.0.1:5173/*.",
       googleTrouble: "Google Maps had a problem, showing OpenStreetMap — {msg}",
       googleLoadFailed: "Could not load Google Maps", googleNoResponse: "No response from Google Maps",
-      regionFailed: "Could not load the region", placeFailed: "Could not get the place location",
-      poiTitle: "Places in range", poiCount: "Count", poiCounting: "Counting…", poiResult: "{type} within {m} min: {n}", poiFailed: "Could not get the place count", poiRestaurant: "Restaurants", poiCafe: "Cafés", poiConvenience: "Convenience stores", poiSupermarket: "Supermarkets", poiHospital: "Hospitals", poiLodging: "Lodging", regionListFailed: "Could not get the region list",
+      regionFailed: "Could not load the region", placeFailed: "Could not get the place location", regionListFailed: "Could not get the region list",
       tabPreset: "Regions", tabCombo: "Combine prefectures", comboMade: "Your combinations",
       comboNone: "No combinations yet.", comboPick: "Pick prefectures",
       comboBuild: "Build this combination", comboOpen: "Open", comboLoad: "Load and open",
@@ -1385,8 +1358,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       keyHintReferrer: "请确认密钥的 HTTP 来源限制中包含 http://127.0.0.1:5173/*。",
       googleTrouble: "Google 地图出现问题，改用 OpenStreetMap — {msg}",
       googleLoadFailed: "无法载入 Google 地图", googleNoResponse: "Google 地图无响应",
-      regionFailed: "无法载入区域", placeFailed: "无法取得地点位置",
-      poiTitle: "范围内地点", poiCount: "统计", poiCounting: "统计中…", poiResult: "{m}分钟内{type}：{n}处", poiFailed: "无法取得地点数量", poiRestaurant: "餐厅", poiCafe: "咖啡馆", poiConvenience: "便利店", poiSupermarket: "超市", poiHospital: "医院", poiLodging: "住宿", regionListFailed: "无法取得区域列表",
+      regionFailed: "无法载入区域", placeFailed: "无法取得地点位置", regionListFailed: "无法取得区域列表",
       tabPreset: "区域", tabCombo: "组合县", comboMade: "已建的组合",
       comboNone: "还没有组合。", comboPick: "选择县",
       comboBuild: "建立此组合", comboOpen: "打开", comboLoad: "载入并打开",
@@ -1495,8 +1467,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       keyHintReferrer: "請確認金鑰的 HTTP 來源限制中包含 http://127.0.0.1:5173/*。",
       googleTrouble: "Google 地圖發生問題，改用 OpenStreetMap — {msg}",
       googleLoadFailed: "無法載入 Google 地圖", googleNoResponse: "Google 地圖無回應",
-      regionFailed: "無法載入區域", placeFailed: "無法取得地點位置",
-      poiTitle: "範圍內地點", poiCount: "統計", poiCounting: "統計中…", poiResult: "{m}分鐘內{type}：{n}處", poiFailed: "無法取得地點數量", poiRestaurant: "餐廳", poiCafe: "咖啡廳", poiConvenience: "便利商店", poiSupermarket: "超市", poiHospital: "醫院", poiLodging: "住宿", regionListFailed: "無法取得區域列表",
+      regionFailed: "無法載入區域", placeFailed: "無法取得地點位置", regionListFailed: "無法取得區域列表",
       tabPreset: "區域", tabCombo: "組合縣", comboMade: "已建的組合",
       comboNone: "還沒有組合。", comboPick: "選擇縣",
       comboBuild: "建立此組合", comboOpen: "開啟", comboLoad: "載入並開啟",
@@ -1662,7 +1633,6 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
       drawVerdict(lastPoint);
       drawJourney(lastPoint.journey);
     }
-    drawPoi();
   }
 
   function setLanguage(next) {
@@ -3543,61 +3513,9 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
         drawIsochrone(data.geojson);
         drawLegend(mins);
         drawStats(data.stats, mins);
-        syncPoi();
       })
       .catch(function (err) { fail(err.message); })
       .then(function () { busy(false); });
-  }
-
-  /* 범위 안 장소 수(Google Places Aggregate API). 요청 한 건마다 과금되므로
-     누를 때만 묻고, 같은 범위·종류는 다시 묻지 않는다. 소요 시간 상한까지의
-     범위 전체를 센다(등시선은 누적이라 가장 넓은 겹 하나). 구글에는 서버가
-     서버 전용 키로 묻는다(브라우저 키를 쓰면 Referer 를 꾸민 요청에 뚫린다).
-     한도에 걸리면 서버가 사유를 돌려준다. */
-  var poi = { feature: null, cache: {}, shown: null, busy: false };
-
-  function syncPoi() {
-    var f = lastIso && lastIso.data.geojson.features[0];
-    el("poi-wrap").hidden = !(placeCountOn && f);
-    if (f !== poi.feature) {
-      poi.feature = f || null;
-      poi.cache = {};
-      poi.shown = null;
-    }
-    drawPoi();
-  }
-
-  function drawPoi() {
-    var out = el("poi-result");
-    if (poi.busy) { out.textContent = t("poiCounting"); return; }
-    if (!poi.shown || poi.cache[poi.shown] === undefined) { out.textContent = ""; return; }
-    var opt = el("poi-type").querySelector('option[value="' + poi.shown + '"]');
-    out.textContent = t("poiResult", {
-      m: poi.feature.properties.minutes,
-      type: opt ? opt.textContent : poi.shown,
-      n: poi.cache[poi.shown].toLocaleString()
-    });
-  }
-
-  function countPoi() {
-    var f = poi.feature, type = el("poi-type").value;
-    if (!f || poi.busy) return;
-    if (poi.cache[type] !== undefined) { poi.shown = type; drawPoi(); return; }
-    poi.busy = true;
-    el("poi-count").disabled = true;
-    drawPoi();
-    postJSON("/api/place-count", { geometry: f.geometry, type: type })
-      .then(function (res) {
-        if (f !== poi.feature) return;   // 그 사이 등시선이 바뀌었다
-        poi.cache[type] = res.count;
-        poi.shown = type;
-      })
-      .catch(function (err) { notice(t("poiFailed"), err.message); })
-      .then(function () {
-        poi.busy = false;
-        el("poi-count").disabled = false;
-        drawPoi();
-      });
   }
 
   function runPoint() {
@@ -3700,14 +3618,6 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   }
 
   function wirePanel() {
-    el("poi-count").addEventListener("click", countPoi);
-    // 이미 센 종류로 바꾸면 바로 보인다. 안 센 종류는 눌러야 센다.
-    el("poi-type").addEventListener("change", function () {
-      if (poi.cache[el("poi-type").value] !== undefined) {
-        poi.shown = el("poi-type").value;
-        drawPoi();
-      }
-    });
     attachSearch(el("q"), el("results"), function (s) {
       setOrigin(s.lon, s.lat, stationLabel(s), s);
       // 검색으로 출발역을 고른 것은 "여기로 가자" 는 뜻이다. 화면을
@@ -4074,7 +3984,6 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   var swapped = false;
   var keepView = null;   // 지도를 갈아낄 때 이어받을 보기 상태
   var googleReady = false;      // 구글 지도 스크립트를 받아 뒀는가
-  var placeCountOn = false;     // 서버에 장소 수를 셀 키가 있는가
   var usingGoogle = false;
 
   /* 바탕 지도를 바꾼다. 우리가 그리는 선은 OSM 선로에서 뽑은 것이라,
@@ -4910,8 +4819,6 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
   getJSON("/api/config")
     .then(function (cfg) {
       applyServerDefaults(cfg);
-      placeCountOn = !!cfg.place_count;
-      syncPoi();
       if (!cfg.google_maps_key) throw new Error("no-key");
       return loadGoogleMaps(cfg.google_maps_key).then(function () {
         googleReady = true;
