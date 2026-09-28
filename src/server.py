@@ -208,25 +208,37 @@ def read_scope(reg):
 
 
 def scope_railways(reg, scope) -> list:
-    """고른 현을 지나는 노선만, 그 경계(300 m 여유)로 잘라서. 현 목록마다 한 번 만든다."""
+    """고른 현을 지나는 노선만, 고르지 않은 현의 땅에 들어간 부분을 잘라서.
+    현 목록마다 한 번 만든다.
+
+    고른 현의 땅으로 자르면 현 경계가 해안선으로 잘려 있어 바다 위 구간(세토대교·
+    関門トンネル·青函トンネル)이 통째로 떨어져 나갔다. 남의 현 땅만 잘라 낸다.
+    """
     got = getattr(scope, "railways", None)
     if got is not None:
         return got
     from shapely.geometry import LineString
+    from shapely.ops import unary_union
 
-    # 경계역에서 선이 딱 잘리면 역 점만 덩그러니 남는다. 조금 넉넉히 둔다.
-    area = scope.clip.buffer(0.003)
-    shapely.prepare(area)
     want = set(scope.prefs)
+    cands = [r for r in reg.railway_shapes if want & set(r.get("prefs") or ())]
+    table = _pref_table(reg)
+    others = sorted({p for r in cands for p in r.get("prefs") or ()
+                     if p not in want and p in table["index"]})
+    # 경계역에서 선이 딱 잘리면 역 점만 덩그러니 남는다. 남의 땅도 300 m 는 남긴다.
+    block = (unary_union([_pref_shape(table, p) for p in others]).buffer(-0.003)
+             if others else None)
+    if block is not None and block.is_empty:
+        block = None
+    if block is not None:
+        shapely.prepare(block)
     out = []
-    for r in reg.railway_shapes:
-        if not want & set(r.get("prefs") or ()):
-            continue
+    for r in cands:
         line = LineString(r["path"])
-        if area.contains(line):
+        if block is None or not block.intersects(line):
             out.append(r)
             continue
-        cut = line.intersection(area)
+        cut = line.difference(block)
         for part in getattr(cut, "geoms", [cut]):
             if part.geom_type == "LineString" and len(part.coords) >= 2:
                 out.append(dict(r, path=[[round(x, 5), round(y, 5)] for x, y in part.coords]))
