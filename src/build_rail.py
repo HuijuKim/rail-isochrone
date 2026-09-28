@@ -1874,19 +1874,22 @@ def trim_lines(lines, members, pos, cpos=None, scale=1.0):
                     print(f"  !! 끼울 역 {nm} 이 {len(got)}개라 {rep} 에 넣지 않는다",
                           flush=True)
         want = set(spec.get(DROP_KEY, ()))
-        if not want:
+        # 뺄 역 없이 갈래만 세우는 노선도 있다. 室蘭本線 은 선로 관계에
+        # 東室蘭-室蘭 지선이 아예 없어 그 역들이 어느 노선에도 안 들어갔다.
+        if not want and not spec.get(BRANCH_KEY):
             continue
-        # 지금 노선에 없는 역도 이름으로 막는다. 뒤의 합치기가 끝에 다시
-        # 붙인다(JR中央線 의 松本 은 이 단계에는 없고 나중에 들어왔다).
-        ln["drop"] = {c for nm in want for c in by_name.get(nm, ())}
-        ln["seq"] = [c for c in ln["seq"] if c not in ln["drop"]]
-        # 뺀 갈래와 엉켜 있던 차례를 다시 잡는다. 長崎本線 이 浦上 長崎 現川
-        # 로 종점 長崎 를 가운데 두고 남았다.
-        if cpos is not None and all(c in cpos for c in ln["seq"]):
-            # 손으로 갈래를 뺀 노선이라 작은 되짚기도 고친다. 浦上-長崎 는
-            # 1.6km 라 되짚어도 380m 뿐이어서 보통 기준(1%)에 안 걸렸다.
-            ln["seq"] = reseat_strays(ln["seq"], cpos, scale, floor_km=0.1)
-        print(f"  {rep}: {len(ln['drop'])}역을 뺐다", flush=True)
+        if want:
+            # 지금 노선에 없는 역도 이름으로 막는다. 뒤의 합치기가 끝에 다시
+            # 붙인다(JR中央線 의 松本 은 이 단계에는 없고 나중에 들어왔다).
+            ln["drop"] = {c for nm in want for c in by_name.get(nm, ())}
+            ln["seq"] = [c for c in ln["seq"] if c not in ln["drop"]]
+            # 뺀 갈래와 엉켜 있던 차례를 다시 잡는다. 長崎本線 이 浦上 長崎 現川
+            # 로 종점 長崎 를 가운데 두고 남았다.
+            if cpos is not None and all(c in cpos for c in ln["seq"]):
+                # 손으로 갈래를 뺀 노선이라 작은 되짚기도 고친다. 浦上-長崎 는
+                # 1.6km 라 되짚어도 380m 뿐이어서 보통 기준(1%)에 안 걸렸다.
+                ln["seq"] = reseat_strays(ln["seq"], cpos, scale, floor_km=0.1)
+            print(f"  {rep}: {len(ln['drop'])}역을 뺐다", flush=True)
         # 뺀 갈래를 대신 들고 있는 계통이 없으면 적어 둔 차례대로 따로
         # 세운다. 予讃線 의 해안선(伊予長浜 경유)은 계통 관계가 없다.
         for title, seq_names in (spec.get(BRANCH_KEY) or {}).items():
@@ -1911,7 +1914,7 @@ def trim_lines(lines, members, pos, cpos=None, scale=1.0):
                      titles={g: "" for g in LANGS} | {"ja": title},
                      stops=[members[c][0] for c in seq])
             lines.append({"seq": seq, "rep": r, "rels": [r],
-                          "drop": set(ln["drop"]) - set(seq)})
+                          "drop": set(ln.get("drop", ())) - set(seq)})
             print(f"  {title}: 갈래 {len(seq)}역을 따로 세웠다", flush=True)
 
 
