@@ -513,18 +513,29 @@ def _jr_by_pref(railways: dict, sure: set, stops: dict, prefectures: dict):
 
     東海道本線·紀勢本線·高山本線 은 한 관계가 JR 두세 회사에 걸친다. 권역별 사전을
     모으면 먼저 나온 것이 이겨 大阪 역까지 JR동일본으로 나왔다. OSM 태그나 이름으로
-    회사를 안 노선은 그대로 둔다.
+    회사를 안 노선은 그대로 둔다. 다만 태그에 JR 회사가 둘 적힌 노선(北陸新幹線 의
+    "東日本旅客鉄道;西日本旅客鉄道")은 적힌 회사 안에서 현으로 고른다. 안 그러면
+    앞의 것만 써서 富山 역에 JR동일본이 붙었다.
     """
     from operators import _canon_operator, rail_operator
 
-    guessed = {rid for rid, r in railways.items() if rid not in sure
-               and _canon_operator((r.get("operator") or "").strip()) in _JR_HOME}
+    allowed = {}      # 노선 id -> 고를 수 있는 JR 회사(None 이면 아무 JR)
+    for rid, r in railways.items():
+        parts = _re.split(r"[;、,]", (r.get("operator") or "").strip())
+        jr = {c for c in (_canon_operator(p.strip()) for p in parts) if c in _JR_HOME}
+        if len(jr) >= 2:
+            allowed[rid] = jr
+        elif jr and rid not in sure:
+            allowed[rid] = None
     labels = {c: rail_operator(c) for c in _JR_HOME}
 
     def relabel(i, lid, label):
-        if lid not in guessed:
+        if lid not in allowed:
             return label
-        return labels.get(_JR_OF_PREF.get(prefectures.get(stops["ids"][i])), label)
+        c = _JR_OF_PREF.get(prefectures.get(stops["ids"][i]))
+        if c is None or (allowed[lid] is not None and c not in allowed[lid]):
+            return label
+        return labels[c]
     return relabel
 
 
