@@ -3,7 +3,7 @@
   "boundary_disagree": 0.0,
   "far_neighbour_lines": 5,
   "pieces_per_line": 1.0,
-  "stations": 1876
+  "stations": 1840
  },
  "kanto": {
   "boundary_disagree": 0.0005,
@@ -15,26 +15,26 @@
   "boundary_disagree": 0.0,
   "far_neighbour_lines": 7,
   "pieces_per_line": 1.0,
-  "stations": 2770,
+  "stations": 2721,
   "order_precision": 0.9995
  },
  "tokai": {
   "boundary_disagree": 0.0,
   "far_neighbour_lines": 0,
   "pieces_per_line": 1.0,
-  "stations": 1224
+  "stations": 1212
  },
  "kyushu": {
   "boundary_disagree": 0.0,
   "far_neighbour_lines": 3,
   "pieces_per_line": 1.0,
-  "stations": 1148
+  "stations": 1132
  },
  "chugoku": {
   "boundary_disagree": 0.0,
   "far_neighbour_lines": 2,
   "pieces_per_line": 1.0,
-  "stations": 879
+  "stations": 853
  },
  "shikoku": {
   "boundary_disagree": 0.0,
