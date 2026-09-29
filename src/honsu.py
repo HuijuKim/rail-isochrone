@@ -26,6 +26,18 @@ PATH = ROOT / "data" / "honsu" / "unkohonsu2026_kukan.txt"
 NEAR_M = 80.0        # 역이 구간 선형에서 이만큼 안이면 그 위에 있다고 본다
 STEP_M = 40.0        # 선형 꼭짓점 사이를 이 간격으로 메운다
 SERVICE_HOURS = 18.0  # 하루 횟수를 시간당으로 옮길 때 나누는 값(05-23시)
+# 하루 횟수를 18시간에 고르게 나누면 한낮(10-15시)보다 잦게 나온다. 붐비는 선로일수록
+# 출퇴근 때 열차를 몰아 한낮 몫이 작다. 간토 실제 시각표(ODPT) 145개 노선의 평일 10-15시
+# 편수와 견주니 실제/하루평균 중앙값이 시간당 2편 미만 0.89, 2-4편 0.87, 8-12편 0.85,
+# 12편 이상 0.73 이었다. 하루 평균 6편까지 0.90, 14편부터 0.75, 그 사이는 곧게 잇는다.
+MIDDAY_SHARE = ((6.0, 0.90), (14.0, 0.75))
+
+
+def midday(avg: float) -> float:
+    """선로 구간의 하루 평균 시간당 편수 -> 한낮 편수."""
+    (x0, y0), (x1, y1) = MIDDAY_SHARE
+    share = y0 if avg <= x0 else y1 if avg >= x1 else y0 + (y1 - y0) * (avg - x0) / (x1 - x0)
+    return avg * share
 
 _WKT = re.compile(r"-?\d+(?:\.\d+)?\s+-?\d+(?:\.\d+)?")
 
@@ -115,4 +127,5 @@ class Honsu:
         return min(both, key=lambda k: na[k] + nb[k])
 
     def per_hour(self, k: int) -> float:
+        """구간 k 의 하루 평균 한 방향 시간당 편수. 한낮 값은 midday 로 옮긴다."""
         return self.per_day[k] / SERVICE_HOURS

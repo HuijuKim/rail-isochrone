@@ -180,7 +180,7 @@ def _honsu_rates(railways, express, pos, scale):
     통과 계통이 함께 달리면 그 몫도 뺀다. 통과 계통 하나는 완행의
     1/EXP_MULT 로 깔리므로, 완행 몫은 합계를 (1 + m/EXP_MULT) 로 나눈 것이다.
     """
-    from honsu import Honsu
+    from honsu import Honsu, midday
     from operators import RAIL_OPERATORS, _canon_operator, operator_in_name
 
     xs = [p[0] for p in pos.values()]
@@ -238,7 +238,9 @@ def _honsu_rates(railways, express, pos, scale):
         rid, a, b = key
         n = len(share[(k, frozenset((a, b)))])
         m = over.get(key, 0)
-        rates[key] = hs.per_hour(k) / n / (1.0 + m / EXP_MULT)
+        # 한낮 몫은 구간 합계로 정한다. 붐비는 선로일수록 출퇴근에 열차를 몰아서다. 노선
+        # 몫에 매기면 간토 소요 시간이 실제에서 더 멀었다(±20% 안 역 쌍 80.2% 대 78.0%).
+        rates[key] = midday(hs.per_hour(k)) / n / (1.0 + m / EXP_MULT)
     print(f"  운행 횟수 데이터와 짝지은 구간 {len(matched):,}개", flush=True)
     return rates
 
@@ -365,8 +367,8 @@ def track_lengths(rows, row_of, railways, pos, scale, km):
     return out
 
 
-def build(railways, express, pos, seg_head, seg_km, km, scale):
-    """역 줄과 정차 이벤트를 만든다."""
+def build(railways, express, pos, seg_head, seg_km, km, scale, title=None):
+    """역 줄과 정차 이벤트를 만든다. title 은 역 묶음 -> 이름들(구간별 편수에 쓴다)."""
     hsr_ids = {r["id"] for r in railways if r.get("shinkansen")}
     # 역 줄은 (노선, 역묶음) 단위. 간토 자료도 이렇게 쪼개져 있다.
     rows, row_of = [], {}
@@ -456,12 +458,24 @@ def build(railways, express, pos, seg_head, seg_km, km, scale):
         # 넘었다. 상한을 둔 노선은 한적한 노선이라 통과 계통도 깔지 않는다.
         # 瀬戸線 은 한낮에 普通 만 다니는데 급행 계통이 얹혀 1.5배가 됐다.
         # 운행 횟수 데이터를 쓰면 손으로 적은 값은 짝이 없는 구간에만 쓴다.
-        spec = {} if USE_HONSU else (hand.get(r["title"].get("ja", "")) or {})
+        line_spec = hand.get(r["title"].get("ja", "")) or {}
+        spec = {} if USE_HONSU else line_spec
         # 운행 횟수 자료는 추가 요금 열차를 세지 않아 신칸센 구간이 없다. 노선
         # 이름에 per_hour 를 적으면 그 값으로 깐다.
-        per_hour = (hand.get(r["title"].get("ja", "")) or {}).get("per_hour")
+        per_hour = line_spec.get("per_hour")
         if per_hour:
             heads = [60.0 / float(per_hour)] * len(heads)
+            # 구간마다 편수가 다른 노선은 [시작 역, 끝 역, 편수] 로 적는다. 東海道新幹線 의
+            # こだま 는 東京-名古屋 이 시간당 2편, 名古屋-新大阪 이 1편이다. 잦은 구간은
+            # 아래에서 짧게 도는 운행으로 덧댄다.
+            names = [((title or {}).get(c) or {}).get("ja", "") for c in cs]
+            for a_name, b_name, ph in line_spec.get("sections", ()):
+                if a_name in names and b_name in names:
+                    i, j = sorted((names.index(a_name), names.index(b_name)))
+                    heads[i:j] = [60.0 / float(ph)] * (j - i)
+                else:
+                    print(f"  !! {r['title'].get('ja', '')}: 구간 편수 {a_name}-{b_name} 의 역이 "
+                          f"없어 넘긴다", flush=True)
         if spec.get("max_per_hour"):
             heads = [max(h, 60.0 / spec["max_per_hour"]) for h in heads]
             capped.add(r["id"])
@@ -595,7 +609,7 @@ def main():
           flush=True)
 
     rows, row_of, ev_stop, ev_arr, ev_dep, trip_start, n_exp, trip_pat, pats, trip_hsr = build(
-        railways, express, pos, seg_head, seg_km, km, scale)
+        railways, express, pos, seg_head, seg_km, km, scale, title)
     print(f"  역 줄 {len(rows):,}개, 운행 {len(trip_start) - 1:,}건, "
           f"정차 이벤트 {len(ev_stop):,}개 (통과 계통 {n_exp}개)", flush=True)
 
