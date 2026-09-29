@@ -21,6 +21,7 @@ import shapely  # noqa: E402
 from flask import Flask, jsonify, request, send_from_directory
 
 import make_region
+import placecount
 import region as region_mod
 from isochrone import (
     EGRESS_WALK_MAX_SEC,
@@ -374,6 +375,24 @@ def google_maps_key() -> str | None:
     키가 없으면 None 이고, 이때 화면은 OpenStreetMap 타일로 돌아간다.
     """
     return _setting("GOOGLE_MAPS_API_KEY", "google_maps_api_key")
+
+
+def google_server_key() -> str | None:
+    """서버가 구글을 부를 때 쓰는 키(장소 수 세기). 브라우저에 보내지 않는다."""
+    return _setting("GOOGLE_SERVER_API_KEY", "google_server_api_key")
+
+
+_COUNTER = None
+
+
+def place_counter():
+    """장소 수 세기. 서버 키가 없으면 None 이고 화면은 그 칸을 숨긴다."""
+    global _COUNTER
+    if _COUNTER is None:
+        key = google_server_key()
+        if key:
+            _COUNTER = placecount.Counter(key)
+    return _COUNTER
 
 
 def draw_on_roads(reg, path: list[list[float]]) -> list[list[float]]:
@@ -1013,6 +1032,7 @@ def config():
     return jsonify(
         {
             "google_maps_key": google_maps_key(),
+            "place_count": place_counter() is not None,
             "walk_speed_m_per_min": round(WALK_SPEED * 60),
             "egress_default_min": EGRESS_WALK_MAX_SEC // 60,
             "egress_max_min": max_egress,
@@ -1219,6 +1239,27 @@ def isochrone():
             },
         }
     )
+
+
+@app.post("/api/place-count")
+def place_count():
+    """도달 범위 안 장소 수. 구글 Places Aggregate API 를 서버가 대신 부른다.
+
+    화면이 브라우저 키로 직접 부르면 Referer 를 꾸민 요청에 키가 뚫린다. 요청마다
+    과금되므로 한도와 기억은 placecount.Counter 가 맡는다.
+    """
+    counter = place_counter()
+    if counter is None:
+        raise BadRequest("장소 수 세기가 꺼져 있습니다(서버 키가 없습니다)")
+    body = request.get_json(silent=True) or {}
+    geom = body.get("geometry")
+    if not isinstance(geom, dict) or geom.get("type") not in ("Polygon", "MultiPolygon"):
+        raise BadRequest("geometry 는 Polygon 이나 MultiPolygon 이어야 합니다")
+    try:
+        n = counter.count(geom, body.get("type"), request.remote_addr)
+    except placecount.Refused as err:
+        return jsonify({"error": str(err)}), err.status
+    return jsonify({"count": n})
 
 
 @app.get("/api/point")
