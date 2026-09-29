@@ -1048,12 +1048,17 @@ def _dense(g, scale, step_m=DENSE_M):
 
 def _nearest_track(geom, scale, pos, slack_m=15.0):
     """역 -> 그 역에서 가장 가까운 선로 웨이들. 가장 가까운 것보다
-    slack_m 안쪽에 있는 것까지 준다. 선로를 공유하는 노선이 함께 걸린다."""
+    slack_m 안쪽에 있는 것까지 준다. 선로를 공유하는 노선이 함께 걸린다.
+
+    선로는 촘촘히 채워서 잰다. 꼭짓점으로 재면 곧게 뻗어 꼭짓점이 드문 선로가 멀게
+    나온다. 信越本線 의 安茂里·川中島 는 선로에서 2-5 m 옆인데 꼭짓점으로는 55-79 m 라,
+    꼭짓점이 촘촘한 옆의 北陸新幹線 고가(11-15 m)가 가장 가까운 선로가 되어 빠졌다.
+    """
     from scipy.spatial import cKDTree
 
     wid, xy = [], []
     for w, g in geom.items():
-        a = np.asarray(g, dtype=np.float64).reshape(-1, 2)
+        a = _dense(g, scale)
         wid.extend([w] * len(a))
         xy.append(np.c_[a[:, 0] * scale * 111_320.0, a[:, 1] * 111_132.0])
     if not xy:
@@ -2154,7 +2159,32 @@ def _build(pbfs, rel, ways, nodes):
             if _name_key(nodes.stations[n]) not in claimed
             and "貨物" not in _name_key(nodes.stations[n])]
     print(f"  어느 계통도 안 부른 역 노드 {len(pool):,}개", flush=True)
-    owner = _nearest_track(ways.geom, scale, nodes.pos)
+    # 계통이 밟는 웨이의 꼭짓점인 역은 거리만으로 주인을 정하지 않는다. 富山地鉄 의
+    # 電鉄魚津·浜加積 등은 제 선로 위(0 m)에 있는데 あいの風とやま 선로가 5-14 m 옆을
+    # 나란히 지나 그 노선에 끼었다. 가까운 선로 가운데 그 웨이와 같은 계통이 밟는 것만
+    # 함께 준다. 複線 의 다른 쪽 선로는 같은 계통이 밟는다(ハピラインふくい 의 金沢 직통
+    # 관계는 動橋·能美根上 에서 14 m 옆 선로를 밟는다). 어느 계통도 안 밟는 측선 위의
+    # 역은 거리로 본다.
+    routed = defaultdict(set)
+    for k, r in enumerate(rel.routes):
+        for w in r["ways"]:
+            routed[w].add(k)
+    in_pool = set(pool)
+    on_way = defaultdict(set)
+    for w in routed:
+        for nid in ways.refs.get(w, ()):
+            if nid in in_pool:
+                on_way[nid].add(w)
+    by_track = _nearest_track(ways.geom, scale, nodes.pos)
+    owned = {}
+
+    def owner(n):
+        if n not in on_way:
+            return by_track(n)
+        if n not in owned:
+            same = set().union(*(routed[w] for w in on_way[n]))
+            owned[n] = on_way[n] | {w for w in by_track(n) if routed.get(w, set()) & same}
+        return owned[n]
     for r in rel.routes:
         track = r.get("rtype") == "railway"
         # 정차역을 되살릴 필요가 없는 관계라도 빠진 역은 메워야 한다.

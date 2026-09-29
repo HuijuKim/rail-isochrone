@@ -160,6 +160,22 @@ def test_fill_missing_skips_a_station_on_another_track():
                         owner=lambda n: owner(n, {10})) == [1, 2, 3]
 
 
+def test_nearest_track_measures_along_sparse_track():
+    """꼭짓점이 드문 곧은 선로도 선로 위 거리로 잰다.
+
+    信越本線 의 安茂里 는 선로에서 2 m 옆인데 그 선로 꼭짓점은 수백 m 떨어져 있고,
+    꼭짓점이 촘촘한 北陸新幹線 고가가 11 m 옆에 있다. 꼭짓점으로 재면 고가만 주인이
+    되어 安茂里 가 남의 선로 역으로 걸러졌다.
+    """
+    from build_rail import _nearest_track
+
+    scale = float(np.cos(np.radians(35.0)))
+    geom = {"main": [(139.0, 35.0), (139.02, 35.0)],                        # 2 km, 꼭짓점 둘
+            "hsr": [(139.0 + 0.0005 * k, 35.00012) for k in range(41)]}     # 13 m 옆, 45 m 간격
+    pos = {1: (139.01, 35.00002, {}, "安茂里")}                               # main 에서 2 m
+    assert "main" in _nearest_track(geom, scale, pos)(1)
+
+
 def test_fill_missing_keeps_a_junction_terminus():
     """가장 가까운 선로가 남의 것이어도 제 선로 가까운 노선 끝은 받는다.
 
