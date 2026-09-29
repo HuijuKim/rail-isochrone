@@ -175,6 +175,10 @@
   "color": "#0095d9",
   "source": "ja.wikipedia:唐津線"
  },
+ "JR唐津線 (西唐津=>佐賀)": {
+  "color": "#0095d9",
+  "source": "ja.wikipedia:唐津線"
+ },
  "JR因美線": {
   "color": "#aa731c",
   "source": "ja.wikipedia:因美線"
@@ -224,6 +228,10 @@
   "source": "ja.wikipedia:太多線"
  },
  "JR奈良線 普通 (京都 => 奈良)": {
+  "color": "#aa731c",
+  "source": "ja.wikipedia:JR奈良線"
+ },
+ "JR奈良線 普通 (奈良 => 京都)": {
   "color": "#aa731c",
   "source": "ja.wikipedia:JR奈良線"
  },
