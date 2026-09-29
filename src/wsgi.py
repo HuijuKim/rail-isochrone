@@ -8,6 +8,7 @@
 
     REGIONS_DIR            권역 폴더(기본 data/regions)
     GOOGLE_MAPS_API_KEY    브라우저용 지도 키(웹사이트 제한)
+    GOOGLE_SERVER_API_KEY  장소 수 세기용 서버 키(없으면 그 칸이 안 보인다)
     TRUST_PROXY=1          nginx 뒤에 둘 때. X-Forwarded-For 를 믿어야 IP 별
                            한도가 걸린다(안 그러면 모든 요청이 127.0.0.1 이다)
 """
