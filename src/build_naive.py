@@ -546,9 +546,17 @@ def build(railways, express, pos, seg_head, seg_km, km, scale, title=None):
     clusters_of = {r["id"]: r["clusters"] for r in railways}
     n_exp = 0
     pats = []
+    # OSM 은 한 열차를 방향마다 관계로 적어(しおかぜ 岡山→松山·松山→岡山) 같은 계통이 둘씩
+    # 들어온다. 운행은 계통 하나를 왕복으로 까므로 둘 다 깔면 편수가 두 배가 된다. 이름·
+    # 종별·정차역 모음이 같으면 하나만 깐다. 전국판에서 216개 중 65묶음이 겹쳤다.
+    laid = set()
     for n, e in enumerate(express):
         if e["kind"] == "부분":
             continue
+        same = (e.get("name") or "", e["kind"], frozenset(e["clusters"]))
+        if same in laid:
+            continue
+        laid.add(same)
         # 여러 노선을 이어 달리는 계통은 역마다 밟는 노선이 적혀 있다.
         # 南風 은 岡山-宇多津 을 瀬戸大橋線 으로, 그 뒤를 予讃線·土讃線 으로
         # 간다. 노선을 하나만 보면 이런 열차를 아예 깔 수 없거나, 노선별로
