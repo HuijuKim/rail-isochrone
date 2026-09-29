@@ -597,20 +597,25 @@ def build_search_index(base: Path, stops: dict, coords: np.ndarray,
         spots[k] = (stops["ja"][rows[0]],
                     float(np.mean(coords[rows, 0])),
                     float(np.mean(coords[rows, 1])))
-    for a_i in range(len(keys)):
-        for b_i in range(a_i + 1, len(keys)):
-            ka, kb = keys[a_i], keys[b_i]
-            na, xa, ya = spots[ka]
-            nb, xb, yb = spots[kb]
-            if not na or na != nb:
-                continue
-            # 도쿄역은 게이요선 승강장이 본 개찰에서 500m 쯤 떨어져 있다.
-            # 이름이 같아야 하므로 넉넉히 잡아도 남의 역을 삼키지 않는다.
-            if abs(xa - xb) * 91_000.0 > 700.0 or abs(ya - yb) * 111_132.0 > 700.0:
-                continue
-            ra, rb = root(ka), root(kb)
-            if ra != rb:
-                home[rb] = ra
+    # 이름이 같은 것끼리만 견준다. 모든 쌍을 보면 전국판(묶음 8,886개)에서 4천만 번을
+    # 돌아 서버를 띄울 때마다 수십 초가 걸렸다. 같은 이름 안에서는 예전과 같은 차례로 잇는다.
+    same_name = {}
+    for k in keys:
+        if spots[k][0]:
+            same_name.setdefault(spots[k][0], []).append(k)
+    for group in same_name.values():
+        for a_i in range(len(group)):
+            for b_i in range(a_i + 1, len(group)):
+                ka, kb = group[a_i], group[b_i]
+                _na, xa, ya = spots[ka]
+                _nb, xb, yb = spots[kb]
+                # 도쿄역은 게이요선 승강장이 본 개찰에서 500m 쯤 떨어져 있다.
+                # 이름이 같아야 하므로 넉넉히 잡아도 남의 역을 삼키지 않는다.
+                if abs(xa - xb) * 91_000.0 > 700.0 or abs(ya - yb) * 111_132.0 > 700.0:
+                    continue
+                ra, rb = root(ka), root(kb)
+                if ra != rb:
+                    home[rb] = ra
     if any(home[k] != k for k in keys):
         joined = {}
         for k in keys:

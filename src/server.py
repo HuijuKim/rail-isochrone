@@ -187,24 +187,30 @@ def read_scope(reg):
     key = (reg.id, prefs, no_hsr)
     with _SCOPE_LOCK:
         got = _SCOPES.get(key)
+    if got is not None:
+        return got
+    # 만드는 동안은 잠그지 않는다. 전국판에서 그래프 둘을 거르는 동안 다른 현 목록의
+    # 요청까지 모두 멈췄다. 같은 목록이 동시에 오면 두 번 만들 수 있지만 먼저 넣은 것을 쓴다.
+    from router import restrict
+    from shapely.ops import unary_union
+
+    if prefs:
+        keep = np.isin(table["station_pref"], [table["index"][p] for p in prefs])
+        clip = unary_union([_pref_shape(table, p) for p in prefs])
+        shapely.prepare(clip)
+    else:
+        keep, clip = np.ones(len(reg.coords), dtype=bool), None
+    built = Scope(prefs, keep, clip,
+                  {cal: restrict(g, keep, g.trip_hsr if no_hsr else None)
+                   for cal, g in reg.graphs.items()})
+    with _SCOPE_LOCK:
+        got = _SCOPES.get(key)
         if got is not None:
             return got
-        from router import restrict
-        from shapely.ops import unary_union
-
-        if prefs:
-            keep = np.isin(table["station_pref"], [table["index"][p] for p in prefs])
-            clip = unary_union([_pref_shape(table, p) for p in prefs])
-            shapely.prepare(clip)
-        else:
-            keep, clip = np.ones(len(reg.coords), dtype=bool), None
-        got = Scope(prefs, keep, clip,
-                    {cal: restrict(g, keep, g.trip_hsr if no_hsr else None)
-                     for cal, g in reg.graphs.items()})
         if len(_SCOPES) >= _SCOPE_KEEP:
             _SCOPES.pop(next(iter(_SCOPES)))
-        _SCOPES[key] = got
-        return got
+        _SCOPES[key] = built
+        return built
 
 
 def scope_railways(reg, scope) -> list:

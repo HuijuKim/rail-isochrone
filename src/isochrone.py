@@ -341,49 +341,44 @@ def _rings_to_polygons(rings: list[np.ndarray]) -> list[list[np.ndarray]]:
 
 def contour_geojson(field: Field, thresholds_sec: list[int]) -> dict:
     """소요시간 격자에서 임계값별 도달권역을 GeoJSON 으로 뽑는다."""
-    import matplotlib
-
-    matplotlib.use("Agg")
-    from matplotlib import pyplot as plt
+    # pyplot 은 전역 상태(열린 그림 목록, 백엔드)를 쓰므로 여러 요청이 동시에 부르면
+    # 서로 엉킨다(waitress 는 스레드 8개). 따로 선 Figure 로 등고선만 계산한다.
+    from matplotlib.figure import Figure
 
     grid = field.grid
     # 무한대는 등고선 계산에서 걸리적거리므로 충분히 큰 유한값으로 바꾼다
     big = float(max(thresholds_sec)) * 10.0
     z = np.where(np.isfinite(grid), grid, big)
 
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
+    ax = Figure().add_subplot(111)
     features = []
-    try:
-        for t in sorted(thresholds_sec):
-            if not (z <= t).any():
-                continue
-            cs = ax.contourf(field.x, field.y, z, levels=[-1.0, float(t)])
-            rings: list[np.ndarray] = []
-            for path in cs.get_paths():
-                rings.extend(p for p in path.to_polygons() if len(p) >= 4)
-            if not rings:
-                continue
-            polygons = _rings_to_polygons(rings)
+    for t in sorted(thresholds_sec):
+        if not (z <= t).any():
+            continue
+        cs = ax.contourf(field.x, field.y, z, levels=[-1.0, float(t)])
+        rings: list[np.ndarray] = []
+        for path in cs.get_paths():
+            rings.extend(p for p in path.to_polygons() if len(p) >= 4)
+        if not rings:
+            continue
+        polygons = _rings_to_polygons(rings)
 
-            coords = []
-            for poly in polygons:
-                converted = []
-                for ring in poly:
-                    lon, lat = field.to_lonlat(ring[:, 0], ring[:, 1])
-                    converted.append(np.stack([lon, lat], axis=1).round(6).tolist())
-                coords.append(converted)
+        coords = []
+        for poly in polygons:
+            converted = []
+            for ring in poly:
+                lon, lat = field.to_lonlat(ring[:, 0], ring[:, 1])
+                converted.append(np.stack([lon, lat], axis=1).round(6).tolist())
+            coords.append(converted)
 
-            features.append(
-                {
-                    "type": "Feature",
-                    "properties": {"minutes": int(round(t / 60))},
-                    "geometry": {"type": "MultiPolygon", "coordinates": coords},
-                }
-            )
-            ax.clear()
-    finally:
-        plt.close(fig)
+        features.append(
+            {
+                "type": "Feature",
+                "properties": {"minutes": int(round(t / 60))},
+                "geometry": {"type": "MultiPolygon", "coordinates": coords},
+            }
+        )
+        ax.clear()
 
     # 큰 권역이 작은 권역을 덮지 않도록 넓은 것부터 그리게 정렬해 둔다
     features.sort(key=lambda f: -f["properties"]["minutes"])

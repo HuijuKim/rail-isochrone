@@ -583,10 +583,8 @@ class Coverage:
                     "coordinates": [l.round(6).tolist() for l in self._outline],
                 },
             }
-        import matplotlib
-
-        matplotlib.use("Agg")
-        from matplotlib import pyplot as plt
+        # pyplot 전역 상태를 피해 따로 선 Figure 를 쓴다(isochrone.contour_geojson 과 같다).
+        from matplotlib.figure import Figure
 
         # 판정과 같은 마스크를 그린다. 성긴 격자를 그리면 선이 판정과 어긋나
         # 육지 한가운데를 가로지르게 된다.
@@ -602,21 +600,17 @@ class Coverage:
             xs = self.lon0 + (np.arange(w) + self.x0 + 0.5) * self.cell / self.m_lon
             ys = self.lat0 + (np.arange(h) + self.y0 + 0.5) * self.cell / self.m_lat
 
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        try:
-            cs = ax.contour(xs, ys, solid.astype(np.float32), levels=[0.5])
-            rings = []
-            for path in cs.get_paths():
-                for poly in path.to_polygons(closed_only=False):
-                    if len(poly) < 3:
-                        continue
-                    if _perimeter_km(poly) < MIN_RING_KM:
-                        continue
-                    # 250 m 격자라 소수점 4자리(약 10 m)면 충분하다
-                    rings.append(np.round(poly, 4).tolist())
-        finally:
-            plt.close(fig)
+        ax = Figure().add_subplot(111)
+        cs = ax.contour(xs, ys, solid.astype(np.float32), levels=[0.5])
+        rings = []
+        for path in cs.get_paths():
+            for poly in path.to_polygons(closed_only=False):
+                if len(poly) < 3:
+                    continue
+                if _perimeter_km(poly) < MIN_RING_KM:
+                    continue
+                # 250 m 격자라 소수점 4자리(약 10 m)면 충분하다
+                rings.append(np.round(poly, 4).tolist())
 
         return {
             "type": "Feature",

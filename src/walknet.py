@@ -234,10 +234,15 @@ class WalkNet:
         out = np.full(n_stations, np.inf, dtype=np.float64)
         if len(nodes) == 0:
             return out
-        lookup = np.full(len(self.node_cell), np.inf, dtype=np.float64)
-        lookup[nodes] = secs
-        linked = self.station_node >= 0
-        out[linked] = lookup[self.station_node[linked]]
+        # 보행망 크기 배열을 만들지 않고 닿은 노드만 정렬해 역 노드를 찾는다. 전국 보행망은
+        # 노드가 3,100만 개라 요청마다 249 MB 를 채웠다.
+        order = np.argsort(nodes, kind="stable")
+        got = np.asarray(nodes)[order]
+        linked = np.flatnonzero(self.station_node >= 0)
+        want = self.station_node[linked]
+        at = np.minimum(np.searchsorted(got, want), len(got) - 1)
+        hit = got[at] == want
+        out[linked[hit]] = np.asarray(secs, dtype=np.float64)[order][at[hit]]
         return out
 
 
