@@ -126,6 +126,9 @@ PAREN_RE = re.compile(r"[（(][^）)]*[）)]")
 # 적힌다. 정차역이 가장 많아 뼈대가 되면 노선 이름이 이 긴 것이 된다.
 THROUGH_RUN = re.compile(r"直通運転")
 DIR_RE = re.compile(r"(上り|下り|内回り|外回り|環状)")
+# OSM 의 name:ja 에 회사 이름을 두 번 적은 관계가 있다("JR JR磐越西線"). 일본어 이름에만
+# 쓴다. 영어 "Seibu Seibu-en Line"(西武園線)은 진짜 이름이다.
+DUP_PREFIX_RE = re.compile(r"^([A-Za-z]+)\s+(?=\1)")
 # 이름 끝의 방향 괄호. 묶은 노선에는 뜻이 없다.
 DIR_PAREN_RE = re.compile(
     r"\s*[(（]\s*(?:内回り|外回り|右回り|左回り|上り|下り|内回|外回"
@@ -2610,7 +2613,7 @@ def _build(pbfs, rel, ways, nodes):
             for g in LANGS:
                 if not titles[g] and r["titles"].get(g):
                     titles[g] = r["titles"][g]
-        titles["ja"] = titles["ja"] or base
+        titles["ja"] = DUP_PREFIX_RE.sub("", titles["ja"] or base)
         # 갈라 붙일 노선이 없어 노선으로 남은 직통 운전 계통. 이름이 "東京地下鉄の
         # 直通運転 - 東急東横線 : 横浜→渋谷" 처럼 적혀 있다. " - " 로 나눈 조각
         # 가운데 직통 설명이 아닌 것이 하나뿐이면 그것을 노선 이름으로 쓴다.
