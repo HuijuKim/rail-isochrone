@@ -13,9 +13,10 @@ OSM 추출본을 받거나 빌드를 돌리지 않아도 서버를 띄울 수 �
 """
 from __future__ import annotations
 
-import io
 import json
+import shutil
 import sys
+import tempfile
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -31,6 +32,14 @@ def _get(url: str, accept: str = "application/json") -> bytes:
                                                "Accept": accept})
     with urllib.request.urlopen(req, timeout=600) as resp:
         return resp.read()
+
+
+def _download(url: str, out) -> None:
+    """큰 파일은 메모리에 통째로 올리지 않고 흘려 받는다(전국 권역은 1 GB 가 넘는다)."""
+    req = urllib.request.Request(url, headers={"User-Agent": "rail-isochrone",
+                                               "Accept": "application/octet-stream"})
+    with urllib.request.urlopen(req, timeout=600) as resp:
+        shutil.copyfileobj(resp, out, length=1 << 20)
 
 
 def latest_data_release() -> dict:
@@ -57,22 +66,30 @@ def main() -> None:
     print(f"{rel['tag_name']} 에서 받는다", flush=True)
     for region in want:
         base = REGIONS / region
-        if not (base / "region.json").exists():
-            print(f"  {region}: region.json 이 없어 건너뛴다(코드를 최신으로 받으세요)")
-            continue
         a = assets[region]
         print(f"  {region}: {a['size'] / 1e6:.0f} MB 받는 중...", flush=True)
-        blob = _get(a["browser_download_url"], accept="application/octet-stream")
-        with zipfile.ZipFile(io.BytesIO(blob)) as z:
-            names = [n for n in z.namelist() if n != "manifest.json"]
-            # 압축 안의 경로가 권역 폴더를 벗어나지 못하게 한다.
-            for n in names:
-                target = (base / n).resolve()
-                if base.resolve() not in target.parents:
-                    sys.exit(f"이상한 경로가 들어 있습니다: {n}")
-            z.extractall(base, members=names)
-        print(f"  {region}: {len(names)}개 파일을 풀었다", flush=True)
+        with tempfile.TemporaryFile() as tmp:
+            _download(a["browser_download_url"], tmp)
+            tmp.seek(0)
+            _unpack(region, base, tmp)
     print("끝. python src/server.py 로 띄운다.")
+
+
+def _unpack(region: str, base: Path, fileobj) -> None:
+    with zipfile.ZipFile(fileobj) as z:
+        names = [n for n in z.namelist() if n != "manifest.json"]
+        # region.json 은 저장소에 있다. 전국 권역만 저장소에 없어 압축 안에 담겨 온다.
+        if not (base / "region.json").exists() and "region.json" not in names:
+            print(f"  {region}: region.json 이 없어 건너뛴다(코드를 최신으로 받으세요)")
+            return
+        # 압축 안의 경로가 권역 폴더를 벗어나지 못하게 한다.
+        for n in names:
+            target = (base / n).resolve()
+            if base.resolve() not in target.parents:
+                sys.exit(f"이상한 경로가 들어 있습니다: {n}")
+        base.mkdir(parents=True, exist_ok=True)
+        z.extractall(base, members=names)
+    print(f"  {region}: {len(names)}개 파일을 풀었다", flush=True)
 
 
 if __name__ == "__main__":

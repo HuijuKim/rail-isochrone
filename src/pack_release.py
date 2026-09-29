@@ -8,6 +8,9 @@
 
 간토 시각표 권역(kanto)은 담지 않는다. ODPT 시각표의 재배포 조건을 확인하지
 못했다(README 의 라이선스 절). 같은 범위를 OSM 으로 만든 kanto_osm 을 쓴다.
+
+전국 권역(national)은 make_national.py 가 따로 둔 폴더(data/national/regions)에 있고
+region.json 이 저장소에 없어 그것도 담는다. 온라인 서버가 받아 가는 데이터다.
 """
 from __future__ import annotations
 
@@ -20,6 +23,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 REGIONS = ROOT / "data" / "regions"
+NATIONAL = ROOT / "data" / "national" / "regions"
 DIST = ROOT / "dist"
 
 # region.json 은 저장소에 있으므로 담지 않는다. 받는 쪽은 코드와 짝이 맞아야 한다.
@@ -47,9 +51,16 @@ RUNTIME = [
 ]
 
 
+def source_of(region: str) -> Path:
+    """권역 폴더. 전국 권역은 따로 둔 폴더에 있다."""
+    d = REGIONS / region
+    return d if (d / "stops.json").exists() else NATIONAL / region
+
+
 def packable() -> list[str]:
     out = []
-    for d in sorted(REGIONS.iterdir()):
+    dirs = sorted(REGIONS.iterdir()) + (sorted(NATIONAL.iterdir()) if NATIONAL.exists() else [])
+    for d in dirs:
         meta = d / "region.json"
         if not meta.exists() or not (d / "stops.json").exists():
             continue
@@ -70,14 +81,15 @@ def commit() -> str:
 
 
 def pack(region: str) -> Path:
-    base = REGIONS / region
+    base = source_of(region)
+    national = bool(json.loads((base / "region.json").read_text(encoding="utf-8")).get("national"))
     DIST.mkdir(exist_ok=True)
     out = DIST / f"{region}.zip"
     manifest = {"region": region, "built": date.today().isoformat(),
                 "code": commit(), "files": []}
     with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_DEFLATED,
                          compresslevel=6) as z:
-        for rel in RUNTIME:
+        for rel in RUNTIME + (["region.json"] if national else []):
             p = base / rel
             if p.exists():
                 z.write(p, rel)
