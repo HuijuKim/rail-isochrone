@@ -1115,7 +1115,10 @@ def reachable():
     if request.args.get("walk_unlimited") in ("1", "true", "yes"):
         gate, raw_gate = ACCESS_UNLIMITED_SEC, ""
     else:
-        gate = int(raw_gate) * 60 if raw_gate else ACCESS_GATE_SEC
+        try:
+            gate = int(raw_gate) * 60 if raw_gate else ACCESS_GATE_SEC
+        except ValueError:
+            raise BadRequest("walk_total 은 분 단위 정수여야 합니다")
 
     # 지도에 그린 선과 같은 기준으로 판정한다. 선 바깥인데 클릭은 되는
     # 식이면 선이 무슨 의미인지 알 수 없다.
@@ -1132,9 +1135,13 @@ def reachable():
             return jsonify({"ok": False, "reason": "sea"})
         return jsonify({"ok": False, "reason": "no_road"})
 
-    # 길은 있어도 걸어서 닿는 역이 없으면 출발지로 쓸 수 없다
+    # 길은 있어도 걸어서 닿는 역이 없으면 출발지로 쓸 수 없다. 현을 골랐으면 그 현의
+    # 역만 센다. 등시선(/api/isochrone)도 고른 현 밖의 역은 쓰지 않는다. 경계 바로 안의
+    # 지점이 옆 현 역만 가까우면 여기서는 된다고 하고 등시선은 비어 나왔다.
     g = next(iter(reg.graphs.values()))
     secs = access_seconds(g, lon, lat, gate, reg.walk)
+    if scope is not None:
+        secs = np.where(scope.keep, secs, np.inf)
     if not bool((secs <= gate).any()):
         return jsonify(
             {
@@ -1174,7 +1181,9 @@ def isochrone():
     # 상한보다 오래 걷는 것은 계산할 필요가 없다. 그렇게 걸어 역에 닿아도
     # 이미 시간이 지나 권역에 들어오지 못한다. "제한 없음" 으로 6시간을
     # 열어두면 65만 노드를 2.5초 훑고도 결과는 같다.
-    access_limit = min(qs["walk_total"] or budget, budget)
+    # walk_total 이 0분이면 0 이다. `or` 로 받으면 0 이 없는 값으로 읽혀 상한 전체가 됐다.
+    walk_total = qs["walk_total"]
+    access_limit = min(walk_total if walk_total is not None else budget, budget)
     best = earliest_arrivals(
         g, lon, lat, depart, budget, walk=reg.walk, access_limit=access_limit
     )
@@ -1187,6 +1196,10 @@ def isochrone():
     # 없을 때만 상한만큼 펼친다.
     has_station = bool((best < INF).any())
     origin_walk = min(budget, ACCESS_GATE_SEC) if has_station else budget
+    # 전체 도보 상한은 걸어서만 가는 범위에도 걸린다. 10분으로 두어도 출발지 둘레를
+    # 60분 걸어서 닿는 곳까지 칠했다.
+    if walk_total is not None:
+        origin_walk = min(origin_walk, walk_total)
 
     if reg.walk is not None:
         field = build_field_network(
