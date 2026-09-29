@@ -608,12 +608,8 @@ def build(railways, express, pos, seg_head, seg_km, km, scale, title=None):
     return rows, row_of, ev_stop, ev_arr, ev_dep, trip_start, n_exp, trip_pat, pats, trip_hsr
 
 
-def transfers(rows, pos, scale, title, hsr_ids=frozenset()):
+def transfers(rows, pos, scale, hsr_ids=frozenset()):
     """같은 역 구내와, 걸어서 갈아타는 이웃 역 사이. 신칸센과 재래선 사이는 길다."""
-
-    def title_of(c):
-        return (title.get(c) or {}).get("ja", "")
-
     by_cluster = defaultdict(list)
     for i, (_rid, c) in enumerate(rows):
         by_cluster[c].append(i)
@@ -626,8 +622,10 @@ def transfers(rows, pos, scale, title, hsr_ids=frozenset()):
                     one = (rows[a][0] in hsr_ids) != (rows[b][0] in hsr_ids)
                     edges.append((a, b, TRANSFER_HSR if one else TRANSFER_SAME))
 
-    # 이름이 달라 안 묶인 이웃 역은 걸어서 갈아탄다. 거리에 따라 값을
-    # 매긴다. transfers.py 에 규칙을 두어 시각표 권역과 같은 잣대를 쓴다.
+    # 한 묶음이 아닌 이웃 역은 걸어서 갈아탄다. 거리에 따라 값을 매긴다.
+    # transfers.py 에 규칙을 두어 시각표 권역과 같은 잣대를 쓴다. 이름이 같아도
+    # 400 m 넘게 떨어지면 따로 묶이므로(東京 京葉線 승강장 459 m, 大阪梅田 阪急·阪神
+    # 467 m) 이름으로 거르지 않는다. 거르면 두 묶음 사이 환승이 아예 없었다.
     from router import WALK_SPEED
     import transfers as xfer
 
@@ -636,9 +634,6 @@ def transfers(rows, pos, scale, title, hsr_ids=frozenset()):
                             WALK_SPEED)
     near = 0
     for i, j, cost in pairs:
-        # 같은 이름이면 위에서 이미 한 묶음이다
-        if title_of(cl[i]) == title_of(cl[j]):
-            continue
         near += 1
         for a in by_cluster[cl[i]]:
             for b in by_cluster[cl[j]]:
@@ -666,9 +661,9 @@ def main():
     print(f"  역 줄 {len(rows):,}개, 운행 {len(trip_start) - 1:,}건, "
           f"정차 이벤트 {len(ev_stop):,}개 (통과 계통 {n_exp}개)", flush=True)
 
-    edges, near = transfers(rows, pos, scale, title,
+    edges, near = transfers(rows, pos, scale,
                             {r["id"] for r in railways if r.get("shinkansen")})
-    print(f"  환승 간선 {len(edges):,}개 (이름이 다른 이웃 역 쌍 {near:,}개)", flush=True)
+    print(f"  환승 간선 {len(edges):,}개 (걸어서 갈아타는 이웃 역 쌍 {near:,}개)", flush=True)
 
     tr = np.array(edges, dtype=np.int64)
     tr = tr[np.lexsort((tr[:, 1], tr[:, 0]))]
