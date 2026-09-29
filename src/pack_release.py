@@ -33,6 +33,7 @@ RUNTIME = [
     "graph-SaturdayHoliday.npz",
     "prefectures.json",
     "raw/railways.json",
+    "raw/patterns.json",        # 경로 패널의 열차 이름(のぞみ, 南風). 없으면 노선 이름만 나온다
     "raw/stations.json",
     "raw/station-groups.json",
     "raw/coordinates.json",
