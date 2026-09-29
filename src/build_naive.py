@@ -56,6 +56,18 @@ CRUISE_KMH = {"rail_e": 79.3, "rail_ne": 60.0, "urban": 87.9, "tram": 40.0, "hsr
 # 신칸센(hsr). 순항은 東京-新大阪 のぞみ(2시간 27분)·東京-仙台 はやぶさ(1시간 31분)
 # 에 맞췄다. 각역정차(こだま)는 역마다 빠른 열차에 길을 비켜 주느라 오래 서므로
 # 정차를 길게 잡는다.
+#
+# 구간의 최고 속도(track-attrs 의 vmax)를 알면 순항은 그 비율로 잡는다. 東北 는 320,
+# 東海道 는 285, 九州·北陸 은 260 km/h 라 한 값으로는 はやぶさ 가 느리고 さくら 가
+# 빨랐다. 통과 열차가 서는 자리의 손실도 재래선 특급 값(106초)이 아니라 따로 둔다.
+# 가속·감속이 길어 ひかり(のぞみ 보다 4번 더 선다)가 のぞみ 와 4분밖에 차이가 안 났다.
+# 두 값은 신칸센 열차 13개 구간의 실제 소요 시간(ja.wikipedia 2024-2026)에 맞췄다.
+# 최고 속도의 0.85, 정차당 240초에서 のぞみ +7%, みずほ +4%, さくら +2%, かがやき +1%,
+# ひかり -5% 다(0.75-0.85 와 180-300초를 견줌). 각역정차가 추월을 기다리는 시간은 노선마다
+# 크게 달라(東海道 こだま 는 역마다 6분, 九州 つばめ 는 3분) line-headways.json 의
+# dwell_sec 로 노선마다 덮는다.
+HSR_CRUISE_OF_VMAX = 0.85
+DWELL_HSR_FAST = 240.0
 # 신칸센과 재래선 사이 갈아타기. 승강장이 멀고 개찰을 한 번 더 지난다(東京 약 10분).
 TRANSFER_HSR = 480
 # 통과 계통은 간토에서 맞춘 비율을 그대로 쓴다. 정차 한 번에 106초, 순항은
@@ -74,20 +86,34 @@ def seg_class(v):
     return "rail_e" if v.get("elec", 1.0) >= 0.5 else "rail_ne"
 
 
-def leg_seconds(parts, fast=False, ltd=False):
+def leg_seconds(parts, fast=False, ltd=False, dwell=None):
     """한 번 서고 달리는 구간의 시간. parts 는 (길이 m, 등급) 목록.
 
     ltd 는 특급이다. 비전철 선로의 속도(60 km/h)는 한적한 선의 디젤 완행 기준이라,
     디젤 특급(キハ261 은 최고 120 km/h)이 그 속도로 달려 北斗 札幌-函館 이 302분
     (실제 220분)이 됐다. 특급은 비전철 선로에서도 전철 선로 속도로 달린다.
+    dwell 을 주면 정차 시간을 그것으로 쓴다(노선마다 적은 dwell_sec).
     """
     if not parts:
         return 0
     main = max(parts, key=lambda p: p[0])[1]
-    dwell = DWELL_FAST if fast else DWELL[main]
+    if dwell is not None:
+        pass
+    elif main == "hsr":
+        dwell = DWELL_HSR_FAST if fast else DWELL["hsr"]
+    else:
+        dwell = DWELL_FAST if fast else DWELL[main]
     mult = FAST_MULT if fast else 1.0
-    run = sum(m / (CRUISE_KMH["rail_e" if ltd and c == "rail_ne" else c] * mult / 3.6)
-              for m, c in parts)
+    run = 0.0
+    # parts 의 셋째 값은 구간 최고 속도(km/h, 모르면 없음)다
+    for m, c, *vmax in parts:
+        if c == "hsr" and vmax and vmax[0]:
+            kmh = HSR_CRUISE_OF_VMAX * float(vmax[0])
+        elif c == "hsr":
+            kmh = CRUISE_KMH["hsr"]
+        else:
+            kmh = CRUISE_KMH["rail_e" if ltd and c == "rail_ne" else c] * mult
+        run += m / (kmh / 3.6)
     return int(round(dwell + run))
 
 
@@ -386,15 +412,25 @@ def build(railways, express, pos, seg_head, seg_km, km, scale, title=None):
     attrs = (json.loads(attrs_path.read_text(encoding="utf-8"))
              if attrs_path.exists() else {})
 
+    # 신칸센 노선마다 구간 최고 속도의 중앙값. OSM 에 maxspeed 가 빠진 구간(東海道新幹線
+    # 京都-米原 68 km)에 쓴다. 안 채우면 그 구간만 기본 순항(215 km/h)으로 느리게 달렸다.
+    hsr_vmax = defaultdict(list)
+    for key, v in attrs.items():
+        rid = key.split("|", 1)[0]
+        if rid in hsr_ids and (v.get("vmax") or 0) >= 200:
+            hsr_vmax[rid].append(float(v["vmax"]))
+    hsr_vmax = {rid: float(np.median(vs)) for rid, vs in hsr_vmax.items()}
+
     def parts(rid, a, b):
-        """역 묶음 a->b 구간의 (길이 m, 등급). 선로 등급이 없으면 전철화로 본다."""
+        """역 묶음 a->b 구간의 (길이 m, 등급, 최고 속도). 선로 등급이 없으면 전철화로 본다."""
         sa, sb = f"{rid}.{a}", f"{rid}.{b}"
         v = attrs.get(f"{rid}|{sa}|{sb}") or attrs.get(f"{rid}|{sb}|{sa}")
         # 신칸센 노선이라도 도시 안 진입 구간(東京-上野 130 km/h)은 고속선이 아니다
         cls = "hsr" if rid in hsr_ids and (not v or (v.get("vmax") or 999) >= 200) else None
+        vmax = (v or {}).get("vmax") or (hsr_vmax.get(rid) if cls else None)
         if v:
-            return [(float(v["len"]), cls or seg_class(v))]
-        return [(seg_km.get((a, b), km(a, b) * DETOUR) * 1000.0, cls or "rail_e")]
+            return [(float(v["len"]), cls or seg_class(v), vmax)]
+        return [(seg_km.get((a, b), km(a, b) * DETOUR) * 1000.0, cls or "rail_e", vmax)]
 
     # 첫차 위상의 열쇠. 노선 id 는 빌드 순서로 붙는 번호(OSM.0, OSM.2 ...)라 같은
     # 노선도 권역마다 달라서, 같은 역에서 떠나도 고른 현에 따라 시각표가 통째로
@@ -410,13 +446,13 @@ def build(railways, express, pos, seg_head, seg_km, km, scale, title=None):
     # 운행 -> 신칸센을 달리는가. 화면에서 신칸센을 빼고 계산할 때 쓴다.
     trip_hsr = []
 
-    def lay(line_key, seq, headway_min, spans, fast=False, pat=-1, ltd=False):
+    def lay(line_key, seq, headway_min, spans, fast=False, pat=-1, ltd=False, dwell=None):
         """seq(역 줄 번호)를 순서대로 도는 운행을 배차 간격으로 깐다.
 
         역 줄은 (노선, 역 묶음) 이라, 줄 번호를 받으면 한 운행이 여러 노선을
         이어 달릴 수 있다. 南風 은 瀬戸大橋線·予讃線·土讃線 을 이어 간다.
         spans 는 정차 사이마다 (길이 m, 등급) 목록이다."""
-        secs = [leg_seconds(p, fast, ltd) for p in spans]
+        secs = [leg_seconds(p, fast, ltd, dwell) for p in spans]
         step = max(int(round(headway_min * 60)), 60)
         offset = phase_of(line_key, step)
         # 왕복 모두 깐다. 한 방향만 깔면 되돌아오는 경로가 없어진다.
@@ -486,14 +522,16 @@ def build(railways, express, pos, seg_head, seg_km, km, scale, title=None):
         fast = bool(FAST_NAME.search(r["title"].get("ja", "")))
         full = max(heads)
         seq = [row_of[(r["id"], c)] for c in cs]
-        lay(line_key_of[r["id"]] + "|full", seq, full, legs, fast=fast)
+        dwell = line_spec.get("dwell_sec")
+        lay(line_key_of[r["id"]] + "|full", seq, full, legs, fast=fast, dwell=dwell)
         for i, j, h in runs_of(heads):
             if h >= full - 1e-6:
                 continue
             extra = 1.0 / max(1.0 / h - 1.0 / full, 1e-6)
             if extra > cap:
                 continue
-            lay(f"{line_key_of[r['id']]}|{i}", seq[i:j + 1], extra, legs[i:j], fast=fast)
+            lay(f"{line_key_of[r['id']]}|{i}", seq[i:j + 1], extra, legs[i:j], fast=fast,
+                dwell=dwell)
 
     # 통과 계통. 같은 역 줄 위를 건너뛰며 달린다.
     # 한 역이 두 번 실린 관계에서는 첫 자리를 쓴다. 마지막 자리를 쓰면
@@ -524,17 +562,32 @@ def build(railways, express, pos, seg_head, seg_km, km, scale, title=None):
             continue
         legs, unders = [], []
         for (rid_a, a), (rid_b, b) in zip(on, on[1:]):
-            ord_ = order_of[rid_a]
-            if rid_a == rid_b and a in ord_ and b in ord_:
-                full_cs = clusters_of[rid_a]
+            # 노선이 바뀌는 자리라도 두 역을 함께 실은 노선이 있으면 그 선로와 등급으로
+            # 잰다. みずほ 는 博多(山陽 노선)에서 熊本(九州 노선)으로 넘어가며 직선 거리를
+            # 재래선 속도로 달려 72분(실제 33분)이 됐다. 九州 노선에도 博多 가 있다.
+            via = next((rid for rid in dict.fromkeys((rid_a, rid_b))
+                        if a in order_of[rid] and b in order_of[rid]), None)
+            span = []
+            if via is not None:
+                ord_ = order_of[via]
+                full_cs = clusters_of[via]
                 i, j = sorted((ord_[a], ord_[b]))
                 span = list(zip(full_cs[i:j], full_cs[i + 1:j + 1]))
-                legs.append([x for p in span for x in parts(rid_a, *p)])
+                got = [x for p in span for x in parts(via, *p)]
+                # 노선이 바뀌는 자리에서는 그 노선이 두 역을 멀리 돌아 싣고 있으면(순환선,
+                # 반대편에 다시 적힌 역) 쓰지 않는다. 노선 절반을 돌게 된다.
+                if rid_a != rid_b and sum(m for m, *_ in got) > 2.0 * km(a, b) * DETOUR * 1000.0:
+                    span = []
+            if span:
+                legs.append(got)
                 unders += [seg_head[p] for p in span if p in seg_head]
             else:
-                # 노선이 바뀌는 자리. 그 사이 역은 어느 노선에도 함께 실려
-                # 있지 않으므로 직선 거리로 잡는다.
-                legs.append([(km(a, b) * DETOUR * 1000.0, "rail_e")])
+                # 두 역을 함께 실은 노선이 없으면 직선 거리로 잡는다. 양쪽이 모두
+                # 신칸센이면 두 노선 최고 속도의 중앙값으로 달린다.
+                hsr = rid_a in hsr_ids and rid_b in hsr_ids
+                vs = [hsr_vmax[x] for x in (rid_a, rid_b) if x in hsr_vmax] if hsr else []
+                legs.append([(km(a, b) * DETOUR * 1000.0, "hsr" if hsr else "rail_e",
+                              float(np.median(vs)) if vs else None)])
         base = float(np.median(unders)) if unders else 20.0
         head = min(base * EXP_MULT, HONSU_CAP if USE_HONSU else HEADWAY_CAP)
         # 계통 배차를 손으로 적은 것(line-headways.json 의 per_hour). 운행 횟수
