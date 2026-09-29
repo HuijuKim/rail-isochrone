@@ -24,6 +24,11 @@ TYPES = ("restaurant", "cafe", "convenience_store", "supermarket", "hospital", "
 PER_IP_HOUR = 20       # 한 곳에서 한 시간에 세는 횟수
 PER_DAY = 150          # 하루에 구글로 나가는 요청. 31일이면 4,650건으로 월 무료 5,000건 안이다
 KEEP = 2000            # 기억해 두는 (범위, 종류) 수
+# 받는 도달 범위의 크기 상한. 고리로 바꾸는 계산(조각 사이 거리 행렬)이 조각 수의
+# 제곱이라, 이보다 크면 한도를 세기 전에 서버가 멈출 수 있다. 東京 에서 신칸센 180분이
+# 조각 600개, 꼭짓점 1만 8천 개다.
+MAX_PARTS = 3000
+MAX_VERTICES = 100_000
 URL = "https://areainsights.googleapis.com/v1:computeInsights"
 
 
@@ -178,14 +183,22 @@ class Counter:
     def count(self, geometry: dict, kind, ip: str, now: float | None = None) -> int:
         if kind not in TYPES:
             raise Refused("모르는 장소 종류입니다: " + repr(kind), 400)
+        parts, verts = _size(geometry)
+        if parts > MAX_PARTS or verts > MAX_VERTICES:
+            raise Refused("도달 범위가 너무 복잡합니다", 400)
         k = (hashlib.sha1(json.dumps(geometry, sort_keys=True).encode()).hexdigest(), kind)
         with self.lock:
             if k in self.known:
                 self.known.move_to_end(k)
                 return self.known[k]
+        now = time.time() if now is None else now
+        with self.lock:
+            # 무거운 고리 계산 전에 시간당 한도부터 본다. 넘은 곳이 되풀이해 부르면
+            # 매번 계산만 하고 거절됐다.
+            self._take(ip or "?", 0, now, count=False)
         rings = area_rings(geometry)
         with self.lock:
-            self._take(ip or "?", len(rings), time.time() if now is None else now)
+            self._take(ip or "?", len(rings), now)
         total = sum(self.ask(ring, kind) for ring in rings)
         with self.lock:
             self.known[k] = total
@@ -193,7 +206,8 @@ class Counter:
                 self.known.popitem(last=False)
         return total
 
-    def _take(self, ip: str, n: int, now: float) -> None:
+    def _take(self, ip: str, n: int, now: float, count: bool = True) -> None:
+        """한도를 넘으면 Refused. count 가 거짓이면 보기만 하고 쓰지 않는다."""
         day = time.strftime("%Y-%m-%d", time.localtime(now))
         if day != self.day:
             self.day, self.used = day, 0
@@ -205,10 +219,23 @@ class Counter:
         if len(log) >= self.per_ip_hour:
             raise Refused(f"장소 수는 한 시간에 {self.per_ip_hour}번까지 셀 수 있습니다. "
                           "잠시 뒤에 다시 해 주세요.")
-        if self.used + n > self.per_day:
+        if self.used + n > self.per_day or (not count and self.used >= self.per_day):
             raise Refused("오늘 장소 수를 셀 수 있는 양을 다 썼습니다. 내일 다시 해 주세요.")
-        log.append(now)
-        self.used += n
+        if count:
+            log.append(now)
+            self.used += n
+
+
+def _size(geometry: dict) -> tuple[int, int]:
+    """GeoJSON (Multi)Polygon 의 (고리 수, 꼭짓점 수). 모양이 틀리면 (0, 0)."""
+    coords = geometry.get("coordinates") if isinstance(geometry, dict) else None
+    polys = coords if geometry.get("type") == "MultiPolygon" else [coords]
+    parts = verts = 0
+    for poly in polys or ():
+        for ring in poly or ():
+            parts += 1
+            verts += len(ring) if isinstance(ring, list) else 0
+    return parts, verts
 
     def _ask(self, ring, kind: str) -> int:
         body = {

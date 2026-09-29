@@ -54,6 +54,8 @@ MAX_BUDGET_SEC = 300 * 60
 MAX_THRESHOLDS = 12
 
 app = Flask(__name__, static_folder=None)
+# 받는 요청 본문 상한. 장소 수 세기에 보내는 도달 범위도 몇 MB 를 넘지 않는다.
+app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024
 
 # 한 권역이 안 올라와도 나머지는 띄운다. 빌드 도중에는 역 목록만 새로
 # 쓰이고 도보권은 아직 옛것이라 그 권역만 짝이 안 맞는데, 예전에는 그

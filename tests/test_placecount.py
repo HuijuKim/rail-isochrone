@@ -77,6 +77,18 @@ def test_unknown_type_is_refused():
     assert err.value.status == 400 and not calls
 
 
+def test_too_complex_area_is_refused_before_work():
+    """조각이 너무 많은 범위는 고리로 바꾸는 계산 전에 거절한다(조각 수의 제곱 계산)."""
+    c, calls = _counter()
+    geom = {"type": "MultiPolygon",
+            "coordinates": [[[[139 + i * 1e-3, 35], [139 + i * 1e-3, 35.0005],
+                              [139.0005 + i * 1e-3, 35.0005], [139 + i * 1e-3, 35]]]
+                            for i in range(placecount.MAX_PARTS + 1)]}
+    with pytest.raises(Refused) as err:
+        c.count(geom, "cafe", "1.1.1.1", now=0)
+    assert err.value.status == 400 and not calls
+
+
 def test_per_ip_limit():
     c, _ = _counter(per_ip_hour=2)
     c.count(_square(0), "cafe", "1.1.1.1", now=0)
