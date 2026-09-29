@@ -1664,7 +1664,8 @@ def through_route(seq, others, prefer=None):
         cur = {}
         for key in opts:
             # 바꾸는 횟수가 같으면 붙은 노선 쪽. 1 보다 훨씬 작아 횟수는 안 바꾼다.
-            stay = 0 if key == prefer else 1e-3
+            # 역마다 쌓이므로 아래 갈아타기 벌점(1e-3)보다 역 수(수백)를 곱해도 작게 둔다.
+            stay = 0 if key == prefer else 1e-6
             if prev is None:
                 cur[key] = (stay, None)
                 continue
@@ -1673,6 +1674,11 @@ def through_route(seq, others, prefer=None):
                 add = (0 if pkey == key else 1) + stay
                 if pkey == key and idx[key][seq[k - 1]] == idx[key][c]:
                     add = inf          # 같은 자리에 두 번 서지는 않는다
+                elif pkey != key and c not in idx[pkey] and seq[k - 1] not in idx[key]:
+                    # 바꾸는 횟수가 같으면 바꾸는 구간이 두 역을 함께 실은 노선 위에
+                    # 놓이는 쪽. リレーかもめ 가 博多 에서 福北ゆたか線 을 타고 鳥栖 에서
+                    # 長崎本線 으로 바꾸는 것으로 나왔다. 鹿児島本線 은 두 역을 다 싣는다.
+                    add += 1e-3
                 if cost + add < best:
                     best, who = cost + add, pkey
             if best < inf:
