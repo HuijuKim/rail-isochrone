@@ -11,10 +11,6 @@
   "color": "#00a7e3",
   "source": "ja.wikipedia:IRいしかわ鉄道線"
  },
- "JR JR磐越西線": {
-  "color": "#cb7b35",
-  "source": "ja.wikipedia:磐越西線"
- },
  "JR-East|中央・総武各駅停車": {
   "color": "#ffd400",
   "source": "권역 맞춤:JR中央・総武緩行線 (三鷹 → 千葉)"
@@ -498,6 +494,10 @@
  "JR磐越東線": {
   "color": "#c71585",
   "source": "ja.wikipedia:磐越東線"
+ },
+ "JR磐越西線": {
+  "color": "#cb7b35",
+  "source": "ja.wikipedia:磐越西線"
  },
  "JR神戸線 (加古川 => 大阪)": {
   "color": "#0072ba",
